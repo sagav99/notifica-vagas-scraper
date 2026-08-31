@@ -29,16 +29,21 @@ sem precisar de `supabase-py`). Testes com `pytest`.
   vaga+evidência com dedup (município + órgão + cargo + número de edital).
 - `src/notifica_vagas_scraper/ibge.py` — lookup de código IBGE via API
   pública do IBGE (não é scraping adversarial, é referência oficial).
-- `src/notifica_vagas_scraper/fontes/` — um parser por fonte (hoje só
-  `dom_amm_mg.py`, Diário Oficial dos Municípios Mineiros / AMM-MG).
+- `src/notifica_vagas_scraper/fontes/` — um parser por fonte:
+  `dom_amm_mg.py` (Diário Oficial dos Municípios Mineiros / AMM-MG) e
+  `imeso.py` (IMESO, banca que atende ~111 entidades de MG — descoberta
+  automática via `/edital`, sem lista curada).
 - `src/notifica_vagas_scraper/fontes_conhecidas.py` — lista curada de
   matérias já mapeadas manualmente (a busca automatizada do DOM/AMM-MG
   ainda não está implementada — formulário com token CSRF, ver
   investigação no repo principal).
-- `scripts/rodar.py` — entrypoint do cron: busca cada matéria conhecida,
-  extrai vagas, grava no Supabase.
-- `scripts/importar_municipios.py` — upsert em lote do catálogo de
-  municípios (CSV → `public.municipios`).
+- `scripts/rodar.py` — entrypoint do cron do DOM/AMM-MG: busca cada
+  matéria conhecida, extrai vagas, grava no Supabase.
+- `scripts/rodar_imeso.py` — entrypoint do cron da IMESO: descobre todos
+  os editais com inscrição aberta automaticamente, extrai vagas, grava.
+- `scripts/importar_municipios.py` / `importar_municipios_ibge.py` —
+  upsert em lote do catálogo de municípios (CSV ou API do IBGE →
+  `public.municipios`).
 - `src/notifica_vagas_scraper/descoberta_prefeitura.py` +
   `scripts/descobrir_urls_prefeitura.py` — descoberta heurística de URL
   oficial de prefeitura (`<slug>.<uf>.gov.br`, com verificação de conteúdo),
@@ -49,10 +54,13 @@ sem precisar de `supabase-py`). Testes com `pytest`.
 
 ## Status
 
-Fatia fina funcionando: 1 fonte (DOM/AMM-MG), 1 município (Pedra
-Dourada/MG), rodando ponta a ponta contra o Supabase real. Falta: busca
-automatizada por município (hoje é lista curada manual), mais fontes,
-camada de auditoria via Gemini.
+2 fontes rodando ponta a ponta contra o Supabase real: DOM/AMM-MG (lista
+curada manual, 1 município) e IMESO (descoberta automática, 2 municípios
+via editais com inscrição aberta). Catálogo `municipios` completo pra
+MG+SP, com `url_prefeitura` descoberto heuristicamente pra ~83%. Falta:
+busca automatizada por município no DOM/AMM-MG, mais fontes, camada de
+auditoria via Gemini (ainda não implementada — necessária pra fontes que
+só têm cargo/salário em PDF, ex. FGV).
 
 ## Segredos
 
