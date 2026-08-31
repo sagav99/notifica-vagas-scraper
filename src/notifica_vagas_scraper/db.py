@@ -26,6 +26,18 @@ def conectar() -> psycopg.Connection:
     return psycopg.connect(database_url)
 
 
+def listar_nomes_municipios(conn: psycopg.Connection, ufs: list[str] | None = None) -> list[tuple[str, str]]:
+    """(nome, uf) de todo município cadastrado — usado por fontes sem
+    metadado de localização (ex: FGV) pra casar contra o título do
+    concurso."""
+    with conn.cursor() as cur:
+        if ufs:
+            cur.execute("select nome, uf from public.municipios where uf = any(%s)", (ufs,))
+        else:
+            cur.execute("select nome, uf from public.municipios")
+        return [(row[0], row[1]) for row in cur.fetchall()]
+
+
 def upsert_municipio(
     conn: psycopg.Connection,
     *,
