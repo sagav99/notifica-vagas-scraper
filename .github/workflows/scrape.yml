@@ -1,0 +1,35 @@
+name: Coleta de vagas
+
+on:
+  schedule:
+    # A cada 3 dias, 06:00 UTC. Cron não tem "a cada N dias" de verdade —
+    # isso é "todo dia-do-mês múltiplo de 3", então o intervalo pode
+    # encurtar na virada do mês (ex: dia 31 -> dia 1). Aceitável pro
+    # cadência-alvo do projeto (ver CLAUDE.md).
+    - cron: "0 6 */3 * *"
+  workflow_dispatch: {}
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install -e ".[dev]"
+
+      - name: Rodar testes
+        run: pytest
+
+      - name: Rodar coleta
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/rodar.py
