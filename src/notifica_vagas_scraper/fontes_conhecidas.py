@@ -2,6 +2,11 @@
 pesquisador-fonte) pra rodar o pipeline enquanto a busca automatizada no
 DOM/AMM-MG (formulário com token CSRF, ver docs/investigacao_fontes) não
 está implementada. Cada item vira uma checagem no cron.
+
+Nota: a mesma plataforma (SIGPub) hospeda o diário de SP em
+`diariomunicipal.com.br/apm/` (Associação Paulista de Municípios) — achado
+no repo principal, ver TAREFAS.md. Resolver a busca automatizada aqui
+resolve pros dois estados de uma vez.
 """
 
 from __future__ import annotations
