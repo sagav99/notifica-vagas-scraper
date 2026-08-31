@@ -52,6 +52,23 @@ def test_encontrar_municipio_rejeita_referencia_a_estado():
     assert fgv.encontrar_municipio(titulo, municipios) is None
 
 
+def test_encontrar_municipio_rejeita_referencia_a_estado_com_de():
+    # achado real rodando contra produção: "Secretaria da Educação do
+    # Estado de São Paulo" é o ESTADO, não o município capital — a
+    # preposição antes do nome do estado é "de" aqui, não "do/da".
+    municipios = [("São Paulo", "SP")]
+    titulo = "Processo Seletivo Simplificado para a Secretaria da Educação do Estado de São Paulo"
+    assert fgv.encontrar_municipio(titulo, municipios) is None
+
+
+def test_encontrar_municipio_rejeita_prefixo_de_nome_maior():
+    # achado real rodando contra produção: "São Lourenço" (MG) batia dentro
+    # de "São Lourenço da Mata" (PE, fora da nossa lista de MG/SP).
+    municipios = [("São Lourenço", "MG")]
+    titulo = "Concurso Público para o Município de São Lourenço da Mata"
+    assert fgv.encontrar_municipio(titulo, municipios) is None
+
+
 def test_encontrar_municipio_sem_match_retorna_none():
     municipios = [("Governador Valadares", "MG")]
     match = fgv.encontrar_municipio("Concurso Público para o Tribunal de Justiça de Pernambuco", municipios)

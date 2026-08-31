@@ -65,13 +65,33 @@ def encontrar_municipio(titulo: str, municipios: list[tuple[str, str]]) -> tuple
     relação nenhuma com o município.
 
     Rejeita match quando "estado" aparece antes do nome no título E o nome
-    vem imediatamente precedido de "do/da/dos/das" — achado real rodando
-    contra produção: existe um município real chamado Tocantins em MG, mas
-    "Secretaria de Estado de Saúde do Tocantins" é o ESTADO do Tocantins,
-    não o município mineiro (o "estado" e o "do" podem estar separados por
-    palavras no meio, tipo "de Saúde"). Título de município real com "do/
-    da" na frente mas sem "estado" em lugar nenhum (ex: "Prefeitura
-    Municipal do Salvador") continua batendo normalmente.
+    vem imediatamente precedido de "do/da/dos/das/de" — dois achados reais
+    rodando contra produção: existe um município real chamado Tocantins em
+    MG, mas "Secretaria de Estado de Saúde do Tocantins" é o ESTADO do
+    Tocantins; e "Secretaria da Educação do Estado de São Paulo" é o
+    ESTADO de SP, não o município capital (a preposição antes do nome do
+    estado varia com o gênero gramatical do nome — "do Tocantins", "de São
+    Paulo", "da Bahia" — por isso aceita qualquer uma). "Estado" e a
+    preposição podem estar separados por palavras no meio (tipo "de
+    Saúde"). Título de município real com preposição na frente mas sem
+    "estado" em lugar nenhum (ex: "Prefeitura Municipal do Salvador")
+    continua batendo normalmente. Limitação conhecida: um título hipotético
+    que mencionasse um órgão estadual E um município na mesma frase
+    perderia o município (falso negativo) — aceitável, o risco de dado
+    errado (vaga presa ao município errado) é pior que perder uma vaga.
+
+    Rejeita também quando o nome batido é só o PREFIXO de um nome de lugar
+    maior que não está na lista — achado real: "São Lourenço" (MG) bateu
+    dentro de "São Lourenço da Mata" (PE, fora da nossa lista de MG/SP);
+    "nome + ' da'/'do' + mais palavra" sugere que o lugar de verdade é mais
+    longo do que o município cadastrado.
+
+    Limitação aceita e não resolvida aqui: nome comum que também é
+    município (ex: "Registro/SP" batendo em "cartório de Registro") não
+    tem heurística de texto que resolva de forma confiável — fica pra
+    revisão administrativa (`vagas.revisao_status`) filtrar antes de virar
+    visível pro usuário, que é o mesmo mecanismo que já protege contra
+    qualquer engano de fonte automática.
     """
     texto = _normalizar(titulo)
     melhor: tuple[str, str] | None = None
@@ -83,7 +103,11 @@ def encontrar_municipio(titulo: str, municipios: list[tuple[str, str]]) -> tuple
         if posicao == -1:
             continue
         prefixo = texto[:posicao]
-        if "estado" in prefixo and re.search(r"\bd[oa]s?\s*$", prefixo):
+        ultima_palavra = prefixo.split()[-1] if prefixo.split() else ""
+        if "estado" in prefixo and ultima_palavra in {"do", "da", "dos", "das", "de"}:
+            continue
+        sufixo = texto[posicao + len(nome_norm) :]
+        if re.match(r"^\s+d[oa]s?\s+\w", sufixo):
             continue
         if melhor is None or len(nome_norm) > len(_normalizar(melhor[0])):
             melhor = (nome, uf)
