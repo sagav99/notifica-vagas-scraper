@@ -18,11 +18,16 @@ def _normalizar(nome: str) -> str:
     return sem_acento.strip().lower()
 
 
-def buscar_codigo_ibge(nome_municipio: str, uf: str) -> int | None:
+def listar_municipios(uf: str) -> list[dict]:
+    """Lista completa de municípios da UF: [{"codigo_ibge": int, "nome": str}, ...]."""
     resposta = requests.get(BASE_URL.format(uf=uf), timeout=15)
     resposta.raise_for_status()
+    return [{"codigo_ibge": int(m["id"]), "nome": m["nome"]} for m in resposta.json()]
+
+
+def buscar_codigo_ibge(nome_municipio: str, uf: str) -> int | None:
     alvo = _normalizar(nome_municipio)
-    for municipio in resposta.json():
+    for municipio in listar_municipios(uf):
         if _normalizar(municipio["nome"]) == alvo:
-            return int(municipio["id"])
+            return municipio["codigo_ibge"]
     return None

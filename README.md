@@ -37,6 +37,12 @@ sem precisar de `supabase-py`). Testes com `pytest`.
   investigação no repo principal).
 - `scripts/rodar.py` — entrypoint do cron: busca cada matéria conhecida,
   extrai vagas, grava no Supabase.
+- `scripts/importar_municipios.py` — upsert em lote do catálogo de
+  municípios (CSV → `public.municipios`).
+- `src/notifica_vagas_scraper/descoberta_prefeitura.py` +
+  `scripts/descobrir_urls_prefeitura.py` — descoberta heurística de URL
+  oficial de prefeitura (`<slug>.<uf>.gov.br`, com verificação de conteúdo),
+  sem depender de busca externa nem de investigação manual por cidade.
 - `tests/fixtures/` — cópias de páginas reais salvas por investigação
   (subagente `pesquisador-fonte` do repo principal), usadas pelos testes
   pra não depender do site ao vivo.
