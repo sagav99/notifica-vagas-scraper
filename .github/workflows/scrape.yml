@@ -26,10 +26,16 @@ jobs:
       - name: Rodar testes
         run: pytest
 
-      - name: Rodar coleta
+      - name: Rodar coleta (DOM/AMM-MG)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python scripts/rodar.py
+
+      - name: Rodar coleta (IMESO)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/rodar_imeso.py
