@@ -1,0 +1,217 @@
+<!--
+Fixture: página de RESULTADO da busca avançada em
+https://www.diariomunicipal.com.br/amm-mg/pesquisar
+
+URL exata usada (reproduzível com requests.Session, GET, method=GET):
+https://www.diariomunicipal.com.br/amm-mg/pesquisar?busca_avancada%5Bpage%5D=&busca_avancada%5BentidadeUsuaria%5D=273955&busca_avancada%5Bnome_orgao%5D=&busca_avancada%5Btitulo%5D=&busca_avancada%5Btexto%5D=processo+seletivo&busca_avancada%5BdataInicio%5D=01%2F06%2F2026&busca_avancada%5BdataFim%5D=01%2F09%2F2026&busca_avancada%5BEnviar%5D=&busca_avancada%5B_token%5D=<TOKEN_VALIDO_DA_SESSAO>
+
+Passos para reproduzir com um cliente HTTP simples (requests):
+1. GET https://www.diariomunicipal.com.br/amm-mg/pesquisar (sem parâmetros) usando uma
+   requests.Session() -- isso grava cookies de sessão (_ga* são só analytics; deve
+   existir também um cookie de sessão do framework, não visível via document.cookie
+   porque é HttpOnly, mas uma Session do requests captura de qualquer forma) e retorna
+   o HTML com <input type="hidden" id="busca_avancada__token" name="busca_avancada[_token]"
+   value="...">. Extrair esse value com um parser HTML simples (ex.: BeautifulSoup).
+2. Com a MESMA Session (mesmos cookies), fazer GET
+   /amm-mg/pesquisar?busca_avancada[entidadeUsuaria]=<id>&busca_avancada[nome_orgao]=
+   &busca_avancada[titulo]=&busca_avancada[texto]=<palavra-chave>
+   &busca_avancada[dataInicio]=<dd/mm/aaaa>&busca_avancada[dataFim]=<dd/mm/aaaa>
+   &busca_avancada[Enviar]=&busca_avancada[_token]=<token do passo 1>
+
+Achados importantes desta investigação:
+- O <select name="busca_avancada[nome_orgao]"> (Órgão) só aparece com opções reais
+  quando o usuário troca a Entidade via JS (endpoint AJAX GET
+  /rest/diario/search-orgaos-entidade?entidadeUsuaria=<id>, ver
+  endpoint_orgaos_por_entidade_resposta.json). Não é necessário preencher esse campo
+  para a busca funcionar (pode ir vazio).
+- busca_avancada[dataInicio] e busca_avancada[dataFim] são OBRIGATÓRIOS. Formato
+  dd/mm/aaaa. Validação client-side (parsley) exige INTERVALO MENOR QUE 6 MESES
+  ("O intervalo das datas deve ser inferior a 6 meses.") -- confirmado que isso também
+  é respeitado no resultado real: um intervalo de 8 meses (01/01/2026 a 01/09/2026)
+  fez a busca "sumir" silenciosamente (nenhuma tabela de resultado é renderizada,
+  sem mensagem de erro visível na página), enquanto um intervalo de 3 meses
+  (01/06/2026 a 01/09/2026) cobrindo a mesma data de publicação (08/07/2026) funcionou
+  normalmente. Ou seja: a validação de 6 meses parece ser reforçada no SERVIDOR
+  também (não só no client-side com parsley), já que a página só devolveu resultado
+  quando o intervalo ficou dentro do limite.
+- busca_avancada[_token] é um CSRF token real e É VALIDADO NO SERVIDOR: um GET com
+  token ausente ou com valor forjado ("garbagetoken123") faz a busca também "sumir"
+  silenciosamente (sem tabela de resultado, sem erro visível) -- mesmo comportamento
+  do caso de intervalo de data inválido. Ou seja, o servidor, ao rejeitar a
+  requisição (por token inválido OU por intervalo de datas inválido), simplesmente
+  devolve a página de busca normal SEM a <table id="datatable">, sem nenhuma
+  mensagem de erro visível. É preciso pegar um token fresco por sessão (passo 1
+  acima) e reenviá-lo dentro do MESMO intervalo de validade/sessão.
+- O botão "Pesquisar" tem classes `g-recaptcha` e atributo `data-sitekey`, o que
+  SUGERE reCAPTCHA invisível, mas na prática o script do Google
+  (https://www.google.com/recaptcha/api.js) NÃO é carregado nesta página
+  (`window.grecaptcha` fica `undefined`) e NENHUM <textarea name="g-recaptcha-response">
+  é injetado no DOM. A busca funcionou normalmente sem qualquer interação de
+  captcha. Ou seja, o markup do reCAPTCHA parece vestigial/morto nesta página --
+  não é um bloqueio real, mas vale reconfirmar periodicamente caso o site mude.
+- O resultado da busca é uma <table id="datatable"> (biblioteca jQuery DataTables)
+  com TODAS as linhas já renderizadas no HTML da resposta (paginação visível
+  "Anterior/1/Próxima" é só cosmética/client-side sobre as linhas já presentes no
+  DOM -- não é preciso seguir link de "próxima página" nem fazer requisição
+  adicional; um parser simples (BeautifulSoup) só precisa ler
+  table#datatable tbody tr diretamente).
+- Cada linha tem: Entidade (nome), Título (texto do <a>, é o título da matéria),
+  Órgão, Data Circulação (dd-mm-aaaa), Compartilhe (ícone, sem uso). O link
+  (href) do Título e da Entidade é IGUAL nas duas colunas e aponta para
+  "/amm-mg/load/<CODIGO>" (ex.: "/amm-mg/load/1F85EB05").
+- "/amm-mg/load/<CODIGO>" faz REDIRECT (confirmado navegando de verdade no
+  browser) para a URL canônica de matéria, no MESMO formato já usado nas
+  fixtures existentes: "/amm-mg/materia/<CODIGO>/<hash-longo>" -- ex.:
+  https://www.diariomunicipal.com.br/amm-mg/materia/1F85EB05/694655a75f00c6c88e40c439eb99e5aa694655a75f00c6c88e40c439eb99e5aa
+  Ou seja, um scraper com requests.Session(allow_redirects=True) chega direto na
+  matéria completa sem passo manual extra.
+- busca_avancada[texto] faz busca de TEXTO LIVRE no CORPO da matéria, não só no
+  título (confirmado testando entidade diferente -- ver
+  busca_resultado_abaete_processo_seletivo.html -- onde resultados retornados têm
+  títulos completamente diferentes de "processo seletivo", ex. "RATIFICA RESCISÃO
+  DE CONTRATO...", mas certamente contém o termo em algum lugar do texto/corpo).
+- Quando a busca não encontra nada, a tabela #datatable É renderizada normalmente
+  (diferente do caso "requisição rejeitada" acima) mas com 1 única linha
+  <tr><td class="dataTables_empty" colspan="5">Nenhum registro encontrado</td></tr>
+  -- ver fixture busca_resultado_sem_resultado.html.
+
+Esta busca real confirmou 1 das 3 matérias conhecidas de Pedra Dourada sobre o
+Processo Seletivo nº 001/2026 (a "PROCESSO SELETIVO SIMPLIFICADO Nº 001/2026",
+código 1F85EB05, publicada 08/07/2026) e também trouxe uma segunda matéria não
+mapeada antes (código FFF2867C, mesmo título "PROCESSO SELETIVO PÚBLICO Nº
+001/2026", mesma data 08/07/2026 -- provavelmente o mesmo edital publicado em
+duas matérias/órgãos diferentes no mesmo dia). A retificação de 24/07/2026
+(fixture pedra_dourada_materia_processo_seletivo_publico_001_2026_retificacao_24jul.html)
+NÃO apareceu neste resultado -- possivelmente porque o texto dessa retificação
+específica não contém literalmente as duas palavras "processo seletivo" juntas
+da forma indexada, ou por alguma particularidade de tokenização da busca; não
+foi investigado a fundo (fora do escopo desta tarefa, que era mapear o
+MECANISMO de busca, não auditar recall/precisão completos).
+-->
+<table id="datatable" class="dataTable no-footer">
+    <thead>
+    <tr>
+        <th class="text-center">Entidade</th>
+        <th class="text-center">Título</th>
+        <th class="text-center">Órgão</th>
+        <th class="text-center">Data Circulação</th>
+        <th class="text-center">Compartilhe</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr class="even">
+        <td>
+            <a href="/amm-mg/load/1F85EB05" target="_blank">Prefeitura Municipal de Pedra Dourada</a>
+        </td>
+        <td>
+            <a href="/amm-mg/load/1F85EB05" target="_blank">PROCESSO SELETIVO SIMPLIFICADO Nº 001/2026</a>
+        </td>
+        <td>
+            <a href="/amm-mg/load/1F85EB05" target="_blank">Prefeitura Municipal de Pedra Dourada</a>
+        </td>
+        <td class="text-center">
+            <a href="/amm-mg/load/1F85EB05" target="_blank">08-07-2026</a>
+        </td>
+        <td class="text-center">
+            <a href="/amm-mg/compartilhe/1F85EB05" target="_blank">
+                <i class="fas fa-share"></i>
+            </a>
+        </td>
+    </tr>
+    <tr class="odd">
+        <td>
+            <a href="/amm-mg/load/FFF2867C" target="_blank">Prefeitura Municipal de Pedra Dourada</a>
+        </td>
+        <td>
+            <a href="/amm-mg/load/FFF2867C" target="_blank">PROCESSO SELETIVO PÚBLICO Nº 001/2026</a>
+        </td>
+        <td>
+            <a href="/amm-mg/load/FFF2867C" target="_blank">Prefeitura Municipal de Pedra Dourada</a>
+        </td>
+        <td class="text-center">
+            <a href="/amm-mg/load/FFF2867C" target="_blank">08-07-2026</a>
+        </td>
+        <td class="text-center">
+            <a href="/amm-mg/compartilhe/FFF2867C" target="_blank">
+                <i class="fas fa-share"></i>
+            </a>
+        </td>
+    </tr>
+    </tbody>
+</table>
+<div class="dataTables_wrapper no-footer">
+    <div class="dataTables_info" id="datatable_info">Mostrando de 1
+        até 2
+        de 2 registros
+    </div>
+</div>
+<div class="dataTables_wrapper no-footer">
+    <div class="dataTables_paginate paging_full_numbers" id="datatable_paginate">
+        <a class="paginate_button previous 1 disabled" href="javascript:void(0)" id="datatable_previous">Anterior</a>
+        <span>
+            <a class="paginate_button current" href="javascript:void(0)">1</a>
+        </span>
+        <a class="paginate_button next disabled" href="javascript:void(0)" id="datatable_next">Próxima</a>
+    </div>
+</div>
+
+<!-- Formulário de busca avançada (mesmo <form id="form-pesquisa">), já preenchido
+     com os valores da busca acima, extraído do HTML real da resposta. O
+     <select> de entidade foi truncado para 3 opções + a selecionada (a lista
+     completa de 750 já está salva em pesquisar_select_entidade_amostra.json e
+     apm_sp_select_entidade_completo.json). O token foi redigido por segurança
+     (é um CSRF de sessão, não uma credencial de longo prazo, mas não faz
+     sentido preservar o valor exato num fixture estático). -->
+<form name="busca_avancada" method="get" class="form-pesquisa form-base" id="form-pesquisa" novalidate="">
+    <input type="hidden" id="busca_avancada_page" name="busca_avancada[page]">
+    <div>
+        <label for="busca_avancada_entidadeUsuaria">Município (Entidade):</label>
+        <!-- select truncado para fixture: original tem 750 <option>, ver pesquisar_select_entidade_amostra.json -->
+        <select id="busca_avancada_entidadeUsuaria" name="busca_avancada[entidadeUsuaria]" class="campo-texto" data-parsley-id="6953">
+            <option value="">Selecione</option>
+            <option value="2868925">ACISPES - AGENCIA DE COOPERAÇÃO INTERMUNICIPAL EM SAUDE PÉ DE SERRA</option>
+            <option value="102124">Agência Reguladora dos Serv. Abast. Água e Esgotamento do Município de Pará de Minas - ARSAP</option>
+            <option value="273955" selected="selected">Prefeitura Municipal de Pedra Dourada</option>
+        </select>
+        <ul class="parsley-errors-list" id="parsley-id-6953"></ul>
+    </div>
+    <div>
+        <label for="busca_avancada_nome_orgao">Órgão:</label>
+        <!-- Este select só é populado via AJAX (change do select de entidade) chamando
+             GET /rest/diario/search-orgaos-entidade?entidadeUsuaria=273955 -- ver
+             endpoint_orgaos_por_entidade_resposta.json. Preenchimento OPCIONAL: a busca
+             funciona igual deixando esse campo vazio. -->
+        <select id="busca_avancada_nome_orgao" name="busca_avancada[nome_orgao]" class="campo-texto" data-parsley-id="6008">
+            <option value="">Selecione</option>
+            <option value="34924">Jurídico - Prefeitura Municipal de Pedra Dourada</option>
+            <option value="20196">Prefeitura Municipal de Pedra Dourada</option>
+        </select>
+        <ul class="parsley-errors-list" id="parsley-id-6008"></ul>
+    </div>
+    <div>
+        <label for="busca_avancada_titulo">Titulo:</label>
+        <input type="text" id="busca_avancada_titulo" name="busca_avancada[titulo]" class="campo-texto" data-parsley-id="6118">
+        <ul class="parsley-errors-list" id="parsley-id-6118"></ul>
+    </div>
+    <div>
+        <label for="busca_avancada_texto">Busca por Palavra-chave:</label>
+        <input type="text" id="busca_avancada_texto" name="busca_avancada[texto]" class="campo-texto" value="processo seletivo" data-parsley-id="7892">
+        <ul class="parsley-errors-list" id="parsley-id-7892"></ul>
+    </div>
+    <div>
+        <label for="busca_avancada_dataInicio" class="required">Data Início da Circulação:</label>
+        <input type="text" id="busca_avancada_dataInicio" name="busca_avancada[dataInicio]" required="required" class="campo-texto data-form" value="01/06/2026" data-parsley-id="4740" maxlength="10">
+        <ul class="parsley-errors-list" id="parsley-id-4740"></ul>
+    </div>
+    <div>
+        <label for="busca_avancada_dataFim" class="required">Data Fim da Circulação:</label>
+        <input type="text" id="busca_avancada_dataFim" name="busca_avancada[dataFim]" required="required" class="campo-texto data-form" value="01/09/2026" data-parsley-id="5658" maxlength="10">
+        <ul class="parsley-errors-list" id="parsley-id-5658"></ul>
+    </div>
+    <div>
+        <!-- class g-recaptcha / data-sitekey presentes no markup mas SEM efeito real
+             (grecaptcha.js não é carregado nesta página -- ver nota acima). -->
+        <button type="submit" id="busca_avancada_Enviar" name="busca_avancada[Enviar]" class="botoes sprite bt-pesquisar g-recaptcha" formnovalidate="true" data-sitekey="6LeDwWMUAAAAALhHrdTL_WR7iuHBdYAjtPn8VOaW" data-callback="callBy">Pesquisar</button>
+    </div>
+    <input type="hidden" id="busca_avancada__token" name="busca_avancada[_token]" value="TOKEN_REDACTED_EXAMPLE">
+</form>

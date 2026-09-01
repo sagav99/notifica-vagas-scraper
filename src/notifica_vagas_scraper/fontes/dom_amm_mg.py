@@ -11,17 +11,50 @@ simples, sem precisar de browser headless).
 
 from __future__ import annotations
 
+import csv
 import re
 import unicodedata
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
+from importlib import resources
 
 from bs4 import BeautifulSoup
 
 from ..formatacao import parsear_salario_brl
 
 BASE_URL = "https://www.diariomunicipal.com.br"
+CAMINHO_PESQUISAR = "/amm-mg/pesquisar"
+
+
+@dataclass
+class EntidadeAmmMg:
+    codigo_ibge: int
+    nome: str
+    uf: str
+    entidade_id: str
+
+
+def listar_entidades_amm_mg() -> list[EntidadeAmmMg]:
+    """Entidades tipo "Prefeitura Municipal de X" cadastradas no
+    `<select>` de busca avançada do AMM-MG, casadas com `public.municipios`
+    (achado 2026-09-01: a lista completa, 750 `<option>`, vem embutida no
+    HTML estático do próprio GET `/amm-mg/pesquisar` — sem AJAX. Deste
+    total, 161 começam literalmente com "Prefeitura Municipal de/DE ..."
+    — o resto é câmara, consórcio, autarquia etc., fora do escopo desta
+    fonte por ora). `dados/entidades_amm_mg.csv` foi gerado uma vez a
+    partir dessa página; revisitar se o site mudar `entidade_id`."""
+    caminho = resources.files("notifica_vagas_scraper.dados").joinpath("entidades_amm_mg.csv")
+    with caminho.open("r", encoding="utf-8", newline="") as f:
+        return [
+            EntidadeAmmMg(
+                codigo_ibge=int(linha["codigo_ibge"]),
+                nome=linha["nome"],
+                uf=linha["uf"],
+                entidade_id=linha["entidade_id"],
+            )
+            for linha in csv.DictReader(f)
+        ]
 
 
 @dataclass

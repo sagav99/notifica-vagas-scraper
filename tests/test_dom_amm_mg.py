@@ -10,6 +10,15 @@ def _ler_fixture(nome: str) -> str:
     return (FIXTURES / nome).read_text(encoding="utf-8")
 
 
+def test_listar_entidades_amm_mg_le_csv_real():
+    entidades = dom_amm_mg.listar_entidades_amm_mg()
+    assert len(entidades) > 150
+    assert all(e.uf == "MG" for e in entidades)
+    assert all(e.entidade_id.isdigit() for e in entidades)
+    nomes = {e.nome for e in entidades}
+    assert "Pedra Dourada" in nomes
+
+
 def test_processo_seletivo_publico_pedra_dourada():
     html = _ler_fixture("pedra_dourada_materia_processo_seletivo_001_2026.html")
     vagas = dom_amm_mg.parsear_materia(html, url="https://www.diariomunicipal.com.br/amm-mg/materia/FFF2867C/exemplo")

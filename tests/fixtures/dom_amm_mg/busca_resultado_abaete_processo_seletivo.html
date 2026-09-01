@@ -1,0 +1,74 @@
+<!--
+Fixture: página de RESULTADO da busca avançada em
+https://www.diariomunicipal.com.br/amm-mg/pesquisar, para uma SEGUNDA entidade
+(escolhida ao acaso na amostra de 750 entidades já mapeada), confirmando que o
+mecanismo de busca funciona igual para qualquer entidade da lista, não só para
+Pedra Dourada.
+
+Entidade: Prefeitura Municipal de Abaeté (value=1913769, do
+pesquisar_select_entidade_amostra.json).
+
+URL exata usada:
+https://www.diariomunicipal.com.br/amm-mg/pesquisar?busca_avancada%5Bpage%5D=&busca_avancada%5BentidadeUsuaria%5D=1913769&busca_avancada%5Bnome_orgao%5D=&busca_avancada%5Btitulo%5D=&busca_avancada%5Btexto%5D=processo+seletivo&busca_avancada%5BdataInicio%5D=01%2F06%2F2026&busca_avancada%5BdataFim%5D=01%2F09%2F2026&busca_avancada%5BEnviar%5D=&busca_avancada%5B_token%5D=<TOKEN_VALIDO_DA_SESSAO>
+
+Achado importante: os 4 resultados abaixo têm TÍTULOS que não contêm
+literalmente "processo seletivo" (ex.: "RATIFICA RESCISÃO DE CONTRATO A PEDIDO
+E DÁ OUTRAS PROVIDÊNCIAS"). Isso confirma que busca_avancada[texto] pesquisa no
+CORPO/texto completo da matéria, não só no título -- relevante para o scraper:
+não dá para confiar só no título da linha de resultado para decidir se é
+"processo seletivo/concurso público" de verdade; ainda é preciso abrir a
+matéria (via o link /amm-mg/load/<CODIGO>) e ler o conteúdo completo (ou
+mandar pro Gemini) para confirmar do que se trata, igual já é feito hoje com
+os PDFs de outras fontes.
+
+Não abri as 4 matérias individualmente (fora do escopo desta tarefa, que era
+mapear o MECANISMO de busca) -- os títulos sugerem que pelo menos 3 das 4 são
+sobre rescisão de contrato, não sobre abertura de processo seletivo; a query
+"processo seletivo" provavelmente bateu em alguma cláusula padrão do corpo do
+texto (comum em atos de rescisão citarem "processo seletivo" ao explicar a
+origem do contrato). Fica registrado como um risco de falso-positivo real da
+busca por texto livre: o scraper vai precisar de uma segunda camada de
+classificação (regra determinística no título/corpo, ou Gemini) para filtrar
+esses achados antes de considerar "vaga nova".
+-->
+<table id="datatable" class="dataTable no-footer">
+    <thead>
+    <tr>
+        <th class="text-center">Entidade</th>
+        <th class="text-center">Título</th>
+        <th class="text-center">Órgão</th>
+        <th class="text-center">Data Circulação</th>
+        <th class="text-center">Compartilhe</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr class="even">
+        <td><a href="/amm-mg/load/5804C07E" target="_blank">Prefeitura Municipal de Abaeté</a></td>
+        <td><a href="/amm-mg/load/5804C07E" target="_blank">"RATIFICA RESCISÃO DE CONTRATO A PEDIDO E DÁ OUTRAS PROVIDÊNCIAS"</a></td>
+        <td><a href="/amm-mg/load/5804C07E" target="_blank">Prefeitura Municipal de Abaeté</a></td>
+        <td class="text-center"><a href="/amm-mg/load/5804C07E" target="_blank">20-07-2026</a></td>
+        <td class="text-center"><a href="/amm-mg/compartilhe/5804C07E" target="_blank"><i class="fas fa-share"></i></a></td>
+    </tr>
+    <tr class="odd">
+        <td><a href="/amm-mg/load/23EF3089" target="_blank">Prefeitura Municipal de Abaeté</a></td>
+        <td><a href="/amm-mg/load/23EF3089" target="_blank">CENTRO DE ACOLHIMENTO INSTITUCIONAL CASA-LAR</a></td>
+        <td><a href="/amm-mg/load/23EF3089" target="_blank">Prefeitura Municipal de Abaeté</a></td>
+        <td class="text-center"><a href="/amm-mg/load/23EF3089" target="_blank">13-08-2026</a></td>
+        <td class="text-center"><a href="/amm-mg/compartilhe/23EF3089" target="_blank"><i class="fas fa-share"></i></a></td>
+    </tr>
+    <tr class="even">
+        <td><a href="/amm-mg/load/11E83603" target="_blank">Prefeitura Municipal de Abaeté</a></td>
+        <td><a href="/amm-mg/load/11E83603" target="_blank">RATIFICA RESCISÃO DE CONTRATO A PEDIDO E DÁ OUTRAS PROVIDÊNCIAS</a></td>
+        <td><a href="/amm-mg/load/11E83603" target="_blank">Prefeitura Municipal de Abaeté</a></td>
+        <td class="text-center"><a href="/amm-mg/load/11E83603" target="_blank">24-08-2026</a></td>
+        <td class="text-center"><a href="/amm-mg/compartilhe/11E83603" target="_blank"><i class="fas fa-share"></i></a></td>
+    </tr>
+    <tr class="odd">
+        <td><a href="/amm-mg/load/4B450DFF" target="_blank">Prefeitura Municipal de Abaeté</a></td>
+        <td><a href="/amm-mg/load/4B450DFF" target="_blank">RATIFICA RESCISÃO DE CONTRATO A PEDIDO E DÁ OUTRAS PROVIDÊNCIAS</a></td>
+        <td><a href="/amm-mg/load/4B450DFF" target="_blank">Prefeitura Municipal de Abaeté</a></td>
+        <td class="text-center"><a href="/amm-mg/load/4B450DFF" target="_blank">24-08-2026</a></td>
+        <td class="text-center"><a href="/amm-mg/compartilhe/4B450DFF" target="_blank"><i class="fas fa-share"></i></a></td>
+    </tr>
+    </tbody>
+</table>

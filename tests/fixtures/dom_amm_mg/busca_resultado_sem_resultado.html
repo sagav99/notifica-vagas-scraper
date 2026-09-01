@@ -1,0 +1,47 @@
+<!--
+Fixture: página de RESULTADO da busca avançada em
+https://www.diariomunicipal.com.br/amm-mg/pesquisar quando a busca não encontra
+nenhuma matéria. Entidade: Prefeitura Municipal de Abaeté (value=1913769),
+mesma entidade que TEM resultados para "processo seletivo" (ver
+busca_resultado_abaete_processo_seletivo.html) -- usada aqui de propósito para
+isolar a variável: a ausência de resultado é por causa da PALAVRA-CHAVE
+inexistente, não por causa da entidade não ter nenhuma publicação no período.
+
+URL exata usada (palavra-chave inventada de propósito, para garantir zero
+resultado):
+https://www.diariomunicipal.com.br/amm-mg/pesquisar?busca_avancada%5Bpage%5D=&busca_avancada%5BentidadeUsuaria%5D=1913769&busca_avancada%5Bnome_orgao%5D=&busca_avancada%5Btitulo%5D=&busca_avancada%5Btexto%5D=xyztermoinexistente999zzz&busca_avancada%5BdataInicio%5D=01%2F06%2F2026&busca_avancada%5BdataFim%5D=01%2F09%2F2026&busca_avancada%5BEnviar%5D=&busca_avancada%5B_token%5D=<TOKEN_VALIDO_DA_SESSAO>
+
+Achado importante: quando a busca É PROCESSADA normalmente (token válido +
+intervalo de datas válido) mas não encontra nada, a <table id="datatable"> É
+renderizada (ao contrário do caso "requisição rejeitada" por token/data
+inválidos, onde a tabela inteira não aparece -- ver nota grande em
+busca_resultado_pedra_dourada_processo_seletivo.html), só que com UMA ÚNICA
+linha fixa da biblioteca DataTables sinalizando "sem registro". Um parser
+determinístico deve tratar esses dois casos de forma diferente:
+  1. <table id="datatable"> ausente do HTML → requisição REJEITADA (token
+     expirado/inválido, ou intervalo de datas > 6 meses) → não é "zero vagas",
+     é erro de requisição, o scraper deveria RETRY com token fresco, não
+     assumir "sem resultado".
+  2. <table id="datatable"> presente, mas
+     tbody tr td.dataTables_empty existe → zero resultado de verdade para
+     essa combinação de entidade+palavra-chave+datas.
+  3. <table id="datatable"> presente com linhas normais (sem
+     class="dataTables_empty") → resultados de verdade, extrair
+     título/link/data de cada <tr>.
+-->
+<table id="datatable" class="dataTable no-footer">
+    <thead>
+    <tr>
+        <th class="text-center">Entidade</th>
+        <th class="text-center">Título</th>
+        <th class="text-center">Órgão</th>
+        <th class="text-center">Data Circulação</th>
+        <th class="text-center">Compartilhe</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr class="odd">
+        <td class="dataTables_empty" colspan="5">Nenhum registro encontrado</td>
+    </tr>
+    </tbody>
+</table>
