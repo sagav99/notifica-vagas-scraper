@@ -45,6 +45,19 @@ def test_aprova_quando_gemini_decide_aprovar(monkeypatch):
     assert resultado == {"decisao": "aprovada", "motivo": "Dados completos e consistentes."}
 
 
+def test_aceita_decisao_incompleta(monkeypatch):
+    # Terceira decisão possível (2026-09-01, decisão do usuário): vaga
+    # real mas com incerteza genuína que merece revisão humana, distinta
+    # de "rejeitada" (dado claramente ruim).
+    texto = '{"decisao": "incompleta", "motivo": "Cargo genérico demais sem mais contexto."}'
+    monkeypatch.setattr(
+        revisao_ia.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto(texto))
+    )
+
+    resultado = revisao_ia.decidir_revisao({"cargo": "Estagiário"}, api_key="chave-teste")
+    assert resultado["decisao"] == "incompleta"
+
+
 def test_rejeita_quando_gemini_decide_rejeitar(monkeypatch):
     texto = '{"decisao": "rejeitada", "motivo": "Cargo genérico demais."}'
     monkeypatch.setattr(

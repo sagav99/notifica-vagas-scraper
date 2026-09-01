@@ -59,6 +59,16 @@ isso. Corrigido informando a data de hoje explicitamente no prompt
 (`{data_referencia}`/`{ano_referencia}`, calculados em `decidir_revisao`
 via `datetime.date.today()`), com instrução explícita pra não usar a
 própria noção de "atual" do modelo.
+
+Terceira decisão possível, "incompleta" (decisão do usuário, 2026-09-01,
+migration 012 do repo principal): vaga real (cargo/orgao identificam a
+oportunidade) mas com incerteza genuína que merece revisão humana antes
+de publicar — distinta de "rejeitada" (dado claramente ruim/inconsistente)
+e de "aprovada" (dado bom o suficiente). Mesma visibilidade que
+"rejeitada" hoje (RLS pública só libera `aprovada`), fica só numa fila
+separada no painel /admin pra auditoria. Critério é deliberadamente
+estreito no prompt — não é pra virar rota de escape mais suave que
+"rejeitada" nos casos de erro claro.
 """
 
 from __future__ import annotations
@@ -171,6 +181,21 @@ frase relevante). Ausência isolada de campo opcional (datas de \
 inscrição, número de edital, texto_extraido) enquanto `cargo` e `orgao` \
 identificam a vaga não é, sozinha, motivo de rejeição.
 
+Existe uma terceira decisão, "incompleta", pra quando `cargo` e `orgao` \
+identificam a vaga (não é um erro de extração, não é pra rejeitar) mas \
+tem alguma incerteza real que vale a pena um humano conferir antes de \
+publicar — diferente dos padrões (1)-(4) acima, que JÁ são aceitáveis \
+sozinhos e devem ser aprovados normalmente. Exemplos legítimos de \
+"incompleta": cargo real mas genérico demais pra ser útil sem mais \
+contexto (ex: "Estagiário" ou "Professor" sem área/nível, quando o \
+resto do texto não esclarece); valor de salário presente mas \
+destoante o bastante do resto do cargo pra gerar dúvida sem ser \
+claramente implausível (não chega a ser "rejeite de verdade" acima, mas \
+não é uma leitura confiante). Não use "incompleta" como forma mais \
+suave de rejeitar o que já vira aprovada pelos padrões (1)-(4), nem como \
+substituto de "rejeitada" nos casos claros de erro — é uma categoria \
+estreita pra dúvida real, não uma saída fácil.
+
 IMPORTANTE sobre `checagem_cronologica_pre_computada`: é um resultado já \
 calculado em código (Python), não uma opinião — trata da ordem entre \
 início e fim das inscrições. NÃO recalcule essa comparação de datas por \
@@ -183,10 +208,11 @@ Dados extraídos:
 {dados_json}
 
 Responda APENAS com um objeto JSON, sem markdown, sem texto adicional:
-{{"decisao": "aprovada" ou "rejeitada", "motivo": "uma frase curta em \
-português explicando a decisão"}}.
+{{"decisao": "aprovada", "rejeitada" ou "incompleta", "motivo": "uma \
+frase curta em português explicando a decisão"}}.
 
-Se tiver qualquer dúvida real sobre a qualidade dos dados, responda \
+Se tiver qualquer dúvida real sobre a qualidade dos dados que não se \
+encaixe no critério estreito de "incompleta" acima, responda \
 "rejeitada" — nunca aprove no escuro."""
 
 
@@ -249,7 +275,7 @@ def decidir_revisao(
 
     decisao = resultado.get("decisao")
     motivo = resultado.get("motivo") or "Sem motivo informado pelo Gemini."
-    if decisao not in ("aprovada", "rejeitada"):
+    if decisao not in ("aprovada", "rejeitada", "incompleta"):
         return {
             "decisao": "rejeitada",
             "motivo": (
