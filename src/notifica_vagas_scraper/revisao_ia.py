@@ -139,31 +139,37 @@ antes de começar), ou cargo sem nenhuma relação plausível com concurso \
 público (indício de erro de extração). Não afirme ter consultado a fonte \
 original — você não tem esse acesso.
 
-Três padrões legítimos e comuns em fonte oficial brasileira que NÃO são \
+Quatro padrões legítimos e comuns em fonte oficial brasileira que NÃO são \
 inconsistência, não rejeite só por causa deles: (1) `data_publicacao` \
 posterior ao início das inscrições — é normal quando o documento é uma \
 retificação publicada depois que as inscrições já abriram (corrige um \
 detalhe do edital original, não reabre nem invalida o prazo já em curso); \
 (2) `salario` nulo quando a remuneração é por hora/aula ou outra unidade \
 que não converte num valor mensal fixo sem informação adicional — nulo \
-aqui é a extração correta, não uma falha; (3) `inscricoes_inicio`/\
-`inscricoes_fim` nulos quando `status` já é "aberta" — a plataforma é um \
-agregador que aponta pra fonte oficial (o usuário sempre vê o link e \
-confirma o prazo exato lá, isso já fica explícito na tela), o resumo \
-publicado pela prefeitura às vezes não inclui o cronograma completo de \
-inscrição, e isso sozinho não significa que a vaga é falsa ou que o \
-processo não está aberto de verdade — só rejeite por causa de datas \
-ausentes se cargo, órgão e edital TAMBÉM estiverem ausentes ou vagos \
-demais para identificar a oportunidade.
+aqui é a extração correta, não uma falha; (3) `inscricoes_inicio`, \
+`inscricoes_fim` e/ou `numero_edital` nulos quando `status` já é \
+"aberta" — mesmo os três ao mesmo tempo NÃO são motivo de rejeição \
+sozinhos: `município` + `cargo` + `orgao` já identificam a oportunidade \
+sem precisar desses campos, a plataforma é um agregador que aponta pra \
+fonte oficial (o usuário sempre vê o link e confirma os detalhes lá, \
+isso já fica explícito na tela), e o resumo publicado pela prefeitura \
+às vezes não inclui o cronograma completo. Só rejeite por dado \
+incompleto se `cargo` OU `orgao` também estiverem ausentes/vagos demais \
+pra identificar a oportunidade — não pela ausência de edital/datas \
+isolada; (4) `texto_extraido` nulo/ausente dentro de `evidencias` — \
+nenhuma fonte grava o texto original bruto hoje (limitação conhecida do \
+sistema inteiro, não é peculiaridade desta vaga específica), avalie só \
+os campos estruturados como já instruído acima, isso não é sinal de \
+vaga inexistente nem de baixa qualidade de dado.
 
-Rejeite de verdade quando: cargo ausente ou genérico demais pra \
-identificar a vaga (ex: "vaga", "diversos"), valor implausível pro \
-contexto (salário público absurdamente alto/baixo), ou qualquer sinal \
-concreto de erro de extração (cargo sem relação nenhuma com concurso \
-público, texto claramente cortado no meio de uma frase relevante). \
-Ausência isolada de campo opcional (datas de inscrição com status já \
-aberta, órgão quando o município e o cargo já identificam a vaga) não é, \
-sozinha, motivo de rejeição.
+Rejeite de verdade quando: `cargo` E `orgao` ausentes ou genéricos demais \
+pra identificar a vaga (ex: cargo "vaga"/"diversos" sem órgão nenhum), \
+valor implausível pro contexto (salário público absurdamente alto/baixo), \
+ou qualquer sinal concreto de erro de extração (cargo sem relação \
+nenhuma com concurso público, texto claramente cortado no meio de uma \
+frase relevante). Ausência isolada de campo opcional (datas de \
+inscrição, número de edital, texto_extraido) enquanto `cargo` e `orgao` \
+identificam a vaga não é, sozinha, motivo de rejeição.
 
 IMPORTANTE sobre `checagem_cronologica_pre_computada`: é um resultado já \
 calculado em código (Python), não uma opinião — trata da ordem entre \
