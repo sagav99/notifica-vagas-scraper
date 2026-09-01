@@ -102,7 +102,14 @@ def processar_municipio(conn, municipio: instar.MunicipioInstar) -> int:
         data_publicacao = _parsear_data_iso(extraido.get("data_publicacao"))
         inscricoes_inicio = _parsear_data_iso(extraido.get("inscricoes_inicio"))
         inscricoes_fim = _parsear_data_iso(extraido.get("inscricoes_fim"))
-        orgao = extraido.get("orgao")
+        # Quando o resumo publicado não nomeia a secretaria/órgão específico,
+        # cai pro nome da prefeitura do município — não é dado inventado (o
+        # item já vem do portal oficial daquele município), e evita rejeitar
+        # vaga real só por causa de um campo que o Gemini não conseguiu
+        # extrair do texto truncado (achado analisando vagas rejeitadas em
+        # produção, 2026-09-01: maioria das rejeições da fonte Instar era
+        # só isso).
+        orgao = extraido.get("orgao") or f"Prefeitura Municipal de {municipio.nome}/{municipio.uf}"
         numero_edital = extraido.get("numero_edital") or item.get("numeroEdital")
         numero_processo = item.get("numeroProcesso")
 

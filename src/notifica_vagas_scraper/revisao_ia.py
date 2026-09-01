@@ -35,12 +35,11 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import time
 
 import requests
 
-from . import quota_gemini
+from . import gemini_util, quota_gemini
 
 MODELO_PADRAO = quota_gemini.MODELO_PADRAO
 URL_API = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
@@ -102,14 +101,32 @@ antes de começar), ou cargo sem nenhuma relação plausível com concurso \
 público (indício de erro de extração). Não afirme ter consultado a fonte \
 original — você não tem esse acesso.
 
-Dois padrões legítimos e comuns em edital brasileiro que NÃO são \
+Três padrões legítimos e comuns em fonte oficial brasileira que NÃO são \
 inconsistência, não rejeite só por causa deles: (1) `data_publicacao` \
 posterior ao início das inscrições — é normal quando o documento é uma \
 retificação publicada depois que as inscrições já abriram (corrige um \
 detalhe do edital original, não reabre nem invalida o prazo já em curso); \
 (2) `salario` nulo quando a remuneração é por hora/aula ou outra unidade \
 que não converte num valor mensal fixo sem informação adicional — nulo \
-aqui é a extração correta, não uma falha.
+aqui é a extração correta, não uma falha; (3) `inscricoes_inicio`/\
+`inscricoes_fim` nulos quando `status` já é "aberta" — a plataforma é um \
+agregador que aponta pra fonte oficial (o usuário sempre vê o link e \
+confirma o prazo exato lá, isso já fica explícito na tela), o resumo \
+publicado pela prefeitura às vezes não inclui o cronograma completo de \
+inscrição, e isso sozinho não significa que a vaga é falsa ou que o \
+processo não está aberto de verdade — só rejeite por causa de datas \
+ausentes se cargo, órgão e edital TAMBÉM estiverem ausentes ou vagos \
+demais para identificar a oportunidade.
+
+Rejeite de verdade quando: cargo ausente ou genérico demais pra \
+identificar a vaga (ex: "vaga", "diversos"), valor implausível pro \
+contexto (salário público absurdamente alto/baixo, inscrição terminando \
+antes de começar), ou qualquer sinal concreto de erro de extração \
+(cargo sem relação nenhuma com concurso público, texto claramente \
+cortado no meio de uma frase relevante). Ausência isolada de campo \
+opcional (datas de inscrição com status já aberta, órgão quando o \
+município e o cargo já identificam a vaga) não é, sozinha, motivo de \
+rejeição.
 
 Dados extraídos:
 {dados_json}
@@ -166,8 +183,7 @@ def decidir_revisao(
     try:
         corpo = _chamar_gemini(body, chave=chave, modelo=modelo)
         texto = corpo["candidates"][0]["content"]["parts"][0]["text"]
-        texto_limpo = re.sub(r"^```(?:json)?\s*|\s*```$", "", texto.strip())
-        resultado = json.loads(texto_limpo)
+        resultado = gemini_util.parsear_json_resposta(texto)
     except Exception as exc:
         # Captura ampla e intencional: qualquer falha (rede, HTTP, formato
         # de resposta, JSON inválido) tem que virar rejeição automática,

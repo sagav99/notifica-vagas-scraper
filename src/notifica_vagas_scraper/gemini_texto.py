@@ -16,12 +16,11 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import time
 
 import requests
 
-from . import quota_gemini
+from . import gemini_util, quota_gemini
 
 MODELO_PADRAO = quota_gemini.MODELO_PADRAO
 URL_API = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
@@ -104,8 +103,7 @@ def extrair_vagas_de_texto(
     except (KeyError, IndexError) as exc:
         raise ErroExtracaoGemini(f"Resposta inesperada do Gemini: {dados}") from exc
 
-    texto_limpo = re.sub(r"^```(?:json)?\s*|\s*```$", "", texto_resposta.strip())
     try:
-        return json.loads(texto_limpo)
+        return gemini_util.parsear_json_resposta(texto_resposta)
     except json.JSONDecodeError as exc:
         raise ErroExtracaoGemini(f"JSON inválido do Gemini: {texto_resposta[:500]}") from exc
