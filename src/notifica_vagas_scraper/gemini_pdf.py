@@ -41,12 +41,19 @@ PROMPT = """Você está lendo um edital de concurso público brasileiro em PDF.
 Extraia um objeto JSON com:
 - numero_edital (string, ex: "01/2026", ou null)
 - orgao (nome do órgão/entidade que abriu o concurso, string ou null)
+- data_publicacao (data "AAAA-MM-DD" de publicação do edital — se o
+  documento for uma retificação, use a data da retificação mais recente
+  indicada no cabeçalho ["Retificado em ..."], não a data do edital
+  original; null se não encontrar nenhuma data de publicação/retificação)
 - inscricoes_inicio (data "AAAA-MM-DD" de início das inscrições, ou null)
 - inscricoes_fim (data "AAAA-MM-DD" de fim das inscrições, ou null)
 - vagas: lista de vagas, cada uma com:
   - cargo (string)
   - vagas_qtd (int ou null)
-  - salario (number, só o valor numérico em reais, sem "R$", ou null)
+  - salario (number, só o valor numérico mensal em reais, sem "R$", ou
+    null — se a remuneração for por hora/aula ou outra unidade que não dá
+    pra converter num valor mensal fixo sem informação adicional, deixe
+    null; não invente um valor mensal a partir de uma taxa horária)
   - requisitos (string curta ou null)
   - carga_horaria (string ou null)
 Responda APENAS com o objeto JSON, sem markdown, sem texto adicional."""
@@ -59,9 +66,9 @@ class ErroExtracaoGemini(Exception):
 def extrair_vagas_de_pdf(
     pdf_bytes: bytes, *, api_key: str | None = None, modelo: str = MODELO_PADRAO
 ) -> dict:
-    """Retorna {"numero_edital", "orgao", "inscricoes_inicio",
-    "inscricoes_fim", "vagas": [{"cargo", "vagas_qtd", "salario",
-    "requisitos", "carga_horaria"}, ...]} — ver PROMPT."""
+    """Retorna {"numero_edital", "orgao", "data_publicacao",
+    "inscricoes_inicio", "inscricoes_fim", "vagas": [{"cargo", "vagas_qtd",
+    "salario", "requisitos", "carga_horaria"}, ...]} — ver PROMPT."""
     chave = api_key or os.environ.get("GEMINI_API_KEY")
     if not chave:
         raise ErroExtracaoGemini("GEMINI_API_KEY não definida.")

@@ -27,13 +27,14 @@ def _payload_com_texto(texto: str) -> dict:
 
 
 def test_extrai_json_puro(monkeypatch):
-    texto = '{"numero_edital": "01/2026", "orgao": "X", "inscricoes_inicio": null, "inscricoes_fim": null, "vagas": []}'
+    texto = '{"numero_edital": "01/2026", "orgao": "X", "data_publicacao": "2026-01-28", "inscricoes_inicio": null, "inscricoes_fim": null, "vagas": []}'
     monkeypatch.setattr(
         gemini_pdf.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto(texto))
     )
 
     resultado = gemini_pdf.extrair_vagas_de_pdf(b"pdf falso", api_key="chave-teste")
     assert resultado["numero_edital"] == "01/2026"
+    assert resultado["data_publicacao"] == "2026-01-28"
     assert resultado["vagas"] == []
 
 

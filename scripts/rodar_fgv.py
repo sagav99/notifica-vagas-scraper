@@ -79,6 +79,7 @@ def processar_concurso(conn, item: fgv.ItemConcurso, municipio: str, uf: str) ->
     fonte_id = db.upsert_fonte(conn, nome=FONTE_NOME, url=fgv.BASE_URL, tipo="oficial", uf=uf)
 
     slug_concurso = item.url.rstrip("/").rsplit("/", 1)[-1]
+    data_publicacao = _parsear_data_iso(extraido.get("data_publicacao"))
     inscricoes_inicio = _parsear_data_iso(extraido.get("inscricoes_inicio"))
     inscricoes_fim = _parsear_data_iso(extraido.get("inscricoes_fim"))
     orgao = extraido.get("orgao") or item.titulo
@@ -99,7 +100,7 @@ def processar_concurso(conn, item: fgv.ItemConcurso, municipio: str, uf: str) ->
             cargo=cargo,
             salario=vaga.get("salario"),
             numero_edital=numero_edital,
-            data_publicacao=None,
+            data_publicacao=data_publicacao,
             inscricoes_inicio=inscricoes_inicio,
             inscricoes_fim=inscricoes_fim,
             status="aberta",
