@@ -17,6 +17,7 @@ recomeçaria a contagem do zero e nunca trocaria de modelo de verdade.
 from __future__ import annotations
 
 import json
+import os
 from datetime import date
 from pathlib import Path
 
@@ -41,7 +42,17 @@ def _ler_contagem_hoje() -> int:
 
 def proximo_modelo() -> str:
     """Modelo a usar na PRÓXIMA chamada, considerando quantas já foram
-    feitas hoje (somando todos os módulos que usam este rastreador)."""
+    feitas hoje (somando todos os módulos que usam este rastreador).
+
+    `GEMINI_MODELO_FORCADO` (env var) sobrepõe a lógica de contagem —
+    usado quando se sabe, por fora do contador local (que não é
+    compartilhado entre execuções, ver docstring do módulo), que a cota
+    de um modelo já estourou no dia (ex: 429 confirmado numa execução
+    anterior) e não faz sentido esperar o contador local chegar no
+    limiar de novo."""
+    forcado = os.environ.get("GEMINI_MODELO_FORCADO")
+    if forcado:
+        return forcado
     return MODELO_FALLBACK if _ler_contagem_hoje() >= LIMITE_ANTES_DE_TROCAR else MODELO_PADRAO
 
 

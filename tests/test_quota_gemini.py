@@ -33,3 +33,10 @@ def test_dia_diferente_reseta_contagem(monkeypatch, tmp_path):
     monkeypatch.setattr(quota_gemini, "CAMINHO_CONTADOR", caminho)
 
     assert quota_gemini.proximo_modelo() == quota_gemini.MODELO_PADRAO
+
+
+def test_modelo_forcado_por_env_sobrepoe_contagem(monkeypatch, tmp_path):
+    monkeypatch.setattr(quota_gemini, "CAMINHO_CONTADOR", tmp_path / "contagem.json")
+    monkeypatch.setenv("GEMINI_MODELO_FORCADO", "gemini-3.1-flash-lite")
+
+    assert quota_gemini.proximo_modelo() == "gemini-3.1-flash-lite"
