@@ -84,6 +84,13 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_imam.py
 
+      - name: Rodar coleta (JCM Concursos)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/rodar_jcm.py
+
       - name: Revisar vagas pendentes (Gemini, automático)
         if: always()
         env:

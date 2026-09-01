@@ -1,0 +1,539 @@
+<style>
+.cliente { margin: 0 0 20px 0; padding: 15px; border-bottom: 1px solid #ddd; font-size: 28px; color: #777; text-align: center; }
+.cabecalhoConcurso { padding: 10px 20px; }
+.rodapeConcurso { padding: 20px; }
+</style>
+
+
+
+    <!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+                    <meta charset="iso-8859-1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>JCM - Consultoria Municipal Ltda.</title>
+    <meta name="description" content="" />
+    <meta name="keywords" content="Processos seletivos, concursos pï¿½blicos, vestibular" />
+    <meta name="author" content="Impacta Soluï¿½ï¿½es Web | Software ProSeleta" /> 
+        <link rel="shortcut icon" href="/uploads/17/configs/5535cf3527302addd5e5b3b5d1f4ebf4.png" type="image/x-icon">
+    <link rel="icon" href="/uploads/17/configs/5535cf3527302addd5e5b3b5d1f4ebf4.png" type="image/x-icon">
+        
+
+    <script src="//static-cdn.selecao.net.br/static/js/jquery-2.1.3.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery-ui-1.11.2.custom/jquery-ui.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/php.default.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.maskedinput.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.price_format.2.0.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.validate.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.validate.extra.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/util.js?ver=202005101713"></script>
+
+    
+    
+    <!-- jQuery UI -->
+    <link rel="stylesheet" media="screen" href="//static-cdn.selecao.net.br/static/js/jquery-ui-1.11.2.custom/jquery-ui.min.css" /> 
+
+    <link href='//fonts.googleapis.com/css?family=Exo+2:700,500italic,400,500,200italic,800,200,700italic,300italic,600italic,600,300,800italic,400italic' rel='stylesheet' type='text/css'>
+    <link type="text/css" media="screen" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/site.css?ver=202607031200" />     <link type="text/css" media="all" rel="stylesheet" href="//static-cdn.selecao.net.br/static/texto.css" />
+    <link type="text/css" media="print" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/imprimir.css" />
+    <link type="text/css" media="screen" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/responsivo.css?ver=202607281000" />
+
+            <link type="text/css" media="all" rel="stylesheet" href="//static-cdn.selecao.net.br/static/clientes/concursosjcm.com.br/site.css?ver=201809040904?ver=202606241618" />
+    
+    
+          <!-- Google tag (gtag.js) -->
+            <script async src="https://www.googletagmanager.com/gtag/js?id=G-13PDJ2FXPF"></script>
+      <script>
+          
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          
+          gtag('config', 'G-13PDJ2FXPF');
+      </script>
+      
+        
+        
+    
+    
+    <link type="text/css" media="screen" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/govbr.css?ver=202307251410" /> 
+    <!-- Rybena -->
+    </head>
+<body class="">
+    
+    
+    
+            <header id="TopoMobile">
+
+    <div class="logo-wrapper">
+        <a href="/">
+            <img src="//static-cdn.selecao.net.br/uploads/17/configs/eb238ffa3b0073ec488db95e2835dc54.png"
+                alt="JCM - Consultoria Municipal Ltda." class="logo" style="max-height: 115px"/>
+        </a>
+    </div>
+
+    <div class="menu-fix-clear" id="menuMobileWrapper">
+        <ul class="menu-wrapper">
+            
+                     <form action="/login/logar/" method="post" autocomplete="off" class="form-top">
+        <input name="foilautofill"
+               autocomplete="new-password"
+               style="display: none;" type="password" />             <h3 class="menu-title">Acessar Área do Candidato:</h3>
+            <input type="text" name="login" id="tl-login" value="" class="texto mascara cpf item" placeholder="CPF"/>
+
+            <input autocomplete="new-password"  type="password" name="senha" id="tl-senha" value="" class="texto item" placeholder="Senha"/>
+
+            <button type="submit" class="login-top-btn item">Entrar</button>
+
+                    <a href="/login/esqueci/" class="esqueci-mobile">Esqueci a minha senha</a>
+            </form>                
+
+                <h3 class="menu-title">Menu:</h3>
+                <li class="menu-item">
+                    <a href="/">Início</a>
+                </li>
+                                    <li class="menu-item">
+                                                    <a href="/conteudo/102/">Eventos</a>
+                                            </li>
+                
+                
+                                    <li class="menu-item">
+                        <a href="/faleconosco/">                            Fale Conosco </a>
+                    </li>
+                            
+                        <div id="menuMobileCategorias">
+
+            </div>
+
+            
+            <form action="/index/todos/" name="formBuscaConcurso" method="get" class="barra-pesquisa-wrapper">
+                <h3 class="menu-title">Busca:</h3>
+                <input type="text" name="busca" placeholder="Busca..." class="texto search">
+                <button type="submit" class="button">Buscar</button>
+            </form>
+
+
+        </ul>
+    </div>
+
+    <div class="menu-btn-container" id="menu-mobile">
+        <h3 class="menu-indicador">Menu</h3>
+        <button class="btn-wrapper">
+            <i></i>
+            <i></i>
+            <i></i>
+        </button>
+    </div>
+</header>    
+                <div id="TopMenu">
+            <ul>
+                <li><a href="/">Início</a></li>
+
+                                    <li>
+                                                    <a href="/conteudo/102/">Eventos</a>
+                                            </li>
+                                                                    <li><a href="/faleconosco/">                            Fale Conosco </a></li>
+                
+                            </ul>
+        </div>
+    
+    <div id="Topo" class="naoimprimir">
+
+        <div class="Conteudo">
+
+                        
+                <div id="Logo">
+                    <h1><a href="/"><img
+                                src="//static-cdn.selecao.net.br/uploads/17/configs/eb238ffa3b0073ec488db95e2835dc54.png"
+                                alt="JCM - Consultoria Municipal Ltda." style="max-height: 115px"/></a></h1>
+                </div>
+
+            
+            
+                <div id="DadosEmpresa">
+                    <p><b>JCM - Consultoria Municipal Ltda.</b></p>
+                    <p class="contatos"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="395a56574d584d5679535a545a56575a4c4b4a564a175a5654175b4b">[email&#160;protected]</a></p>
+                                            <div class="faleconosco"><a href="/faleconosco/" class="botao"> Fale Conosco
+                                </a></div>
+                                    </div>
+
+                <div id="TopLogin" class="">
+                    <div class="item botoes" style="margin: 20px 0px 0px 70px;float: right;">
+                        <a href="/painel/" >
+                            <span class="btn-areacandidato">
+                                <svg style="width: 30px;padding: 5px;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.2" stroke="currentColor" class="w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Área do Candidato
+                            </span>
+                        </a>
+                    </div>                    
+                </div>
+
+            
+        </div>
+
+    </div>
+
+    
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+        $('#menu-mobile').click(function() {
+            this.classList.toggle('abrir')
+            $('#menuMobileWrapper').toggleClass('abrir');
+        })
+    </script>
+
+<div id="MenuLateral" class="bgConcurso">
+    
+    <div class="Conteudo">
+        <div class="CategoriasConcursos">
+            <h3>                    Processos Seletivos:
+                             </h3>
+            <ul>
+                                                                <li  class="ativo">
+                    <a href="/index/abertos/">Inscrições Abertas</a>
+                </li>
+                                                    <li >
+                        <a href="/index/1/">Em andamento</a>
+                    </li>
+                                    <li >
+                        <a href="/index/3/">Finalizado</a>
+                    </li>
+                                    <li >
+                        <a href="/index/4/">Suspenso</a>
+                    </li>
+                                    <li >
+                        <a href="/index/5/">Cancelado</a>
+                    </li>
+                
+                
+            </ul>
+        </div>
+        <div class="BsucarConcurso">
+            <form action="/index/todos/" name="formBuscaConcurso" method="get">
+                <input type="text" name="busca" placeholder="Busca..." class="texto" style="width:140px;">
+                <button type="submit" class="botao preto">ok</button>
+            </form>
+        </div>
+
+        
+
+        
+    </div>
+</div>
+
+<div class="Miolo Index">
+
+        
+
+
+        
+    
+            <div class="listaConcursos">
+    <h2 class="tituloPagina" style="font-size:24px;">
+        <span>
+             
+                Processos Seletivos
+                                        -
+                        <b>Inscrições Abertas</b>
+        </span>
+    </h2>
+    <br>
+    
+    
+    <ul class="lista">
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/261/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/17/clientes/9115484995559738c0188661fb8bafe1.jpg" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/261/" >Conceição da Barra de Minas-MG - Concurso Público 001/2026 - Prefeitura Municipal</a></h3>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 001/2026</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>19/08/2026</b> a 
+                                            <b>18/09/2026</b>
+
+                                                                                            <a href="/informacoes/261/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>19/08/2026</b> a 
+                                        <b>21/08/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/261/" class="qtde" >
+                                                                    <span>Quantidade de Vagas</span>
+                                    <b>30</b>
+                                                                                                </a>
+                                                        <a href="/informacoes/261/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/262/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/17/clientes/9115484995559738c0188661fb8bafe1.jpg" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Processo Seletivo Público </p>
+                            
+                                                            <h3><a href="/informacoes/262/" >Conceição da Barra de Minas-MG - Processo Seletivo Público 001/2026 - Prefeitura Municipal</a></h3>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 001/2026</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>19/08/2026</b> a 
+                                            <b>18/09/2026</b>
+
+                                                                                            <a href="/informacoes/262/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>19/08/2026</b> a 
+                                        <b>21/08/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/262/" class="qtde" >
+                                                                    <span>Quantidade de Vagas</span>
+                                    <b>4</b>
+                                                                                                </a>
+                                                        <a href="/informacoes/262/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/260/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/17/clientes/72db6736-cc90-487f-8089-5f27bbe5b629.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/260/" >Ingaí-MG - Concurso Público 001/2026 - Câmara Municipal</a></h3>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 001/2026</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>12/08/2026</b> a 
+                                            <b>11/09/2026</b>
+
+                                                                                            <a href="/informacoes/260/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>12/08/2026</b> a 
+                                        <b>14/08/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/260/" class="qtde" >
+                                                                    <span>Quantidade de Vagas</span>
+                                    <b>1</b>
+                                                                                                </a>
+                                                        <a href="/informacoes/260/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+            </ul>
+
+</div>
+
+    
+    </div>
+
+
+
+
+
+
+
+
+<div id="Rodape" class="naoimprimir">
+<div class="preferencias-cookies naoimprimir" style="text-align:center;padding:10px 0;"><button type="button" data-cc="show-preferencesModal" style="background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit">Prefer&ecirc;ncias de cookies</button></div>
+                
+        
+        <div class="ProSeleta">
+            <div class="Conteudo">
+                
+                <div class="info">
+                    <a href="/">Início</a>
+                                                                        <a href="/conteudo/102/">Eventos</a>
+                         /
+                                                                                  /  <a href="/faleconosco/"> Fale Conosco </a>
+                                    </div>
+
+                
+                <div class="siteSeguro">
+                    <p>Site 100% Seguro</p>
+                </div>
+                
+            </div>
+        </div>
+
+        
+                    <div class="final">
+                <div class="Conteudo" >
+                    <div class="links">
+                        &copy; JCM - CONSULTORIA MUNICIPAL LTDA.
+                                                                    </div>
+                                            <div class="DesenvolvimentoProSeleta">
+                            Desenvolvido por <a href="http://www.proseleta.com.br/" target="_blank">ProSeleta - Gestão de Processos Seletivos Online</a>
+                        </div>
+                                    </div>
+            </div>
+                    
+        </div>
+        
+    </div>
+    
+
+
+
+
+        <a href="https://wa.me/553233314999" style="position:fixed;width:45px;height:45px;bottom:1.4rem;right:1.4rem;border-radius:50px;text-align:center;
+    z-index:1000;" target="_blank">
+    <img id="icon-whatsapp" src="//static-cdn.selecao.net.br/static/img/icon-whatsapp.svg">
+    </a>
+
+        <div vw class="enabled">
+        <div vw-access-button class="active"></div>
+        <div vw-plugin-wrapper>
+        <div class="vw-plugin-top-wrapper"></div>
+        </div>
+    </div>
+    
+    <style>
+        /* Ancorado em rem (escala no zoom e na fonte) e acima do WhatsApp; z-index alto
+           pra nao sumir atras do topo. */
+        div[vw].enabled { transform: none !important; }
+        div[vw].enabled div[vw-access-button] {
+            position: fixed !important;
+            right: 1rem !important;
+            bottom: 6rem !important;
+            top: auto !important;
+            left: auto !important;
+            z-index: 1000000 !important;
+        }
+        @media (max-width: 768px) {
+            div[vw].enabled div[vw-access-button] {
+                right: .75rem !important;
+                bottom: 5rem !important;
+            }
+        }
+    </style>
+    
+    <script src="https://vlibras.gov.br/app/vlibras-plugin.js" charset="UTF-8"></script>
+    <script>
+        try {
+            new window.VLibras.Widget('https://vlibras.gov.br/app');
+        } finally {
+        }
+    </script>
+
+
+
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a3482ebe5ef5fb09',t:'MTc4ODMwNjY4Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
+
+
+<script>
+
+    document.onkeyup=function(e){
+
+        if(e.which == 27){
+              $('#bannerConcurso').hide();
+        }
+
+    }
+
+    $( "#FechaBanner" ).click(function() {
+        $('#bannerConcurso').hide();
+    });
+
+    var W = $("#ImgBanner").width();
+    $("#BlocoBanner").css("width", W);
+
+    $( document ).ready(function() {
+        $('#bannerConcurso').show();
+        var W = $("#ImgBanner").width();
+        $("#BlocoBanner").css("width", W);
+    });
+
+    $(function() {
+        $("#menuMobileCategorias").html(`<h3 class="menu-title menu-lateral-mobile-title">         Processos Seletivos:
+    </h3>
+
+    <li class="menu-item  active">
+        <a href="/index/abertos/">Inscrições Abertas</a>
+    </li>
+    <li class="menu-item ">
+        <a href="/index/1/">Em andamento</a>
+    </li>
+    <li class="menu-item ">
+        <a href="/index/3/">Finalizado</a>
+    </li>
+    <li class="menu-item ">
+        <a href="/index/4/">Suspenso</a>
+    </li>
+    <li class="menu-item ">
+        <a href="/index/5/">Cancelado</a>
+    </li>
+
+
+
+`);
+    })
+
+
+
+</script>
+
+
