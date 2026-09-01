@@ -20,6 +20,15 @@ instabilidade momentânea da API (503 Service Unavailable, timeout), não
 por problema real no dado — sem retry isso vira falso negativo (vaga boa
 descartada por sorte de timing, não por conteúdo). Erro 4xx (chave
 inválida, request malformado) não tenta de novo, não adianta.
+
+Segundo achado do mesmo backfill: as 8 vagas da FGV (São José dos
+Campos/SP) foram rejeitadas por um bug real de extração (`data_publicacao`
+sempre `null`, corrigido em `gemini_pdf.py`/`rodar_fgv.py`), mas depois de
+corrigir o dado o Gemini rejeitou de novo — dessa vez porque
+`data_publicacao` (a retificação) é posterior ao início das inscrições
+(do edital original), um padrão normal em edital retificado que o prompt
+não explicava. PROMPT_TEMPLATE agora orienta explicitamente que isso não
+é inconsistência sozinha.
 """
 
 from __future__ import annotations
@@ -84,10 +93,19 @@ notificação de vagas.
 Você NÃO tem acesso ao documento original — avalie só a qualidade e \
 consistência interna dos dados abaixo: campos essenciais vazios (cargo \
 ausente ou genérico demais, tipo "vaga" sem nome real de cargo), valores \
-implausíveis (salário absurdo para cargo público, datas inconsistentes \
-como inscrição terminando antes de começar), ou cargo sem nenhuma relação \
-plausível com concurso público (indício de erro de extração). Não afirme \
-ter consultado a fonte original — você não tem esse acesso.
+implausíveis (salário absurdo para cargo público, inscrição terminando \
+antes de começar), ou cargo sem nenhuma relação plausível com concurso \
+público (indício de erro de extração). Não afirme ter consultado a fonte \
+original — você não tem esse acesso.
+
+Dois padrões legítimos e comuns em edital brasileiro que NÃO são \
+inconsistência, não rejeite só por causa deles: (1) `data_publicacao` \
+posterior ao início das inscrições — é normal quando o documento é uma \
+retificação publicada depois que as inscrições já abriram (corrige um \
+detalhe do edital original, não reabre nem invalida o prazo já em curso); \
+(2) `salario` nulo quando a remuneração é por hora/aula ou outra unidade \
+que não converte num valor mensal fixo sem informação adicional — nulo \
+aqui é a extração correta, não uma falha.
 
 Dados extraídos:
 {dados_json}
