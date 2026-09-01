@@ -8,12 +8,21 @@ Mecanismo (ver `fontes/sigpub_busca.py` e
 docs/fixtures/dom_amm_mg/busca_resultado_*.html no repo principal):
 1 GET pra pegar o token CSRF de sessão nova, depois 1 GET de busca
 avançada por termo — **token/sessão novos a cada entidade** (achado
-real, ver docstring de `processar_entidade`: reaproveitar 1 sessão pra
-todas as 161 entidades passa a devolver 0 resultado silenciosamente
-depois de alguns minutos de execução real). Sem Gemini nesta etapa —
-dom_amm_mg.parsear_materia já é extração determinística (regex/HTML), o
-Gemini só entra na revisão automática (revisar_vagas.py), igual toda
-outra fonte.
+real: reaproveitar 1 sessão pra todas as 161 entidades passa a devolver
+0 resultado silenciosamente depois de alguns minutos de execução real).
+Sem Gemini nesta etapa — dom_amm_mg.parsear_materia já é extração
+determinística (regex/HTML), o Gemini só entra na revisão automática
+(revisar_vagas.py), igual toda outra fonte.
+
+**Processa só um LOTE das 161 entidades por execução** (ver BATCH_SIZE),
+não todas de uma vez — achado real rodando o lote inteiro contra
+produção (2026-09-01, confirmado tanto de máquina local quanto do
+runner do GitHub Actions): o servidor começa a throttlar silenciosamente
+depois de ~45 entidades numa mesma execução, independente de IP/sessão.
+O lote do dia é escolhido deterministicamente por `date.today()` (dia do
+ano módulo número de lotes) — sem precisar de cursor persistente em
+banco — então rodando o cron a cada 3 dias, a cobertura completa das 161
+entidades se repete a cada ~5 execuções (~15 dias).
 
 Uso: python scripts/rodar_dom_amm_mg_busca.py
 Requer DATABASE_URL no ambiente.
@@ -39,6 +48,7 @@ FONTE_URL = "https://www.diariomunicipal.com.br/amm-mg/"
 TERMOS_BUSCA = ("concurso público", "processo seletivo")
 JANELA_DIAS = 90
 INTERVALO_ENTRE_BUSCAS_S = 3.0  # 1.5s disparou throttling silencioso do servidor sob carga sustentada (ver verificar_canario)
+BATCH_SIZE = 35  # margem abaixo do limiar observado (~45 entidades) antes do throttling
 
 # Canário: entidade com matéria real confirmada manualmente (Pedra Dourada,
 # ver docs/fixtures/dom_amm_mg/ no repo principal), usado pra detectar
@@ -185,11 +195,30 @@ def verificar_canario() -> bool:
     return len(dom_amm_mg.parsear_materia(resposta.text, url=url_materia)) > 0
 
 
+def selecionar_lote_do_dia(
+    entidades: list[dom_amm_mg.EntidadeAmmMg], *, hoje: date | None = None
+) -> list[dom_amm_mg.EntidadeAmmMg]:
+    """Escolhe deterministicamente qual fatia das entidades processar
+    hoje (dia do ano módulo número de lotes) — sem precisar de cursor
+    persistente em banco. Mesma entrada + mesma data sempre devolve o
+    mesmo lote, então rodar de novo no mesmo dia (ex: workflow_dispatch
+    manual depois de uma falha) repete o lote, não pula pro próximo."""
+    hoje = hoje or date.today()
+    total_lotes = -(-len(entidades) // BATCH_SIZE)  # ceil division
+    indice_lote = hoje.timetuple().tm_yday % total_lotes
+    inicio = indice_lote * BATCH_SIZE
+    return entidades[inicio : inicio + BATCH_SIZE]
+
+
 def main() -> None:
     conn = db.conectar()
     try:
-        entidades = dom_amm_mg.listar_entidades_amm_mg()
-        print(f"{len(entidades)} entidade(s) AMM-MG confirmada(s).")
+        todas_entidades = dom_amm_mg.listar_entidades_amm_mg()
+        entidades = selecionar_lote_do_dia(todas_entidades)
+        print(
+            f"{len(todas_entidades)} entidade(s) AMM-MG confirmada(s) — "
+            f"processando lote de {len(entidades)} hoje."
+        )
 
         fonte_id = db.upsert_fonte(conn, nome=FONTE_NOME, url=FONTE_URL, tipo="oficial", uf="MG")
         conn.commit()
