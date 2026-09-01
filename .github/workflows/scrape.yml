@@ -37,6 +37,12 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/rodar_dom_amm_mg_busca.py
 
+      - name: Rodar coleta (APM/SP)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/rodar_apm_sp_busca.py
+
       - name: Rodar coleta (IMESO)
         if: always()
         env:
