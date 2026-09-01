@@ -131,18 +131,33 @@ def processar_entidade(conn, fonte_id: int, entidade: dom_amm_mg.EntidadeAmmMg) 
 
 
 def verificar_canario() -> bool:
-    """Confirma que o mecanismo de busca ainda funciona de verdade,
-    checando `CANARIO_ENTIDADE_ID` (resultado real conhecido) com sessão/
-    token totalmente novos. Achado real (2026-09-01): sob carga
-    sustentada (~100 entidades numa única execução), a busca passa a
-    devolver 0 resultado silenciosamente — sem erro HTTP, sem exceção —
-    e volta a funcionar normalmente assim que a carga do processo para
-    (confirmado: nova sessão isolada, mesma máquina, funciona na hora
-    depois de interromper o lote) — sinal de throttling do servidor, não
-    token expirado (testado: mesmo token/sessão aguentou 16min de uso
-    espaçado sem falhar) nem bloqueio de IP (persistiria mesmo parado).
-    Sem essa checagem, o script "terminava com sucesso" sem achar
-    nenhuma vaga — falso negativo silencioso pior que um erro visível."""
+    """Confirma que o pipeline INTEIRO ainda funciona de verdade —
+    busca -> resolve /load/<codigo> -> parseia a matéria e acha vaga
+    real — checando `CANARIO_ENTIDADE_ID` (resultado real conhecido) com
+    sessão/token totalmente novos.
+
+    Dois achados reais rodando o backfill completo em produção
+    (2026-09-01), cada um exigiu ampliar esta checagem:
+    (1) sob carga sustentada (~100 entidades numa única execução), a
+    BUSCA passa a devolver 0 resultado silenciosamente — sem erro HTTP,
+    sem exceção — e volta a funcionar normalmente assim que a carga do
+    processo para;
+    (2) checar só a busca não bastou: numa 2ª rodada, a busca continuou
+    achando resultado normalmente, mas o passo seguinte
+    (`/amm-mg/load/<codigo>`, que deveria REDIRECIONAR pra
+    `/amm-mg/materia/<codigo>/<hash>`) parou de redirecionar — passou a
+    devolver um HTML genérico de "diário do dia" ("NENHUMA MATÉRIA
+    ENCONTRADA PARA ESTA DATA") em vez do conteúdo real, fazendo
+    `parsear_materia` achar 0 vaga em TODA entidade processada depois
+    disso, com o lote inteiro "terminando com sucesso" sem inserir nada.
+    Uma checagem que só confere a contagem da busca não pega esse caso —
+    por isso agora resolve e parseia de verdade, igual o pipeline real.
+
+    Ambos os sintomas romperam sem erro HTTP visível e se recuperaram
+    sozinhos depois de um tempo sem carga — sinal de throttling/anti-bot
+    do servidor por IP/sessão, não token expirado (testado: mesmo
+    token/sessão aguentou 16min de uso espaçado sem falhar) nem bloqueio
+    permanente (recuperou sozinho depois de pausar)."""
     hoje = date.today()
     sessao = requests.Session()
     token = sigpub_busca.obter_token(sessao, dom_amm_mg.CAMINHO_PESQUISAR)
@@ -157,7 +172,17 @@ def verificar_canario() -> bool:
         data_inicio=hoje - timedelta(days=JANELA_DIAS),
         data_fim=hoje,
     )
-    return len(sigpub_busca.parsear_resultados(html)) > 0
+    resultados = sigpub_busca.parsear_resultados(html)
+    if not resultados:
+        return False
+
+    try:
+        url_materia = sigpub_busca.resolver_url_materia(sessao, resultados[0].url_load)
+        resposta = requests.get(url_materia, headers={"User-Agent": USER_AGENT}, timeout=20)
+        resposta.raise_for_status()
+    except requests.exceptions.RequestException:
+        return False
+    return len(dom_amm_mg.parsear_materia(resposta.text, url=url_materia)) > 0
 
 
 def main() -> None:
