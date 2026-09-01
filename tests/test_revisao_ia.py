@@ -4,8 +4,9 @@ from notifica_vagas_scraper import revisao_ia
 
 
 @pytest.fixture(autouse=True)
-def _sem_rate_limit_real(monkeypatch):
+def _sem_espera_real(monkeypatch):
     monkeypatch.setattr(revisao_ia, "_esperar_rate_limit", lambda: None)
+    monkeypatch.setattr(revisao_ia.time, "sleep", lambda *_: None)
 
 
 class _RespostaFalsa:
@@ -15,7 +16,9 @@ class _RespostaFalsa:
 
     def raise_for_status(self):
         if self.status_code >= 400:
-            raise RuntimeError(f"HTTP {self.status_code}")
+            erro = revisao_ia.requests.exceptions.HTTPError(f"HTTP {self.status_code}")
+            erro.response = self
+            raise erro
 
     def json(self):
         return self._payload
@@ -95,3 +98,49 @@ def test_resposta_sem_candidates_rejeita_por_padrao(monkeypatch):
     )
     resultado = revisao_ia.decidir_revisao({"cargo": "Enfermeiro"}, api_key="chave-teste")
     assert resultado["decisao"] == "rejeitada"
+
+
+def test_503_transitorio_tenta_de_novo_e_aprova(monkeypatch):
+    """Achado real rodando o backfill em produção (2026-09-01): 11 de 40
+    vagas foram rejeitadas só por 503 momentâneo do Gemini, não por
+    problema no dado — o retry existe pra não perder vaga boa por
+    instabilidade de infra."""
+    texto = '{"decisao": "aprovada", "motivo": "ok"}'
+    chamadas = {"n": 0}
+
+    def _post(*a, **k):
+        chamadas["n"] += 1
+        if chamadas["n"] < 3:
+            return _RespostaFalsa({}, status_code=503)
+        return _RespostaFalsa(_payload_com_texto(texto))
+
+    monkeypatch.setattr(revisao_ia.requests, "post", _post)
+    resultado = revisao_ia.decidir_revisao({"cargo": "Enfermeiro"}, api_key="chave-teste")
+    assert resultado["decisao"] == "aprovada"
+    assert chamadas["n"] == 3
+
+
+def test_503_persistente_esgota_tentativas_e_rejeita(monkeypatch):
+    chamadas = {"n": 0}
+
+    def _post(*a, **k):
+        chamadas["n"] += 1
+        return _RespostaFalsa({}, status_code=503)
+
+    monkeypatch.setattr(revisao_ia.requests, "post", _post)
+    resultado = revisao_ia.decidir_revisao({"cargo": "Enfermeiro"}, api_key="chave-teste")
+    assert resultado["decisao"] == "rejeitada"
+    assert chamadas["n"] == revisao_ia.TENTATIVAS_MAX
+
+
+def test_erro_4xx_nao_tenta_de_novo(monkeypatch):
+    chamadas = {"n": 0}
+
+    def _post(*a, **k):
+        chamadas["n"] += 1
+        return _RespostaFalsa({}, status_code=400)
+
+    monkeypatch.setattr(revisao_ia.requests, "post", _post)
+    resultado = revisao_ia.decidir_revisao({"cargo": "Enfermeiro"}, api_key="chave-teste")
+    assert resultado["decisao"] == "rejeitada"
+    assert chamadas["n"] == 1

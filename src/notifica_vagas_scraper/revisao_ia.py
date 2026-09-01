@@ -12,7 +12,14 @@ não lê o documento original de novo. Reavaliar se aprovação/rejeição
 errada virar problema real na prática.
 
 Em caso de qualquer erro ou resposta ambígua do Gemini, a decisão cai
-para "rejeitada" (decisão explícita do usuário: nunca aprovar no escuro).
+para "rejeitada" (decisão explícita do usuário: nunca aprovar no escuro)
+— mas só depois de tentar de novo em falha transitória (erro 5xx,
+timeout, erro de conexão): rodando o backfill das 40 vagas reais em
+produção (2026-09-01), 11 delas foram rejeitadas só por causa de
+instabilidade momentânea da API (503 Service Unavailable, timeout), não
+por problema real no dado — sem retry isso vira falso negativo (vaga boa
+descartada por sorte de timing, não por conteúdo). Erro 4xx (chave
+inválida, request malformado) não tenta de novo, não adianta.
 """
 
 from __future__ import annotations
@@ -27,6 +34,8 @@ import requests
 MODELO_PADRAO = "gemini-3.5-flash-lite"
 URL_API = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
 INTERVALO_MINIMO_ENTRE_CHAMADAS_S = 4.5  # 15 RPM = 1 a cada 4s; margem de segurança
+TENTATIVAS_MAX = 3
+BACKOFF_INICIAL_S = 5.0
 
 _ultima_chamada: float = 0.0
 
@@ -38,6 +47,34 @@ def _esperar_rate_limit() -> None:
     if espera > 0:
         time.sleep(espera)
     _ultima_chamada = time.monotonic()
+
+
+def _chamar_gemini(body: dict, *, chave: str, modelo: str) -> dict:
+    """Chama a API do Gemini com retry em falha transitória (5xx, timeout,
+    erro de conexão) — até TENTATIVAS_MAX vezes, com backoff crescente
+    (BACKOFF_INICIAL_S * tentativa). Erro 4xx (chave inválida, request
+    malformado) não tenta de novo — não adianta, o request não vai mudar.
+    Levanta a última exceção se todas as tentativas falharem."""
+    ultimo_erro: Exception | None = None
+    for tentativa in range(TENTATIVAS_MAX):
+        if tentativa > 0:
+            time.sleep(BACKOFF_INICIAL_S * tentativa)
+        _esperar_rate_limit()
+        try:
+            resposta = requests.post(
+                URL_API.format(modelo=modelo), params={"key": chave}, json=body, timeout=60
+            )
+            resposta.raise_for_status()
+            return resposta.json()
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
+            ultimo_erro = exc
+        except requests.exceptions.HTTPError as exc:
+            status = exc.response.status_code if exc.response is not None else None
+            if status is None or status < 500:
+                raise
+            ultimo_erro = exc
+    assert ultimo_erro is not None
+    raise ultimo_erro
 
 
 PROMPT_TEMPLATE = """Você audita dados extraídos automaticamente sobre uma vaga de concurso \
@@ -100,13 +137,8 @@ def decidir_revisao(
         "generationConfig": {"temperature": 0},
     }
 
-    _esperar_rate_limit()
     try:
-        resposta = requests.post(
-            URL_API.format(modelo=modelo), params={"key": chave}, json=body, timeout=60
-        )
-        resposta.raise_for_status()
-        corpo = resposta.json()
+        corpo = _chamar_gemini(body, chave=chave, modelo=modelo)
         texto = corpo["candidates"][0]["content"]["parts"][0]["text"]
         texto_limpo = re.sub(r"^```(?:json)?\s*|\s*```$", "", texto.strip())
         resultado = json.loads(texto_limpo)
