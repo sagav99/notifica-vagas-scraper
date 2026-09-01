@@ -1,0 +1,850 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head id="Head1"><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="author" content="Fusili Tech Art - https://fusi.li" />
+    
+    <script type="text/javascript" src="../scripts/jquery.min.js"></script>
+    <script type="text/javascript" src="../scripts/bootstrap.min.js"></script>
+    
+    <link href="../css/bootstrap.css" rel="stylesheet" type="text/css" /><link href="../css/style.css" type="text/css" rel="stylesheet" /><link href="../css/tabs.css" type="text/css" rel="stylesheet" /><link href="../css/files/tabs.sideways.css" type="text/css" rel="stylesheet" /><link href="../css/files/gridview.css" rel="stylesheet" type="text/css" /><link href="../css/files/jquery.fancybox.css" rel="stylesheet" type="text/css" />
+    <script src="../css/files/jquery.fancybox.pack.js" type="text/javascript"></script>
+    <script src="../css/files/collapse.js" type="text/javascript"></script>
+    <script src="../css/files/mascara.js" type="text/javascript"></script>
+
+    
+
+
+    <script type="text/javascript" src="../css/files/jquery.min.js"></script>
+    <script type="text/javascript" src="../css/files/bootstrap.min.js"></script>
+    
+    <link href="../css/files/bootstrap.css" rel="stylesheet" type="text/css" />
+    <link href="../css/files/site.css" type="text/css" rel="stylesheet" />
+    <link href="../css/files/tabs.css" type="text/css" rel="stylesheet" />
+    <link href="../css/files/tabs.sideways.css" type="text/css" rel="stylesheet" />
+    <link href="../css/files/gridview.css" rel="stylesheet" type="text/css" />
+    
+    <script src="../css/files/collapse.js" type="text/javascript"></script>
+    <script src="../css/files/mascara.js" type="text/javascript"></script>
+    <style type="text/css">
+        .hr1 {
+            border: 0;
+            height: 3px;
+            background-image: linear-gradient(to right, transparent, #CCC, transparent);
+            margin-top: 25px;
+            margin-bottom: 25px;
+        }
+        /* Container das notícias */
+        #TabNoticias {
+            display: flex;
+            flex-wrap: wrap; /* Permite que os itens pulem de linha corretamente */
+        }
+
+        /* O cartão de cada notícia */
+        .news-content-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%; /* Faz todos os cards da mesma linha terem a mesma altura */
+            min-height: 250px;
+            padding: 15px;
+        }
+
+        /* Estilo do Botão */
+        .btn-saiba-mais {
+            background-color: #7e2e38;
+            color: white !important;
+            display: inline-block;
+            margin: 15px auto;
+            padding: 8px 25px;
+        }
+
+        /* Ajuste das fontes e espaçamentos */
+        .news-header h2 {
+            font-size: 1.4em;
+            margin-bottom: 15px;
+        }
+
+        .hr-separator {
+            border-top: 1px solid #ddd;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        /* Ajuste para telas pequenas: remove margens negativas que deslocam para a direita */
+        @media (max-width: 767px) {
+            #TabNoticias {
+                left: 0 !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+            }
+
+            .news-item {
+                padding-left: 15px;
+                padding-right: 15px;
+            }
+        }
+
+        .table-responsive .grid {
+            min-width: 600px;
+        }
+    </style>
+    
+
+    
+
+
+    
+
+
+    <script type="text/javascript">
+
+        function DocumentosTodos(IDProcesso) {
+            $.fancybox.open({
+                href: '../sitenoticia/documentos.aspx?IDProcesso=' + IDProcesso,
+                type: 'iframe',
+                width: 650,
+                height: 850,
+                preload: true,
+                padding: 25,
+                autoSize: true
+            });
+            return false;
+        }
+
+    </script>
+
+
+    <style type="text/css">
+        /* MELHORIAS DE RESPONSIVIDADE */
+        .navbar-brand img {
+            max-width: 200px; /* Limita largura no mobile */
+            height: auto !important;
+            transition: 0.3s;
+        }
+        
+        @media (min-width: 768px) {
+            .navbar-brand img { max-width: 300px; }
+        }
+
+        .login-container-flex {
+            display: flex; 
+            flex-wrap: wrap; 
+            align-items: center; 
+            gap: 10px;
+            width: 100%;
+        }
+
+        /* Ajuste para os campos não vazarem */
+        .form-control-xl {
+            width: 100% !important; /* No mobile ocupa tudo */
+            min-width: 0 !important;
+        }
+
+        @media (min-width: 992px) {
+            .form-control-xl { width: auto !important; flex: 1; }
+        }
+
+        .login-head {
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        /* Correção de botões no mobile */
+        @media (max-width: 767px) {
+            .btn-xl { width: 100% !important; margin-bottom: 5px; }
+            .login-section { padding: 10px !important; }
+            .navbar-brand { padding: 15px 5px !important; }
+        }
+    </style>
+<title>
+	IMAM
+</title></head>
+<body>
+    <form method="post" action="./processo_seletivo.aspx" onsubmit="javascript:return WebForm_OnSubmit();" id="form1">
+<div class="aspNetHidden">
+<input type="hidden" name="__EVENTTARGET" id="__EVENTTARGET" value="" />
+<input type="hidden" name="__EVENTARGUMENT" id="__EVENTARGUMENT" value="" />
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="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" />
+</div>
+
+<script type="text/javascript">
+//<![CDATA[
+var theForm = document.forms['form1'];
+if (!theForm) {
+    theForm = document.form1;
+}
+function __doPostBack(eventTarget, eventArgument) {
+    if (!theForm.onsubmit || (theForm.onsubmit() != false)) {
+        theForm.__EVENTTARGET.value = eventTarget;
+        theForm.__EVENTARGUMENT.value = eventArgument;
+        theForm.submit();
+    }
+}
+//]]>
+</script>
+
+
+<script src="/WebResource.axd?d=pynGkmcFUV13He1Qd6_TZLfM8VrdGBnrHY3Y_pskhN6AC_wsIj0W9zySPi5FCc2WBmUHMTalRaX5MTXyvFBi1g2&amp;t=639190736600000000" type="text/javascript"></script>
+
+
+<script type="text/javascript">
+//<![CDATA[
+if(document.getElementById('divProcessando'))document.getElementById('divProcessando').style.display = 'none';var __cultureInfo = {"name":"pt-BR","numberFormat":{"CurrencyDecimalDigits":2,"CurrencyDecimalSeparator":",","IsReadOnly":true,"CurrencyGroupSizes":[3],"NumberGroupSizes":[3],"PercentGroupSizes":[3],"CurrencyGroupSeparator":".","CurrencySymbol":"R$","NaNSymbol":"NaN","CurrencyNegativePattern":1,"NumberNegativePattern":1,"PercentPositivePattern":1,"PercentNegativePattern":1,"NegativeInfinitySymbol":"-∞","NegativeSign":"-","NumberDecimalDigits":2,"NumberDecimalSeparator":",","NumberGroupSeparator":".","CurrencyPositivePattern":0,"PositiveInfinitySymbol":"∞","PositiveSign":"+","PercentDecimalDigits":2,"PercentDecimalSeparator":",","PercentGroupSeparator":".","PercentSymbol":"%","PerMilleSymbol":"‰","NativeDigits":["0","1","2","3","4","5","6","7","8","9"],"DigitSubstitution":1},"dateTimeFormat":{"AMDesignator":"","Calendar":{"MinSupportedDateTime":"\/Date(-62135589600000)\/","MaxSupportedDateTime":"\/Date(253402300799999)\/","AlgorithmType":1,"CalendarType":1,"Eras":[1],"TwoDigitYearMax":2049,"IsReadOnly":true},"DateSeparator":"/","FirstDayOfWeek":0,"CalendarWeekRule":0,"FullDateTimePattern":"dddd, d\u0027 de \u0027MMMM\u0027 de \u0027yyyy HH:mm:ss","LongDatePattern":"dddd, d\u0027 de \u0027MMMM\u0027 de \u0027yyyy","LongTimePattern":"HH:mm:ss","MonthDayPattern":"d \u0027de\u0027 MMMM","PMDesignator":"","RFC1123Pattern":"ddd, dd MMM yyyy HH\u0027:\u0027mm\u0027:\u0027ss \u0027GMT\u0027","ShortDatePattern":"dd/MM/yyyy","ShortTimePattern":"HH:mm","SortableDateTimePattern":"yyyy\u0027-\u0027MM\u0027-\u0027dd\u0027T\u0027HH\u0027:\u0027mm\u0027:\u0027ss","TimeSeparator":":","UniversalSortableDateTimePattern":"yyyy\u0027-\u0027MM\u0027-\u0027dd HH\u0027:\u0027mm\u0027:\u0027ss\u0027Z\u0027","YearMonthPattern":"MMMM\u0027 de \u0027yyyy","AbbreviatedDayNames":["dom","seg","ter","qua","qui","sex","sáb"],"ShortestDayNames":["D","S","T","Q","Q","S","S"],"DayNames":["domingo","segunda-feira","terça-feira","quarta-feira","quinta-feira","sexta-feira","sábado"],"AbbreviatedMonthNames":["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez",""],"MonthNames":["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro",""],"IsReadOnly":true,"NativeCalendarName":"Calendário gregoriano","AbbreviatedMonthGenitiveNames":["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez",""],"MonthGenitiveNames":["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro",""]},"eras":[1,"d.C.",null,0]};//]]>
+</script>
+
+<script src="/ScriptResource.axd?d=uHIkleVeDJf4xS50Krz-yABBs5LaQSreNXn8nKBmqQIVIH_uYOYAusXudDnfHzE8zvIptaXqZc-RQfFMDi7Y8RMcRadVKYWbluJLrjANpDNCZExmf43i695Q4emN-tMwA8tQ9ZANip7Sd6o-fEHB2c14GC8UElK1AE_MSXmGYI41&amp;t=ffffffffbec1863d" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=Jw6tUGWnA15YEa3ai3FadG8aBaDpePWM--10hvBuoqx93zf2o_lZWQKE11boqpK1HWzpFke7kt19O1DJXB7LAuCSbiLgSQ1dNqNmzqhiH_vjir3XPLUhdOO6QC-Wo4YXsD11mgLqgokbcaNDZy4mPv0UtsW5qwY7wtu8fm9fRfo1&amp;t=ffffffffbec1863d" type="text/javascript"></script>
+<script src="../scripts/browser.js" type="text/javascript"></script>
+<script type="text/javascript">
+//<![CDATA[
+function WebForm_OnSubmit() {
+if (typeof(ValidatorOnSubmit) == 'function' && ValidatorOnSubmit() == false) return false; if(typeof(avisoAguarde) == 'function')avisoAguarde();
+return true;
+}
+//]]>
+</script>
+
+<div class="aspNetHidden">
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="665DEA61" />
+	<input type="hidden" name="__VIEWSTATEENCRYPTED" id="__VIEWSTATEENCRYPTED" value="" />
+	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="JsOJ8cCKigTZfw3lAmWsK2aNCgYTKCUlcYmDCmWfrG5QQ6HItnAPZ6H3qDZONqztsvQ9zJ7yrfISrhg90zx5UBnCS4G1xFESwDznWuiKq4VmGC54VKSU+1YvFipannVML+Be2aNHGoeznglUlVgzWU8yWO5terRp+0WJk98NTamuwwzgsUyIkYY51efzo++jupZ1QzdChBAUwrQKqExxbUZ8rXbyEwacEWC5E6AgkUb5Ci2Cd8L7YL5ybL6BU+ivXWz2Fg/wUKlYn2Jv6Em0AOLaMJ4HEDmXWkbKj0WDj9AWsWYucjbS/VKa1hu1/v/0Y0yyJgfhclsTA5Bj/7Z1IM4UVVzztvfOt3IomkxMQZjWzeTNCIMcUy1IZjqwrNOdJzL/M7etdtf4FMmOd4KsmN2HIEag546QL0i90/LXPcZOTtIyQBSreIzoOBdMBgsxjFCi19m1cNIYrmfs1yEoxA==" />
+</div>
+        <script type="text/javascript">
+//<![CDATA[
+Sys.WebForms.PageRequestManager._initialize('ctl00$ScriptManager2', 'form1', ['tctl00$ContentPlaceHolder1$UpdatePanel1','ContentPlaceHolder1_UpdatePanel1'], [], ['ctl00$ContentPlaceHolder1$gridConcluidos','ContentPlaceHolder1_gridConcluidos'], 90, 'ctl00');
+//]]>
+</script>
+
+
+        <header id="header">
+            <nav class="navbar navbar-default" role="navigation" style="border-bottom: 4px solid #a01a1b; margin-bottom:0;">
+                <div class="container-fluid">
+                    <div class="navbar-header">
+                        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                            <span class="sr-only">Toggle navigation</span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                        </button>
+                        <a class="navbar-brand" href="../sitenoticia/processo_seletivo.aspx">
+                            <img src="../imagens/logoImam.svg" alt="IMAM" style="max-height: 80px" />
+                            
+                        </a>
+                    </div>
+
+                    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                        <ul class="nav navbar-nav navbar-right">
+                            <li><a href="../sitenoticia/processo_seletivo.aspx">HOME</a></li>
+                            <li><a href="https://imamconcursos.org.br/" target="_blank">SOBRE</a></li>
+                            <li><a href="https://imamconcursos.org.br/" target="_blank">O QUE FAZEMOS</a></li>
+                            <li>
+                                <a href="https://www.instagram.com/imamconcursos" target="_blank" class="link-social-svg">
+                                    <img src="../imagens/instagram.png" alt="Instagram" style="max-height: 25px" />
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="login-section" style="background-color: #7e2e38; padding: 10px 0;">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="login-container-flex">
+                                <span class="login-head" style="color: white;">ACESSO</span>
+                                
+                                <input name="ctl00$txtEmail" type="text" id="txtEmail" class="form-control form-control-xl" placeholder="CPF ou E-mail" />
+                                <input name="ctl00$txtSenha" type="password" id="txtSenha" class="form-control form-control-xl" placeholder="Senha" onkeydown="checkEnter(event)" />
+                                
+                                <input type="submit" name="ctl00$cmdEntrar" value="Entrar" id="cmdEntrar" class="btn btn-default btn-xl" />
+                                
+                                <a href="../sitenoticia/cadastro_candidato.aspx" class="btn btn-default btn-xl">Cadastre-se</a>
+                                
+                                <div style="display: flex; gap: 5px; flex-grow: 1;">
+                                    <a href="../sitenoticia/reenvio_senha.aspx" class="btn btn-link btn-xs text-white" style="color:white; text-decoration:underline;">Esqueci senha</a>
+                                    <a href="../sitenoticia/reenvio_email.aspx" class="btn btn-link btn-xs text-white" style="color:white; text-decoration:underline;">Esqueci e-mail</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div id="wrapper">
+            <div class="container-fluid" style="padding-top:20px;">
+                
+    <div id="ContentPlaceHolder1_UpdatePanel1">
+	
+
+            <style type="text/css">
+                body {
+                    overflow: auto;
+                }
+            </style>
+
+            <title>IMAM
+            </title>
+            <div class="col-md-12 fluid">
+                <div class="">
+                    <div class="container-fluid" style="width: inherit">
+                        <div id="Noticias">
+                            <section>
+
+                                <div class="col-xs-12 section-header-normal" style="margin-top: 15px;">
+                                    <h1 style="font-size: 32px">NOTÍCIAS</h1>
+                                    <hr class="linesec">
+                                </div>
+                                
+                                <div class="col-md-12" id="TabNoticias" style="padding-top: 0px; margin-top: 0px; padding-bottom: 2px; width: inherit; top: 0px; left: -28px;">
+                                    
+                                            <div id="divNoticias" class="col-xs-12 col-sm-6 col-md-3 news-item" style="min-height: 226px; justify-content: space-between; flex-direction: column; display: flex;">
+                                                <div class="news-content-card">
+                                                    <div class="news-header">
+                                                        <h2 class="text-center">
+                                                            <span id="ContentPlaceHolder1_rptNoticias_lblTitulo_0" Verticalalign="top">ESQUECEU O E-MAIL OU A SENHA?</span>
+                                                        </h2>
+                                                    </div>
+
+                                                    <div style="margin-top: 0px;" class="news-body">
+                                                        <p style="text-align: center">
+                                                            <span id="ContentPlaceHolder1_rptNoticias_lblNoticia_0" Verticalalign="top">Clique no saiba mais para saber como recuperar o e-mail e a senha. Os e-mails serão respondidos em até 72h</span>
+                                                        </p>
+                                                    </div>
+
+                                                    <div align="center" class="news-footer text-center">
+                                                        <input type="submit" name="ctl00$ContentPlaceHolder1$rptNoticias$ctl00$btnDetalhesNiticia" value="Saiba mais" id="ContentPlaceHolder1_rptNoticias_btnDetalhesNiticia_0" class="btn btn-saiba-mais" class="text-center" style="justify-content: center; padding-top: -25px; display: flex; background-color: #7e2e38; color: aliceblue; margin-bottom: 20px;" />
+                                                        <hr class="hr-separator hr1" />
+                                                    </div>
+                                                </div>
+
+
+
+                                                
+                                            </div>
+
+                                        
+                                            <div id="divNoticias" class="col-xs-12 col-sm-6 col-md-3 news-item" style="min-height: 226px; justify-content: space-between; flex-direction: column; display: flex;">
+                                                <div class="news-content-card">
+                                                    <div class="news-header">
+                                                        <h2 class="text-center">
+                                                            <span id="ContentPlaceHolder1_rptNoticias_lblTitulo_1" Verticalalign="top">PREFEITURA DE IPATINGA - CONCURSO EDITAL 001/2026</span>
+                                                        </h2>
+                                                    </div>
+
+                                                    <div style="margin-top: 0px;" class="news-body">
+                                                        <p style="text-align: center">
+                                                            <span id="ContentPlaceHolder1_rptNoticias_lblNoticia_1" Verticalalign="top">Os recursos contra as questões da prova objetiva e gabarito provisório estão sendo analisados.</span>
+                                                        </p>
+                                                    </div>
+
+                                                    <div align="center" class="news-footer text-center">
+                                                        <input type="submit" name="ctl00$ContentPlaceHolder1$rptNoticias$ctl01$btnDetalhesNiticia" value="Saiba mais" id="ContentPlaceHolder1_rptNoticias_btnDetalhesNiticia_1" class="btn btn-saiba-mais" class="text-center" style="justify-content: center; padding-top: -25px; display: flex; background-color: #7e2e38; color: aliceblue; margin-bottom: 20px;" />
+                                                        <hr class="hr-separator hr1" />
+                                                    </div>
+                                                </div>
+
+
+
+                                                
+                                            </div>
+
+                                        
+                                            <div id="divNoticias" class="col-xs-12 col-sm-6 col-md-3 news-item" style="min-height: 226px; justify-content: space-between; flex-direction: column; display: flex;">
+                                                <div class="news-content-card">
+                                                    <div class="news-header">
+                                                        <h2 class="text-center">
+                                                            <span id="ContentPlaceHolder1_rptNoticias_lblTitulo_2" Verticalalign="top">PREFEITURA DE ITABIRITO - PROCESSO SELETIVO SIMPLIFICADO - EDITAL 002/2026 - EDUCAÇÃO</span>
+                                                        </h2>
+                                                    </div>
+
+                                                    <div style="margin-top: 0px;" class="news-body">
+                                                        <p style="text-align: center">
+                                                            <span id="ContentPlaceHolder1_rptNoticias_lblNoticia_2" Verticalalign="top">Publicada a classificação final</span>
+                                                        </p>
+                                                    </div>
+
+                                                    <div align="center" class="news-footer text-center">
+                                                        <input type="submit" name="ctl00$ContentPlaceHolder1$rptNoticias$ctl02$btnDetalhesNiticia" value="Saiba mais" id="ContentPlaceHolder1_rptNoticias_btnDetalhesNiticia_2" class="btn btn-saiba-mais" class="text-center" style="justify-content: center; padding-top: -25px; display: flex; background-color: #7e2e38; color: aliceblue; margin-bottom: 20px;" />
+                                                        <hr class="hr-separator hr1" />
+                                                    </div>
+                                                </div>
+
+
+
+                                                
+                                            </div>
+
+                                        
+                                            <div id="divNoticias" class="col-xs-12 col-sm-6 col-md-3 news-item" style="min-height: 226px; justify-content: space-between; flex-direction: column; display: flex;">
+                                                <div class="news-content-card">
+                                                    <div class="news-header">
+                                                        <h2 class="text-center">
+                                                            <span id="ContentPlaceHolder1_rptNoticias_lblTitulo_3" Verticalalign="top">PREFEITURA DE ITABIRITO - PROCESSO SELETIVO SIMPLIFICADO - EDITAL 001/2026</span>
+                                                        </h2>
+                                                    </div>
+
+                                                    <div style="margin-top: 0px;" class="news-body">
+                                                        <p style="text-align: center">
+                                                            <span id="ContentPlaceHolder1_rptNoticias_lblNoticia_3" Verticalalign="top">Publicada a classificação final</span>
+                                                        </p>
+                                                    </div>
+
+                                                    <div align="center" class="news-footer text-center">
+                                                        <input type="submit" name="ctl00$ContentPlaceHolder1$rptNoticias$ctl03$btnDetalhesNiticia" value="Saiba mais" id="ContentPlaceHolder1_rptNoticias_btnDetalhesNiticia_3" class="btn btn-saiba-mais" class="text-center" style="justify-content: center; padding-top: -25px; display: flex; background-color: #7e2e38; color: aliceblue; margin-bottom: 20px;" />
+                                                        <hr class="hr-separator hr1" />
+                                                    </div>
+                                                </div>
+
+
+
+                                                
+                                            </div>
+
+                                        
+                                            <div id="divNoticias" class="col-xs-12 col-sm-6 col-md-3 news-item" style="min-height: 226px; justify-content: space-between; flex-direction: column; display: flex;">
+                                                <div class="news-content-card">
+                                                    <div class="news-header">
+                                                        <h2 class="text-center">
+                                                            <span id="ContentPlaceHolder1_rptNoticias_lblTitulo_4" Verticalalign="top">CÂMARA DE DIVISA NOVA - CONCURSO EDITAL 001/2026</span>
+                                                        </h2>
+                                                    </div>
+
+                                                    <div style="margin-top: 0px;" class="news-body">
+                                                        <p style="text-align: center">
+                                                            <span id="ContentPlaceHolder1_rptNoticias_lblNoticia_4" Verticalalign="top">Publicado o Edital. </span>
+                                                        </p>
+                                                    </div>
+
+                                                    <div align="center" class="news-footer text-center">
+                                                        <input type="submit" name="ctl00$ContentPlaceHolder1$rptNoticias$ctl04$btnDetalhesNiticia" value="Saiba mais" id="ContentPlaceHolder1_rptNoticias_btnDetalhesNiticia_4" class="btn btn-saiba-mais" class="text-center" style="justify-content: center; padding-top: -25px; display: flex; background-color: #7e2e38; color: aliceblue; margin-bottom: 20px;" />
+                                                        <hr class="hr-separator hr1" />
+                                                    </div>
+                                                </div>
+
+
+
+                                                
+                                            </div>
+
+                                        
+                                            <div id="divNoticias" class="col-xs-12 col-sm-6 col-md-3 news-item" style="min-height: 226px; justify-content: space-between; flex-direction: column; display: flex;">
+                                                <div class="news-content-card">
+                                                    <div class="news-header">
+                                                        <h2 class="text-center">
+                                                            <span id="ContentPlaceHolder1_rptNoticias_lblTitulo_5" Verticalalign="top">PREFEITURA DE CONGONHAL - CONCURSO EDITAL 001/2026</span>
+                                                        </h2>
+                                                    </div>
+
+                                                    <div style="margin-top: 0px;" class="news-body">
+                                                        <p style="text-align: center">
+                                                            <span id="ContentPlaceHolder1_rptNoticias_lblNoticia_5" Verticalalign="top">O gabarito provisório será publicado dia 31/08 às 9h</span>
+                                                        </p>
+                                                    </div>
+
+                                                    <div align="center" class="news-footer text-center">
+                                                        <input type="submit" name="ctl00$ContentPlaceHolder1$rptNoticias$ctl05$btnDetalhesNiticia" value="Saiba mais" id="ContentPlaceHolder1_rptNoticias_btnDetalhesNiticia_5" class="btn btn-saiba-mais" class="text-center" style="justify-content: center; padding-top: -25px; display: flex; background-color: #7e2e38; color: aliceblue; margin-bottom: 20px;" />
+                                                        <hr class="hr-separator hr1" />
+                                                    </div>
+                                                </div>
+
+
+
+                                                
+                                            </div>
+
+                                        
+                                            <div id="divNoticias" class="col-xs-12 col-sm-6 col-md-3 news-item" style="min-height: 226px; justify-content: space-between; flex-direction: column; display: flex;">
+                                                <div class="news-content-card">
+                                                    <div class="news-header">
+                                                        <h2 class="text-center">
+                                                            <span id="ContentPlaceHolder1_rptNoticias_lblTitulo_6" Verticalalign="top">PREFEITURA DE POÇOS DE CALDAS - CONCURSO EDITAL 002/2025</span>
+                                                        </h2>
+                                                    </div>
+
+                                                    <div style="margin-top: 0px;" class="news-body">
+                                                        <p style="text-align: center">
+                                                            <span id="ContentPlaceHolder1_rptNoticias_lblNoticia_6" Verticalalign="top">Publicada a classificação final</span>
+                                                        </p>
+                                                    </div>
+
+                                                    <div align="center" class="news-footer text-center">
+                                                        <input type="submit" name="ctl00$ContentPlaceHolder1$rptNoticias$ctl06$btnDetalhesNiticia" value="Saiba mais" id="ContentPlaceHolder1_rptNoticias_btnDetalhesNiticia_6" class="btn btn-saiba-mais" class="text-center" style="justify-content: center; padding-top: -25px; display: flex; background-color: #7e2e38; color: aliceblue; margin-bottom: 20px;" />
+                                                        <hr class="hr-separator hr1" />
+                                                    </div>
+                                                </div>
+
+
+
+                                                
+                                            </div>
+
+                                        
+                                            <div id="divNoticias" class="col-xs-12 col-sm-6 col-md-3 news-item" style="min-height: 226px; justify-content: space-between; flex-direction: column; display: flex;">
+                                                <div class="news-content-card">
+                                                    <div class="news-header">
+                                                        <h2 class="text-center">
+                                                            <span id="ContentPlaceHolder1_rptNoticias_lblTitulo_7" Verticalalign="top">PREFEITURA DE SÃO SEBASTIÃO DO PARAÍSO - PROCESSO DE CERTIFICAÇÃO DE DIRETOR ESCOLAR</span>
+                                                        </h2>
+                                                    </div>
+
+                                                    <div style="margin-top: 0px;" class="news-body">
+                                                        <p style="text-align: center">
+                                                            <span id="ContentPlaceHolder1_rptNoticias_lblNoticia_7" Verticalalign="top">Publicação do resultado final: 16/07/2026</span>
+                                                        </p>
+                                                    </div>
+
+                                                    <div align="center" class="news-footer text-center">
+                                                        <input type="submit" name="ctl00$ContentPlaceHolder1$rptNoticias$ctl07$btnDetalhesNiticia" value="Saiba mais" id="ContentPlaceHolder1_rptNoticias_btnDetalhesNiticia_7" class="btn btn-saiba-mais" class="text-center" style="justify-content: center; padding-top: -25px; display: flex; background-color: #7e2e38; color: aliceblue; margin-bottom: 20px;" />
+                                                        <hr class="hr-separator hr1" />
+                                                    </div>
+                                                </div>
+
+
+
+                                                
+                                            </div>
+
+                                        
+
+                                </div>
+
+                                <!-- Segunda linha de notícias -->
+                            </section>
+
+                        </div>
+                        <!-- Fim Repeater-->
+
+                    </div>
+                    <!-- Fim container notícias -->
+                </div>
+                <!-- Fim panel -->
+            </div>
+
+            <!-- Login -->
+
+            <!-- Login -->
+
+            <!-- Login -->
+            <div class="container-fluid">
+                <!-- Main Container-->
+                <div class="col-md-12 fluid">
+                    <div class="">
+                        <!-- Main list -->
+                        <div class="container-fluid">
+
+                            <div id="MudarEsteNome">
+                                <section>
+
+                                    <div class="col-md-12 section-header-normal">
+                                        <h1 style="font-size: 28px">CONCURSOS</h1>
+                                        <hr class="linesec">
+                                        <!--------------------------------------------------------------------------------------------------------------------------->
+                                    </div>
+
+                                    <div class="col-md-12">
+                                        <div class="panel-heading">
+                                            <ul class="nav nav-tabs">
+                                                <li class="active"><a href="#tabNovos" data-toggle="tab">NOVOS CONCURSOS</a></li>
+                                                <li><a href="#tabAbertos" data-toggle="tab">INSCRIÇÕES ABERTAS</a></li>
+                                                <li><a href="#tabAndamento" data-toggle="tab">EM ANDAMENTO</a></li>
+                                                <li><a href="#tabHomologados" data-toggle="tab">CONCLUÍDOS</a></li>
+                                            </ul>
+                                        </div>
+
+                                        <div class="panel-body">
+                                            <div class="tab-content">
+
+                                                <!-- TAB NOVOS ------------------------------------------------------------------------>
+                                                <div class="tab-pane fade in active" id="tabNovos">
+                                                    <div class="item-box" style="margin-top: 30px;">
+                                                        <ul class="list-group">
+                                                            <li class="list-group-item">
+                                                                <div class="table-responsive">
+                                                                    <div>
+		<table class="grid" cellspacing="0" rules="all" border="1" id="ContentPlaceHolder1_gridNovos" style="width:100%;border-collapse:collapse;">
+			<tr class="grid_header" align="justify">
+				<th scope="col">Concurso</th><th scope="col">Status</th>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=3380A52456F3A4BB&#39;">
+				<td>C&#226;mara de Divisa Nova - Concurso Edital 001/2026<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 06/10/2026 a 08/10/2026&emsp;&emsp;Inscrição: 06/10/2026 a 10/11/2026</p></td><td>Novo</td>
+			</tr>
+		</table>
+	</div>
+                                                                </div>
+                                                            </li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                                <!-- Fim primeiro item-->
+                                                <!-- TAB NOVOS ------------------------------------------------------------------------>
+
+
+                                                <!-- TAB ABERTOS------------------------------------------------------------------------>
+                                                <div class="tab-pane fade" id="tabAbertos">
+                                                    <ul class="list-group">
+                                                        <li class="list-group-item">
+                                                            <div class="table-responsive">
+                                                                <div>
+		<table class="grid" cellspacing="0" rules="all" border="1" id="ContentPlaceHolder1_gridInscricao" style="width:100%;border-collapse:collapse;">
+			<tr>
+				<td colspan="4">Não existe processos com esse status!</td>
+			</tr>
+		</table>
+	</div>
+                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <!-- TAB ABERTOS------------------------------------------------------------------------>
+
+                                                <!-- TAB ANDAMENTO ------------------------------------------------------------------------>
+                                                <div class="tab-pane fade" id="tabAndamento">
+                                                    <ul class="list-group">
+                                                        <li class="list-group-item">
+                                                            <div class="table-responsive">
+                                                                <div>
+		<table class="grid" cellspacing="0" rules="all" border="1" id="ContentPlaceHolder1_gridAndamento" style="width:100%;border-collapse:collapse;">
+			<tr class="grid_header" align="justify">
+				<th scope="col">Concurso</th><th scope="col">Status</th>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=E6C235E9178B7C71&#39;">
+				<td>Prefeitura Municipal de Congonhal - Concurso Edital 001/2026<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 24/06/2026 a 26/06/2026&emsp;&emsp;Inscrição: 24/06/2026 a 31/07/2026</p></td><td>Em andamento</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=7EAE72885521FE7D&#39;">
+				<td>Prefeitura Municipal de Ipatinga - Concurso Edital 001/2026<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 17/06/2026 a 19/06/2026&emsp;&emsp;Inscrição: 17/06/2026 a 17/07/2026</p></td><td>Em andamento</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=F0F3603957EA3AE5&#39;">
+				<td>Prefeitura de S&#227;o Sebasti&#227;o do Para&#237;so - Processo de Certifica&#231;&#227;o de Diretor Escolar<br/><p style='font-size:10px; padding-top:7px;'>Isenção: -&emsp;&emsp;Inscrição: 04/05/2026 a 15/05/2026</p></td><td>Em andamento</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=8A6585119A4A83EC&#39;">
+				<td>Prefeitura de Itabirito - Processo Seletivo Simplificado - Edital 002/2026<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 31/03/2026 a 02/04/2026&emsp;&emsp;Inscrição: 31/03/2026 a 14/04/2026</p></td><td>Em andamento</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=87BE10354C7BEEB2&#39;">
+				<td>Prefeitura de Itabirito - Processo Seletivo Simplificado - Edital 001/2026<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 25/03/2026 a 27/03/2026&emsp;&emsp;Inscrição: 25/03/2026 a 08/04/2026</p></td><td>Em andamento</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=9AEB8AC12F3DD77E&#39;">
+				<td>Prefeitura de S&#227;o Sebasti&#227;o do Para&#237;so - Processo Seletivo Simplificado - Edital 001/2025<br/><p style='font-size:10px; padding-top:7px;'>Isenção: -&emsp;&emsp;Inscrição: 06/10/2025 a 17/10/2025</p></td><td>Em andamento</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=BDCE43755332B5BC&#39;">
+				<td>Prefeitura Municipal de Po&#231;os de Caldas - Concurso Edital 002/2025<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 10/09/2025 a 12/09/2025&emsp;&emsp;Inscrição: 10/09/2025 a 10/10/2025</p></td><td>Em andamento</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=E83FA82DF5EAAF2B&#39;">
+				<td>Prefeitura Municipal de  Marli&#233;ria - Concurso Edital 001/2025<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 18/03/2025 a 20/03/2025&emsp;&emsp;Inscrição: 18/03/2025 a 25/04/2025</p></td><td>Em andamento</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=A134AA9AC7ED2086&#39;">
+				<td>Prefeitura Municipal de Bandeira do Sul - Concurso Edital 001/2024<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 27/11/2024 a 29/11/2024&emsp;&emsp;Inscrição: 27/11/2024 a 10/01/2025</p></td><td>Em andamento</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=24284D441137E645&#39;">
+				<td>Prefeitura Municipal de Muria&#233; - Concurso Edital 001/2024<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 25/03/2024 a 27/03/2024&emsp;&emsp;Inscrição: 25/03/2024 a 26/04/2024</p></td><td>Em andamento</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=A04051344DF0B322&#39;">
+				<td>Prefeitura Municipal de Po&#231;os de Caldas - Concurso Edital 001/2023<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 19/02/2024 a 21/02/2024&emsp;&emsp;Inscrição: 19/02/2024 a 20/03/2024</p></td><td>Em andamento</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=712147295F177AAA&#39;">
+				<td>Prefeitura Municipal de Ipatinga - Concurso Edital 001/2023<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 20/12/2023 a 22/12/2023&emsp;&emsp;Inscrição: 20/12/2023 a 19/01/2024</p></td><td>Em andamento</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=E45E0DBF0092C3B3&#39;">
+				<td>Prefeitura Municipal de Itabirito - Concurso Edital 003/2023 - GERAL<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 27/09/2023 a 28/09/2023&emsp;&emsp;Inscrição: 27/09/2023 a 06/10/2023</p></td><td>Em andamento</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=5191D52FF6BC88D3&#39;">
+				<td>Prefeitura Municipal de Itabirito - Concurso Edital 004/2023 - GUARDA CIVIL<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 16/08/2023 a 18/08/2023&emsp;&emsp;Inscrição: 16/08/2023 a 15/09/2023</p></td><td>Em andamento</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=D8664FF050097EB8&#39;">
+				<td>Prefeitura Municipal de Itabirito - Concurso Edital 002/2023 - SA&#218;DE<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 09/08/2023 a 11/08/2023&emsp;&emsp;Inscrição: 09/08/2023 a 08/09/2023</p></td><td>Em andamento</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=91DAEE5CB5D45912&#39;">
+				<td>Prefeitura Municipal de Itabirito - Concurso Edital 001/2023 - EDUCA&#199;&#195;O<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 31/07/2023 a 02/08/2023&emsp;&emsp;Inscrição: 31/07/2023 a 31/08/2023</p></td><td>Em andamento</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=107E9CCDD6A04D53&#39;">
+				<td>Prefeitura Municipal de Itabirito - Processo Seletivo Edital 001/2023<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 31/07/2023 a 02/08/2023&emsp;&emsp;Inscrição: 31/07/2023 a 31/08/2023</p></td><td>Em andamento</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=CDD7166E592CA911&#39;">
+				<td>Prefeitura de Ipatinga - Concurso Edital 001/2022<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 03/10/2022 a 05/10/2022&emsp;&emsp;Inscrição: 03/10/2022 a 09/11/2022</p></td><td>Em andamento</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=2562881B06604217&#39;">
+				<td>Prefeitura de Arax&#225; - Concurso Edital 001/2022<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 06/06/2022 a 08/06/2022&emsp;&emsp;Inscrição: 06/06/2022 a 08/07/2022</p></td><td>Em andamento</td>
+			</tr>
+		</table>
+	</div>
+                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <!-- TAB ANDAMENTO ------------------------------------------------------------------------>
+
+                                                <!-- TAB CONCLUÍDOS COMO HOMOLOGADOS ------------------------------------------------------------------------>
+                                                <div class="tab-pane fade" id="tabHomologados">
+                                                    <ul class="list-group">
+                                                        <li class="list-group-item">
+                                                            <div class="table-responsive">
+                                                                <div>
+		<table class="grid" cellspacing="0" rules="all" border="1" id="ContentPlaceHolder1_gridConcluidos" style="width:100%;border-collapse:collapse;">
+			<tr class="grid_header" align="justify">
+				<th scope="col">Concurso</th><th scope="col">Status</th>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=9E5F2BEA9B7C411E&#39;">
+				<td>SAAE de Itabirito - Concurso P&#250;blico Edital 001/2023<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 27/09/2023 a 29/09/2023&emsp;&emsp;Inscrição: 27/09/2023 a 27/10/2023</p></td><td>Conclu&#237;do</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=B3EA5703DD5E73E6&#39;">
+				<td>Prefeitura Municipal de Ibiraci - Concurso Edital 002/2023 - CELETISTA<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 04/09/2023 a 06/09/2023&emsp;&emsp;Inscrição: 04/09/2023 a 06/10/2023</p></td><td>Conclu&#237;do</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=AA2532DC8B3C2F53&#39;">
+				<td>Prefeitura de S&#227;o Sebasti&#227;o do Para&#237;so - Processo Seletivo Simplificado - Edital 001/2023<br/><p style='font-size:10px; padding-top:7px;'>Isenção: -&emsp;&emsp;Inscrição: 28/08/2023 a 12/09/2023</p></td><td>Conclu&#237;do</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=2E71DB24C9EA53F0&#39;">
+				<td>Prefeitura Municipal de Ibiraci - Concurso Edital 001/2023 - ESTATUT&#193;RIO<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 16/08/2023 a 18/08/2023&emsp;&emsp;Inscrição: 16/08/2023 a 15/09/2023</p></td><td>Conclu&#237;do</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=50A926257E49129F&#39;">
+				<td>PREFEITURA DE ARCOS - PROCESSO DE CERTIFICA&#199;&#195;O INDICA&#199;&#195;O DE DIRETOR<br/><p style='font-size:10px; padding-top:7px;'>Isenção: -&emsp;&emsp;Inscrição: 09/08/2023 a 23/08/2023</p></td><td>Conclu&#237;do</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=463456CB8CD147C3&#39;">
+				<td>SAAE de Itabirito - Processo Seletivo Simplificado Edital 001/2023<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 31/07/2023 a 02/08/2023&emsp;&emsp;Inscrição: 31/07/2023 a 14/08/2023</p></td><td>Conclu&#237;do</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=2B2130146F1DC309&#39;">
+				<td>Prefeitura de Po&#231;os de Caldas - Processo Seletivo Simplificado - Edital 001/2023<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 24/04/2023 a 25/04/2023&emsp;&emsp;Inscrição: 24/04/2023 a 05/05/2023</p></td><td>Conclu&#237;do</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=795347B1AB82D897&#39;">
+				<td>Prefeitura Municipal Ibiti&#250;ra de Minas - Concurso Edital 001/2022<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 06/03/2023 a 08/03/2023&emsp;&emsp;Inscrição: 06/03/2023 a 05/04/2023</p></td><td>Conclu&#237;do</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=E814278A5482BE89&#39;">
+				<td>ITAURB - Empresa de Desenvolvimento de Itabira Ltda - Processo Seletivo Edital 001/2023<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 16/01/2023 a 18/01/2023&emsp;&emsp;Inscrição: 16/01/2023 a 17/02/2023</p></td><td>Conclu&#237;do</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=50FCF528D36BFB32&#39;">
+				<td>Prefeitura de Delfin&#243;polis - Concurso Edital 001/2022<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 19/12/2022 a 21/12/2022&emsp;&emsp;Inscrição: 19/12/2022 a 20/01/2023</p></td><td>Conclu&#237;do</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=77AE3C40753C56E8&#39;">
+				<td>Prefeitura Municipal Ibiti&#250;ra de Minas - Processo Seletivo 001/2022<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 14/12/2022 a 16/01/2023&emsp;&emsp;Inscrição: 14/12/2022 a 13/01/2023</p></td><td>Conclu&#237;do</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=2C3EA398FEEEF2C6&#39;">
+				<td>Prefeitura Municipal de Tim&#243;teo - Processo Seletivo 009/2022<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 22/11/2022 a 24/11/2022&emsp;&emsp;Inscrição: 22/11/2022 a 22/12/2022</p></td><td>Conclu&#237;do</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=65A1D966C2A0D319&#39;">
+				<td>Prefeitura de Po&#231;os de Caldas - Processo Seletivo Simplificado - Edital 001/2022<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 22/06/2022 a 24/06/2022&emsp;&emsp;Inscrição: 22/06/2022 a 22/07/2022</p></td><td>Conclu&#237;do</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=B04749EF1F6B464B&#39;">
+				<td>C&#226;mara de C&#225;ssia - Concurso Edital 001/2022<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 06/06/2022 a 08/06/2022&emsp;&emsp;Inscrição: 06/06/2022 a 08/07/2022</p></td><td>Conclu&#237;do</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=7EC6534EEB519013&#39;">
+				<td>Prefeitura de C&#225;ssia - Concurso Edital 001/2022<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 11/05/2022 a 13/05/2022&emsp;&emsp;Inscrição: 11/05/2022 a 10/06/2022</p></td><td>Conclu&#237;do</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=6AE715A7D3CE6A56&#39;">
+				<td>Prefeitura de Dores de Campos - Concurso Edital 001/2020<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 24/01/2022 a 26/01/2022&emsp;&emsp;Inscrição: 24/01/2022 a 11/03/2022</p></td><td>Conclu&#237;do</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=849D8786F1B0795F&#39;">
+				<td>Prefeitura de Ipatinga - Processo Seletivo Simplificado - Edital 001/2022<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 19/01/2022 a 21/01/2022&emsp;&emsp;Inscrição: 19/01/2022 a 18/02/2022</p></td><td>Conclu&#237;do</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=1F60198D4C759050&#39;">
+				<td>Prefeitura de Ipatinga - Concurso Edital 001/2020<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 10/11/2021 a 12/11/2021&emsp;&emsp;Inscrição: 10/11/2021 a 17/12/2021</p></td><td>Conclu&#237;do</td>
+			</tr><tr align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=F8C42ED4F6212569&#39;">
+				<td>Prefeitura de Ouro Fino  - Concurso Edital 001/2020<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 01/02/2021 a 03/02/2021&emsp;&emsp;Inscrição: 01/02/2021 a 05/03/2021</p></td><td>Conclu&#237;do</td>
+			</tr><tr class="grid_alternative_row" align="left" onClick="location.href=&#39;processo_seletivo_detalhes.aspx?id=6781D11B20CD2BD8&#39;">
+				<td>Prefeitura de Monte Santo de Minas - Concurso Edital 001/2020<br/><p style='font-size:10px; padding-top:7px;'>Isenção: 20/10/2020 a 30/10/2020&emsp;&emsp;Inscrição: 20/10/2020 a 18/12/2020</p></td><td>Conclu&#237;do</td>
+			</tr><tr class="grid_page">
+				<td colspan="2"><table>
+					<tr>
+						<td><span>1</span></td><td><a href="javascript:__doPostBack(&#39;ctl00$ContentPlaceHolder1$gridConcluidos&#39;,&#39;Page$2&#39;)">2</a></td><td><a href="javascript:__doPostBack(&#39;ctl00$ContentPlaceHolder1$gridConcluidos&#39;,&#39;Page$3&#39;)">3</a></td><td><a href="javascript:__doPostBack(&#39;ctl00$ContentPlaceHolder1$gridConcluidos&#39;,&#39;Page$4&#39;)">4</a></td><td><a href="javascript:__doPostBack(&#39;ctl00$ContentPlaceHolder1$gridConcluidos&#39;,&#39;Page$5&#39;)">5</a></td><td><a href="javascript:__doPostBack(&#39;ctl00$ContentPlaceHolder1$gridConcluidos&#39;,&#39;Page$6&#39;)">6</a></td><td><a href="javascript:__doPostBack(&#39;ctl00$ContentPlaceHolder1$gridConcluidos&#39;,&#39;Page$7&#39;)">7</a></td>
+					</tr>
+				</table></td>
+			</tr>
+		</table>
+	</div>
+                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <!-- TAB CONCLUÍDOS COMO HOMOLOGADOS ------------------------------------------------------------------------>
+
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </section>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Login -->
+            
+            
+            <!-- Login -->
+        
+</div>
+    
+    
+<script type="text/javascript">
+
+    // 1. Função isolada para restaurar a aba visualmente
+    function restaurarAba() {
+        var abaSalva = localStorage.getItem('abaAtivaConcursos');
+        if (abaSalva) {
+            var abas = document.querySelectorAll('.nav-tabs li');
+            for (var i = 0; i < abas.length; i++) { abas[i].classList.remove('active'); }
+
+            var paineis = document.querySelectorAll('.tab-pane');
+            for (var j = 0; j < paineis.length; j++) {
+                paineis[j].classList.remove('active');
+                paineis[j].classList.remove('in');
+            }
+
+            var linkAba = document.querySelector('a[href="' + abaSalva + '"]');
+            if (linkAba) { linkAba.parentElement.classList.add('active'); }
+
+            var painelAtivo = document.querySelector(abaSalva);
+            if (painelAtivo) {
+                painelAtivo.classList.add('active');
+                painelAtivo.classList.add('in');
+            }
+        }
+    }
+
+    // 2. Salva a aba clicada na memória
+    document.addEventListener('click', function (e) {
+        if (e.target && e.target.getAttribute('data-toggle') === 'tab') {
+            localStorage.setItem('abaAtivaConcursos', e.target.getAttribute('href'));
+        }
+    });
+
+    // 3. A NOVA ESTRATÉGIA: Anota a altura da tela O TEMPO TODO na memória (sessionStorage)
+    window.addEventListener('scroll', function () {
+        var alturaAtual = window.scrollY || document.documentElement.scrollTop;
+        sessionStorage.setItem('posicaoScroll', alturaAtual);
+    });
+
+    // 4. Quando a página carrega inteira pela primeira vez (F5)
+    document.addEventListener('DOMContentLoaded', function () {
+        restaurarAba();
+
+        var scrollSalvo = sessionStorage.getItem('posicaoScroll');
+        if (scrollSalvo) {
+            window.scrollTo(0, parseInt(scrollSalvo));
+        }
+    });
+
+    // 5. Quando o UpdatePanel termina de recarregar a Grid (Paginação)
+    if (typeof Sys !== 'undefined' && Sys.WebForms && Sys.WebForms.PageRequestManager) {
+        var prm = Sys.WebForms.PageRequestManager.getInstance();
+
+        prm.add_endRequest(function () {
+            restaurarAba();
+
+            // Lê a altura exata que o usuário estava antes de clicar
+            var scrollSalvo = sessionStorage.getItem('posicaoScroll');
+
+            if (scrollSalvo) {
+                // Pausa de 100 milissegundos: tempo suficiente pro navegador "limpar o quadro e desenhar a tabela nova"
+                setTimeout(function () {
+                    window.scrollTo({
+                        top: parseInt(scrollSalvo),
+                        behavior: 'instant'
+                    });
+                }, 100);
+            }
+        });
+    }
+    </script>
+
+            </div>
+        </div>
+
+        <footer class="page-footerセンター-on-small-only" style="background-color: #f5f5f5; border-top: 1px solid #ddd; padding: 30px 0;">
+            <div class="container">
+                <div class="row">
+                    <div class="col-sm-4 col-xs-12 text-center">
+                        <img src="../imagens/logoImam.svg" style="max-width: 150px; margin-bottom: 20px;" class="img-responsive center-block" />
+                    </div>
+                    <div class="col-sm-4 col-xs-12 text-center-mobile">
+                        <h5>CONTATO</h5>
+                        <span id="lblEndereco" style="display: block; font-size: 12px;">Rua Célia de Souza, 55 Sagrada Família, Belo Horizonte / MG 31030-500</span>
+                        <span id="lblEmailContato" style="display: block; font-size: 12px;">concursos@imam.org.br</span>
+                        <span id="lblTelefone" style="display: block; font-size: 12px;">(31) 3324.7073</span>
+                    </div>
+                    <div class="col-sm-4 col-xs-12 text-center-mobile">
+                        <h5>MENU</h5>
+                        <ul class="list-unstyled">
+                            <li><a href="../sitenoticia/processo_seletivo.aspx">HOME</a></li>
+                            <li><a href="../sitenoticia/Login.aspx">ENTRAR</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    
+<script language="javascript" src="../scripts/web.js"></script><script>document.forms[0].BP_RealOnSubmit = document.forms[0].submit;function BP_OnSubmit(){try {document.forms[0].BP_RealOnSubmit();} catch(e) { }}document.forms[0].submit = BP_OnSubmit;</script></form>
+
+    <script type="text/javascript">
+        function checkEnter(event) {
+            if (event.keyCode === 13) {
+                event.preventDefault();
+                document.getElementById('cmdEntrar').click();
+            }
+        }
+    </script>
+</body>
+</html>

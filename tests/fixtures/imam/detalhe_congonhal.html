@@ -1,0 +1,449 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head id="Head1"><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="author" content="Fusili Tech Art - https://fusi.li" />
+    
+    <script type="text/javascript" src="../scripts/jquery.min.js"></script>
+    <script type="text/javascript" src="../scripts/bootstrap.min.js"></script>
+    
+    <link href="../css/bootstrap.css" rel="stylesheet" type="text/css" /><link href="../css/style.css" type="text/css" rel="stylesheet" /><link href="../css/tabs.css" type="text/css" rel="stylesheet" /><link href="../css/files/tabs.sideways.css" type="text/css" rel="stylesheet" /><link href="../css/files/gridview.css" rel="stylesheet" type="text/css" /><link href="../css/files/jquery.fancybox.css" rel="stylesheet" type="text/css" />
+    <script src="../css/files/jquery.fancybox.pack.js" type="text/javascript"></script>
+    <script src="../css/files/collapse.js" type="text/javascript"></script>
+    <script src="../css/files/mascara.js" type="text/javascript"></script>
+
+    
+
+    <script src="../fancy/jquery-1.8.3.js" type="text/javascript"></script>
+    <script src="../fancy/jquery.fancybox.pack.js" type="text/javascript"></script>
+    <link href="../fancy/jquery.fancybox.css" rel="stylesheet" type="text/css" />
+
+
+    <script type="text/javascript" src="../css/files/bootstrap.min.js"></script>
+    <link href="../css/files/all.css" rel="stylesheet"/>
+    <link href="../css/files/bootstrap.css" rel="stylesheet" type="text/css"/>
+    <link href="../css/files/site.css" type="text/css" rel="stylesheet"/>
+    <link href="../css/files/tabs.css" type="text/css" rel="stylesheet"/>
+    <link href="../css/files/tabs.sideways.css" type="text/css" rel="stylesheet"/>
+    <link href="../css/files/gridview.css" rel="stylesheet" type="text/css"/>
+    <script src="https://use.fontawesome.com/71da6ba67f.js"></script>
+    <script src="../css/files/collapse.js" type="text/javascript"></script>
+    <script src="../css/files/mascara.js" type="text/javascript"></script>
+    <script src="../css/files/browser.js" type="text/javascript"></script>
+
+    <script type="text/javascript">
+        function AbrirComunicado(iIDComunicado) {
+            $.fancybox.open({
+                href: '../sitenoticia/comunicado.aspx?id=' + iIDComunicado,
+                type: 'iframe',
+                width: 650,
+                height: 850,
+                preload: true,
+                padding: 25,
+                autoSize: true
+            });
+            return false;
+        }
+    </script>
+
+     <style type="text/css">
+        .auto-style1 {
+            font-weight: 900;
+            font-size: 12px;
+            color: #777777;
+            text-transform: uppercase;
+            letter-spacing: normal;
+        }
+
+    /* Usamos o ID do controle para garantir que o estilo se aplique apenas a ele */
+    #ContentPlaceHolder1_cmdFazerInscricao:hover {
+        background-color: #0a1b8a !important; /* Um azul um pouco mais claro para o hover */
+        border-color: #0a1b8a !important;
+        transition: 0.3s; /* Deixa a mudança de cor suave */
+    }
+</style>
+
+
+    <style type="text/css">
+        /* MELHORIAS DE RESPONSIVIDADE */
+        .navbar-brand img {
+            max-width: 200px; /* Limita largura no mobile */
+            height: auto !important;
+            transition: 0.3s;
+        }
+        
+        @media (min-width: 768px) {
+            .navbar-brand img { max-width: 300px; }
+        }
+
+        .login-container-flex {
+            display: flex; 
+            flex-wrap: wrap; 
+            align-items: center; 
+            gap: 10px;
+            width: 100%;
+        }
+
+        /* Ajuste para os campos não vazarem */
+        .form-control-xl {
+            width: 100% !important; /* No mobile ocupa tudo */
+            min-width: 0 !important;
+        }
+
+        @media (min-width: 992px) {
+            .form-control-xl { width: auto !important; flex: 1; }
+        }
+
+        .login-head {
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        /* Correção de botões no mobile */
+        @media (max-width: 767px) {
+            .btn-xl { width: 100% !important; margin-bottom: 5px; }
+            .login-section { padding: 10px !important; }
+            .navbar-brand { padding: 15px 5px !important; }
+        }
+    </style>
+<title>
+	IMAM
+</title></head>
+<body>
+    <form method="post" action="./processo_seletivo_detalhes.aspx?id=E6C235E9178B7C71" id="form1">
+<div class="aspNetHidden">
+<input type="hidden" name="__EVENTTARGET" id="__EVENTTARGET" value="" />
+<input type="hidden" name="__EVENTARGUMENT" id="__EVENTARGUMENT" value="" />
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="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" />
+</div>
+
+<script type="text/javascript">
+//<![CDATA[
+var theForm = document.forms['form1'];
+if (!theForm) {
+    theForm = document.form1;
+}
+function __doPostBack(eventTarget, eventArgument) {
+    if (!theForm.onsubmit || (theForm.onsubmit() != false)) {
+        theForm.__EVENTTARGET.value = eventTarget;
+        theForm.__EVENTARGUMENT.value = eventArgument;
+        theForm.submit();
+    }
+}
+//]]>
+</script>
+
+
+<script src="/WebResource.axd?d=pynGkmcFUV13He1Qd6_TZLfM8VrdGBnrHY3Y_pskhN6AC_wsIj0W9zySPi5FCc2WBmUHMTalRaX5MTXyvFBi1g2&amp;t=639190736600000000" type="text/javascript"></script>
+
+
+<script type="text/javascript">
+//<![CDATA[
+var __cultureInfo = {"name":"pt-BR","numberFormat":{"CurrencyDecimalDigits":2,"CurrencyDecimalSeparator":",","IsReadOnly":true,"CurrencyGroupSizes":[3],"NumberGroupSizes":[3],"PercentGroupSizes":[3],"CurrencyGroupSeparator":".","CurrencySymbol":"R$","NaNSymbol":"NaN","CurrencyNegativePattern":1,"NumberNegativePattern":1,"PercentPositivePattern":1,"PercentNegativePattern":1,"NegativeInfinitySymbol":"-∞","NegativeSign":"-","NumberDecimalDigits":2,"NumberDecimalSeparator":",","NumberGroupSeparator":".","CurrencyPositivePattern":0,"PositiveInfinitySymbol":"∞","PositiveSign":"+","PercentDecimalDigits":2,"PercentDecimalSeparator":",","PercentGroupSeparator":".","PercentSymbol":"%","PerMilleSymbol":"‰","NativeDigits":["0","1","2","3","4","5","6","7","8","9"],"DigitSubstitution":1},"dateTimeFormat":{"AMDesignator":"","Calendar":{"MinSupportedDateTime":"\/Date(-62135589600000)\/","MaxSupportedDateTime":"\/Date(253402300799999)\/","AlgorithmType":1,"CalendarType":1,"Eras":[1],"TwoDigitYearMax":2049,"IsReadOnly":true},"DateSeparator":"/","FirstDayOfWeek":0,"CalendarWeekRule":0,"FullDateTimePattern":"dddd, d\u0027 de \u0027MMMM\u0027 de \u0027yyyy HH:mm:ss","LongDatePattern":"dddd, d\u0027 de \u0027MMMM\u0027 de \u0027yyyy","LongTimePattern":"HH:mm:ss","MonthDayPattern":"d \u0027de\u0027 MMMM","PMDesignator":"","RFC1123Pattern":"ddd, dd MMM yyyy HH\u0027:\u0027mm\u0027:\u0027ss \u0027GMT\u0027","ShortDatePattern":"dd/MM/yyyy","ShortTimePattern":"HH:mm","SortableDateTimePattern":"yyyy\u0027-\u0027MM\u0027-\u0027dd\u0027T\u0027HH\u0027:\u0027mm\u0027:\u0027ss","TimeSeparator":":","UniversalSortableDateTimePattern":"yyyy\u0027-\u0027MM\u0027-\u0027dd HH\u0027:\u0027mm\u0027:\u0027ss\u0027Z\u0027","YearMonthPattern":"MMMM\u0027 de \u0027yyyy","AbbreviatedDayNames":["dom","seg","ter","qua","qui","sex","sáb"],"ShortestDayNames":["D","S","T","Q","Q","S","S"],"DayNames":["domingo","segunda-feira","terça-feira","quarta-feira","quinta-feira","sexta-feira","sábado"],"AbbreviatedMonthNames":["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez",""],"MonthNames":["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro",""],"IsReadOnly":true,"NativeCalendarName":"Calendário gregoriano","AbbreviatedMonthGenitiveNames":["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez",""],"MonthGenitiveNames":["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro",""]},"eras":[1,"d.C.",null,0]};//]]>
+</script>
+
+<script src="/ScriptResource.axd?d=uHIkleVeDJf4xS50Krz-yABBs5LaQSreNXn8nKBmqQIVIH_uYOYAusXudDnfHzE8zvIptaXqZc-RQfFMDi7Y8RMcRadVKYWbluJLrjANpDNCZExmf43i695Q4emN-tMwA8tQ9ZANip7Sd6o-fEHB2c14GC8UElK1AE_MSXmGYI41&amp;t=ffffffffbec1863d" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=Jw6tUGWnA15YEa3ai3FadG8aBaDpePWM--10hvBuoqx93zf2o_lZWQKE11boqpK1HWzpFke7kt19O1DJXB7LAuCSbiLgSQ1dNqNmzqhiH_vjir3XPLUhdOO6QC-Wo4YXsD11mgLqgokbcaNDZy4mPv0UtsW5qwY7wtu8fm9fRfo1&amp;t=ffffffffbec1863d" type="text/javascript"></script>
+<script src="../scripts/browser.js" type="text/javascript"></script>
+<div class="aspNetHidden">
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="91F22E30" />
+	<input type="hidden" name="__VIEWSTATEENCRYPTED" id="__VIEWSTATEENCRYPTED" value="" />
+	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="6d3FZaI7iFxB/mqIGIQXaIs4vqiaN8SVOgeGHI8IWpNjKzpnwG61Xq/HwlPuSkI4nt5wjmP8w089vTlg3nGQhVtCK3+R9wxY2AQUSh2uOQusDkWaZLaF2Vags8BF4YqRN7Z6DaaCl5wOAXEHYh6QNlE4A4ps1pMLuM8a4J1EgEE=" />
+</div>
+        <script type="text/javascript">
+//<![CDATA[
+Sys.WebForms.PageRequestManager._initialize('ctl00$ScriptManager2', 'form1', ['tctl00$ContentPlaceHolder1$UpdatePanel1','ContentPlaceHolder1_UpdatePanel1'], [], [], 90, 'ctl00');
+//]]>
+</script>
+
+
+        <header id="header">
+            <nav class="navbar navbar-default" role="navigation" style="border-bottom: 4px solid #a01a1b; margin-bottom:0;">
+                <div class="container-fluid">
+                    <div class="navbar-header">
+                        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                            <span class="sr-only">Toggle navigation</span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                        </button>
+                        <a class="navbar-brand" href="../sitenoticia/processo_seletivo.aspx">
+                            <img src="../imagens/logoImam.svg" alt="IMAM" style="max-height: 80px" />
+                            
+                        </a>
+                    </div>
+
+                    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                        <ul class="nav navbar-nav navbar-right">
+                            <li><a href="../sitenoticia/processo_seletivo.aspx">HOME</a></li>
+                            <li><a href="https://imamconcursos.org.br/" target="_blank">SOBRE</a></li>
+                            <li><a href="https://imamconcursos.org.br/" target="_blank">O QUE FAZEMOS</a></li>
+                            <li>
+                                <a href="https://www.instagram.com/imamconcursos" target="_blank" class="link-social-svg">
+                                    <img src="../imagens/instagram.png" alt="Instagram" style="max-height: 25px" />
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="login-section" style="background-color: #7e2e38; padding: 10px 0;">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="login-container-flex">
+                                <span class="login-head" style="color: white;">ACESSO</span>
+                                
+                                <input name="ctl00$txtEmail" type="text" id="txtEmail" class="form-control form-control-xl" placeholder="CPF ou E-mail" />
+                                <input name="ctl00$txtSenha" type="password" id="txtSenha" class="form-control form-control-xl" placeholder="Senha" onkeydown="checkEnter(event)" />
+                                
+                                <input type="submit" name="ctl00$cmdEntrar" value="Entrar" id="cmdEntrar" class="btn btn-default btn-xl" />
+                                
+                                <a href="../sitenoticia/cadastro_candidato.aspx" class="btn btn-default btn-xl">Cadastre-se</a>
+                                
+                                <div style="display: flex; gap: 5px; flex-grow: 1;">
+                                    <a href="../sitenoticia/reenvio_senha.aspx" class="btn btn-link btn-xs text-white" style="color:white; text-decoration:underline;">Esqueci senha</a>
+                                    <a href="../sitenoticia/reenvio_email.aspx" class="btn btn-link btn-xs text-white" style="color:white; text-decoration:underline;">Esqueci e-mail</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div id="wrapper">
+            <div class="container-fluid" style="padding-top:20px;">
+                
+    <div id="ContentPlaceHolder1_UpdatePanel1">
+	
+
+            <style type="text/css">
+                body {
+                    overflow: auto;
+                }
+            </style>
+
+            <title>IMAM
+</title></head>
+            <body>
+
+                <div class="col-md-7">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h2>
+                                <span id="ContentPlaceHolder1_lblProcesso">PREFEITURA MUNICIPAL DE CONGONHAL - CONCURSO EDITAL 001/2026</span>
+                            </h2>
+                            <div style="padding-left:50px;">
+            <table style="padding-left:90px;">
+                            <tr>
+                                <td rowspan="5" style="width:100PX;">
+                                    <img alt="" src="../imagens/icone-calendario-noticias.png" /></td>
+                                <td align="right"><span class="auto-style1">STATUS:</span><span class="label"><span style="color: rgb(119, 119, 119); font-family: &quot;Titillium Web&quot;; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 900; letter-spacing: normal; orphans: 2; text-align: right; text-indent: 0px; text-transform: uppercase; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px;  text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;"></span></span></td>
+                                <td>
+                <span id="ContentPlaceHolder1_lblStatus" class="sub-label">Em andamento</span>
+
+                                </td>
+                            </tr>
+                            <tr>
+                                <td align="right"><span class="auto-style1">ISENÇÕES:</span><span class="label"><span style="color: rgb(119, 119, 119); font-family: &quot;Titillium Web&quot;; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 900; letter-spacing: normal; orphans: 2; text-align: right; text-indent: 0px; text-transform: uppercase; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px;  text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;"></span></span></td>
+                                <td>
+                <span id="ContentPlaceHolder1_lblIsencao" class="sub-label">24/06/2026 a 26/06/2026</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td align="right"><span class="auto-style1">INSCRIÇÕES:</span><span class="label"><span style="color: rgb(119, 119, 119); font-family: &quot;Titillium Web&quot;; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 900; letter-spacing: normal; orphans: 2; text-align: right; text-indent: 0px; text-transform: uppercase; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px;  text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;"></span></span></td>
+                                <td>
+                <span id="ContentPlaceHolder1_lblInscricao" class="sub-label">24/06/2026 a 31/07/2026</span>
+                                </td>
+                            </tr>
+                            
+                            <tr>
+                                <td align="right"><span class="auto-style1">PROVAS:</span><span class="label"><span style="color: rgb(119, 119, 119); font-family: &quot;Titillium Web&quot;; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 900; letter-spacing: normal; orphans: 2; text-align: right; text-indent: 0px; text-transform: uppercase; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px;  text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;"></span></span></td>
+                                <td>
+                <span id="ContentPlaceHolder1_lblProvas" class="sub-label">-</span>
+
+                                    <tr>
+                                <td align="right"><span class="auto-style1">COMPROVANTE DEFINITIVO INSCRIÇÃO:</span><span class="label"><span style="color: rgb(119, 119, 119); font-family: &quot;Titillium Web&quot;; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 900; letter-spacing: normal; orphans: 2; text-align: right; text-indent: 0px; text-transform: uppercase; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px;  text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;"></span></span></td>
+                                <td>
+                <span id="ContentPlaceHolder1_lblCDI" class="sub-label">21/08/2026 a 30/08/2026</span>
+                                </td>
+                            </tr>
+                                </td>
+                            </tr>
+                        </table>
+                </div>
+                        </div>
+
+                        <div class="btn-subsc">
+                            
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 row-fluid">
+                                <div class="tabbable-panel">
+                                    <div class="tabbable-line">
+                                        <ul class="nav nav-tabs ">
+                                            <li class="active">
+                                                <a href="#tab_default_1" data-toggle="tab" class="tabtitle">Edital e Documentos </a>
+                                            </li>
+                                            <li>
+                                                <a href="#tab_default_2" data-toggle="tab" class="tabtitle">Comunicados </a>
+                                            </li>
+                                        </ul>
+                                        <div class="tab-content">
+                                            <div class="tab-pane active" id="tab_default_1">
+                                                <p>
+                                                    <div>
+		<table class="grid" cellspacing="0" rules="all" border="1" id="ContentPlaceHolder1_gridDocumentosTodos" style="width:80%;border-collapse:collapse;">
+			<tr class="grid_header" align="justify">
+				<th scope="col">Editais e outros Documentos</th><th scope="col">Publica&#231;&#227;o</th><th scope="col">&nbsp;</th>
+			</tr><tr align="left">
+				<td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumento_0" class="grid_link" href="../documentos/GabaritoProvisorioCongonhal90639237584896453006.pdf" target="_blank">Gabarito Provis&#243;rio</a>
+                                                                </td><td class="data_tables">31/08/2026 09:00:00</td><td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumentoPDF_0" class="grid_link" href="../documentos/GabaritoProvisorioCongonhal90639237584896453006.pdf" target="_blank"><img src="../imagens/pdf.gif" alt="Gabarito Provis&amp;#243;rio" /></a>
+                                                                </td>
+			</tr><tr class="grid_alternative_row" align="left">
+				<td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumento_1" class="grid_link" href="../documentos/ResultadoRecursosCondicoesEspeciais90639229257631410904.pdf" target="_blank">Resultado dos recursos contra o indeferimento da solicita&#231;&#227;o de condi&#231;&#245;es especiais para realiza&#231;&#227;o da Prova Objetiva</a>
+                                                                </td><td class="data_tables">25/08/2026 09:30:00</td><td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumentoPDF_1" class="grid_link" href="../documentos/ResultadoRecursosCondicoesEspeciais90639229257631410904.pdf" target="_blank"><img src="../imagens/pdf.gif" alt="Resultado dos recursos contra o indeferimento da solicita&amp;#231;&amp;#227;o de condi&amp;#231;&amp;#245;es especiais para realiza&amp;#231;&amp;#227;o da Prova Objetiva" /></a>
+                                                                </td>
+			</tr><tr align="left">
+				<td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumento_2" class="grid_link" href="../documentos/ResultadoRecursoscontrainscricaoPcD90639232465359549048.pdf" target="_blank">Resultado dos recursos contra o indeferimento da solicita&#231;&#227;o da inscri&#231;&#227;o de pessoa com defici&#234;ncia</a>
+                                                                </td><td class="data_tables">25/08/2026 09:30:00</td><td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumentoPDF_2" class="grid_link" href="../documentos/ResultadoRecursoscontrainscricaoPcD90639232465359549048.pdf" target="_blank"><img src="../imagens/pdf.gif" alt="Resultado dos recursos contra o indeferimento da solicita&amp;#231;&amp;#227;o da inscri&amp;#231;&amp;#227;o de pessoa com defici&amp;#234;ncia" /></a>
+                                                                </td>
+			</tr><tr class="grid_alternative_row" align="left">
+				<td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumento_3" class="grid_link" href="../documentos/RetificacaodoResultadoInscricaoPcD90639232465849317328.pdf" target="_blank">Retifica&#231;&#227;o do Resultado das solicita&#231;&#245;es para concorrer como pessoa com defici&#234;ncia</a>
+                                                                </td><td class="data_tables">25/08/2026 09:30:00</td><td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumentoPDF_3" class="grid_link" href="../documentos/RetificacaodoResultadoInscricaoPcD90639232465849317328.pdf" target="_blank"><img src="../imagens/pdf.gif" alt="Retifica&amp;#231;&amp;#227;o do Resultado das solicita&amp;#231;&amp;#245;es para concorrer como pessoa com defici&amp;#234;ncia" /></a>
+                                                                </td>
+			</tr><tr align="left">
+				<td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumento_4" class="grid_link" href="../documentos/InscritoscomLocaisdeProvaCongonhal90639229090886199784.pdf" target="_blank">Rela&#231;&#227;o de candidatos inscritos com local de prova</a>
+                                                                </td><td class="data_tables">21/08/2026 11:37:00</td><td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumentoPDF_4" class="grid_link" href="../documentos/InscritoscomLocaisdeProvaCongonhal90639229090886199784.pdf" target="_blank"><img src="../imagens/pdf.gif" alt="Rela&amp;#231;&amp;#227;o de candidatos inscritos com local de prova" /></a>
+                                                                </td>
+			</tr><tr class="grid_alternative_row" align="left">
+				<td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumento_5" class="grid_link" href="../documentos/ResultadoCondicoesEspeciais90639223156960861763.pdf" target="_blank">Resultado das solicita&#231;&#245;es de condi&#231;&#245;es especiais para realiza&#231;&#227;o da Prova Objetiva</a>
+                                                                </td><td class="data_tables">17/08/2026 09:00:00</td><td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumentoPDF_5" class="grid_link" href="../documentos/ResultadoCondicoesEspeciais90639223156960861763.pdf" target="_blank"><img src="../imagens/pdf.gif" alt="Resultado das solicita&amp;#231;&amp;#245;es de condi&amp;#231;&amp;#245;es especiais para realiza&amp;#231;&amp;#227;o da Prova Objetiva" /></a>
+                                                                </td>
+			</tr><tr align="left">
+				<td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumento_6" class="grid_link" href="../documentos/ResultadoInscricaoPcD90639223157683401909.pdf" target="_blank">Resultado das solicita&#231;&#245;es para concorrer como pessoa com defici&#234;ncia</a>
+                                                                </td><td class="data_tables">17/08/2026 09:00:00</td><td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumentoPDF_6" class="grid_link" href="../documentos/ResultadoInscricaoPcD90639223157683401909.pdf" target="_blank"><img src="../imagens/pdf.gif" alt="Resultado das solicita&amp;#231;&amp;#245;es para concorrer como pessoa com defici&amp;#234;ncia" /></a>
+                                                                </td>
+			</tr><tr class="grid_alternative_row" align="left">
+				<td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumento_7" class="grid_link" href="../documentos/Resultadorecursoinscricao90639223163855251871.pdf" target="_blank">Resultado dos recursos contra o indeferimento da inscri&#231;&#227;o</a>
+                                                                </td><td class="data_tables">17/08/2026 09:00:00</td><td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumentoPDF_7" class="grid_link" href="../documentos/Resultadorecursoinscricao90639223163855251871.pdf" target="_blank"><img src="../imagens/pdf.gif" alt="Resultado dos recursos contra o indeferimento da inscri&amp;#231;&amp;#227;o" /></a>
+                                                                </td>
+			</tr><tr align="left">
+				<td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumento_8" class="grid_link" href="../documentos/InscricoesDeferidasCongonhal90639215451751392524.pdf" target="_blank">Rela&#231;&#227;o das inscri&#231;&#245;es deferidas</a>
+                                                                </td><td class="data_tables">07/08/2026 09:00:00</td><td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumentoPDF_8" class="grid_link" href="../documentos/InscricoesDeferidasCongonhal90639215451751392524.pdf" target="_blank"><img src="../imagens/pdf.gif" alt="Rela&amp;#231;&amp;#227;o das inscri&amp;#231;&amp;#245;es deferidas" /></a>
+                                                                </td>
+			</tr><tr class="grid_alternative_row" align="left">
+				<td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumento_9" class="grid_link" href="../documentos/ResultadoRecursosPedidosdeIsencao90639207448203365656.pdf" target="_blank">Resultado dos recursos contra o indeferimento dos pedidos de isen&#231;&#227;o</a>
+                                                                </td><td class="data_tables">28/07/2026 09:00:00</td><td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumentoPDF_9" class="grid_link" href="../documentos/ResultadoRecursosPedidosdeIsencao90639207448203365656.pdf" target="_blank"><img src="../imagens/pdf.gif" alt="Resultado dos recursos contra o indeferimento dos pedidos de isen&amp;#231;&amp;#227;o" /></a>
+                                                                </td>
+			</tr><tr align="left">
+				<td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumento_10" class="grid_link" href="../documentos/ResultadoPedidodeIsencao90639198055089584623.pdf" target="_blank">Resultado dos pedidos de isen&#231;&#227;o do valor da taxa de inscri&#231;&#227;o</a>
+                                                                </td><td class="data_tables">17/07/2026 09:00:00</td><td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumentoPDF_10" class="grid_link" href="../documentos/ResultadoPedidodeIsencao90639198055089584623.pdf" target="_blank"><img src="../imagens/pdf.gif" alt="Resultado dos pedidos de isen&amp;#231;&amp;#227;o do valor da taxa de inscri&amp;#231;&amp;#227;o" /></a>
+                                                                </td>
+			</tr><tr class="grid_alternative_row" align="left">
+				<td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumento_11" class="grid_link" href="../documentos/EditalCongonhalConcurso0012026ComAlteracoesRetificacao0190639183216701967514.pdf" target="_blank">Edital com altera&#231;&#245;es da retifica&#231;&#227;o n&#186; 01</a>
+                                                                </td><td class="data_tables">08/06/2026 16:01:00</td><td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumentoPDF_11" class="grid_link" href="../documentos/EditalCongonhalConcurso0012026ComAlteracoesRetificacao0190639183216701967514.pdf" target="_blank"><img src="../imagens/pdf.gif" alt="Edital com altera&amp;#231;&amp;#245;es da retifica&amp;#231;&amp;#227;o n&amp;#186; 01" /></a>
+                                                                </td>
+			</tr><tr align="left">
+				<td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumento_12" class="grid_link" href="../documentos/Retificacao01CongonhalConcurso001202690639165245212534188.pdf" target="_blank">Retifica&#231;&#227;o n&#186; 01</a>
+                                                                </td><td class="data_tables">08/06/2026 16:00:00</td><td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumentoPDF_12" class="grid_link" href="../documentos/Retificacao01CongonhalConcurso001202690639165245212534188.pdf" target="_blank"><img src="../imagens/pdf.gif" alt="Retifica&amp;#231;&amp;#227;o n&amp;#186; 01" /></a>
+                                                                </td>
+			</tr><tr class="grid_alternative_row" align="left">
+				<td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumento_13" class="grid_link" href="../documentos/EditalCongonhalConcurso001202690639149738254293115.pdf" target="_blank">Edital 001/2026</a>
+                                                                </td><td class="data_tables">13/04/2026 16:50:00</td><td>
+                                                                    <a id="ContentPlaceHolder1_gridDocumentosTodos_hypDocumentoPDF_13" class="grid_link" href="../documentos/EditalCongonhalConcurso001202690639149738254293115.pdf" target="_blank"><img src="../imagens/pdf.gif" alt="Edital 001/2026" /></a>
+                                                                </td>
+			</tr>
+		</table>
+	</div>
+                                                </p>
+                                            </div>
+                                            <div class="tab-pane" id="tab_default_2">
+                                                <p>
+                                                    <div>
+		<table class="grid" cellspacing="0" rules="all" border="1" id="ContentPlaceHolder1_grdComunicados" style="width:80%;border-collapse:collapse;">
+			<tr>
+				<td>Não existe comunicados para esse concurso!</td>
+			</tr>
+		</table>
+	</div>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- /.panel-heading -->
+                                <div class="panel-body">
+                                </div>
+                                <!-- /.panel-body -->
+                            </div>
+                        </div>
+        
+</div>
+
+            </div>
+        </div>
+
+        <footer class="page-footerセンター-on-small-only" style="background-color: #f5f5f5; border-top: 1px solid #ddd; padding: 30px 0;">
+            <div class="container">
+                <div class="row">
+                    <div class="col-sm-4 col-xs-12 text-center">
+                        <img src="../imagens/logoImam.svg" style="max-width: 150px; margin-bottom: 20px;" class="img-responsive center-block" />
+                    </div>
+                    <div class="col-sm-4 col-xs-12 text-center-mobile">
+                        <h5>CONTATO</h5>
+                        <span id="lblEndereco" style="display: block; font-size: 12px;">Rua Célia de Souza, 55 Sagrada Família, Belo Horizonte / MG 31030-500</span>
+                        <span id="lblEmailContato" style="display: block; font-size: 12px;">concursos@imam.org.br</span>
+                        <span id="lblTelefone" style="display: block; font-size: 12px;">(31) 3324.7073</span>
+                    </div>
+                    <div class="col-sm-4 col-xs-12 text-center-mobile">
+                        <h5>MENU</h5>
+                        <ul class="list-unstyled">
+                            <li><a href="../sitenoticia/processo_seletivo.aspx">HOME</a></li>
+                            <li><a href="../sitenoticia/Login.aspx">ENTRAR</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </form>
+
+    <script type="text/javascript">
+        function checkEnter(event) {
+            if (event.keyCode === 13) {
+                event.preventDefault();
+                document.getElementById('cmdEntrar').click();
+            }
+        }
+    </script>
+</body>
+</html>
