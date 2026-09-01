@@ -87,7 +87,7 @@ def test_escolher_pdf_edital_lista_vazia_devolve_none():
 
 def test_listar_municipios_wordpress_le_csv_real():
     municipios = wp.listar_municipios_wordpress()
-    assert len(municipios) == 8
+    assert len(municipios) == 11
     nomes = {m.nome for m in municipios}
     assert "Estiva" in nomes
     assert "Ferraz de Vasconcelos" in nomes
