@@ -49,6 +49,16 @@ fonte oficial, não precisa ter o cronograma completo pra ser útil).
 PROMPT_TEMPLATE agora trata isso como padrão aceitável, não motivo de
 rejeição isolado; `orgao` nulo também ganhou fallback determinístico em
 `rodar_instar.py` (nome da prefeitura do município, já conhecido).
+
+Quinto achado, rodando o backfill de 209 vagas Instar contra produção com
+os 4 fixes acima (2026-09-01): ~74% das primeiras dezenas processadas
+ainda foram rejeitadas — motivo real dessa vez: o Gemini julgava o ano do
+edital/vaga (2026) como "data futura implausível", porque seu corte de
+treinamento é anterior à data real de hoje. Rejeitava vaga genuína só por
+isso. Corrigido informando a data de hoje explicitamente no prompt
+(`{data_referencia}`/`{ano_referencia}`, calculados em `decidir_revisao`
+via `datetime.date.today()`), com instrução explícita pra não usar a
+própria noção de "atual" do modelo.
 """
 
 from __future__ import annotations
@@ -56,6 +66,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from datetime import date
 
 import requests
 
@@ -112,6 +123,13 @@ def _chamar_gemini(body: dict, *, chave: str, modelo: str) -> dict:
 PROMPT_TEMPLATE = """Você audita dados extraídos automaticamente sobre uma vaga de concurso \
 público brasileiro, antes dela ficar visível para o usuário final de um site de \
 notificação de vagas.
+
+A data de hoje é {data_referencia}. Use isso como a data real de "agora" — o \
+seu conhecimento de treinamento tem um corte anterior a essa data, então NÃO \
+julgue um ano como "futuro implausível" ou "temporalmente inconsistente" só \
+por ele ser posterior ao que você lembra como data atual. Ano de edital, \
+publicação ou inscrição igual ou posterior a {ano_referencia} é normal e \
+esperado — não é sinal de erro de extração.
 
 Você NÃO tem acesso ao documento original — avalie só a qualidade e \
 consistência interna dos dados abaixo: campos essenciais vazios (cargo \
@@ -191,6 +209,7 @@ def decidir_revisao(
             "motivo": "[revisão automática] GEMINI_API_KEY não configurada.",
         }
     modelo = modelo or quota_gemini.proximo_modelo()
+    hoje = date.today()
 
     body = {
         "contents": [
@@ -198,7 +217,9 @@ def decidir_revisao(
                 "parts": [
                     {
                         "text": PROMPT_TEMPLATE.format(
-                            dados_json=json.dumps(dados, ensure_ascii=False, default=str)
+                            data_referencia=hoje.isoformat(),
+                            ano_referencia=hoje.year,
+                            dados_json=json.dumps(dados, ensure_ascii=False, default=str),
                         )
                     }
                 ]

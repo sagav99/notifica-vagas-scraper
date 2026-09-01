@@ -1,3 +1,5 @@
+from datetime import date
+
 import pytest
 
 from notifica_vagas_scraper import revisao_ia
@@ -131,6 +133,26 @@ def test_503_persistente_esgota_tentativas_e_rejeita(monkeypatch):
     resultado = revisao_ia.decidir_revisao({"cargo": "Enfermeiro"}, api_key="chave-teste")
     assert resultado["decisao"] == "rejeitada"
     assert chamadas["n"] == revisao_ia.TENTATIVAS_MAX
+
+
+def test_prompt_inclui_data_de_hoje_como_referencia(monkeypatch):
+    # Achado real rodando o backfill de 209 vagas Instar em produção
+    # (2026-09-01): o Gemini rejeitava vaga genuína julgando o ano do
+    # edital "futuro implausível" por causa do próprio corte de
+    # treinamento — o prompt agora ancora a data real de hoje.
+    texto = '{"decisao": "aprovada", "motivo": "ok"}'
+    capturado = {}
+
+    def _post(url, params, json, timeout):
+        capturado["prompt"] = json["contents"][0]["parts"][0]["text"]
+        return _RespostaFalsa(_payload_com_texto(texto))
+
+    monkeypatch.setattr(revisao_ia.requests, "post", _post)
+    revisao_ia.decidir_revisao({"cargo": "Enfermeiro"}, api_key="chave-teste")
+
+    hoje = date.today()
+    assert hoje.isoformat() in capturado["prompt"]
+    assert str(hoje.year) in capturado["prompt"]
 
 
 def test_erro_4xx_nao_tenta_de_novo(monkeypatch):
