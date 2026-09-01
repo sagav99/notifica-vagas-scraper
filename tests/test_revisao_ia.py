@@ -2,13 +2,18 @@ from datetime import date
 
 import pytest
 
-from notifica_vagas_scraper import revisao_ia
+from notifica_vagas_scraper import quota_gemini, revisao_ia
 
 
 @pytest.fixture(autouse=True)
 def _sem_espera_real(monkeypatch):
     monkeypatch.setattr(revisao_ia, "_esperar_rate_limit", lambda: None)
     monkeypatch.setattr(revisao_ia.time, "sleep", lambda *_: None)
+    # proximo_modelo() agora consulta o Postgres (quota_gemini.py,
+    # migration 010) -- esses testes não têm DATABASE_URL nem se importam
+    # com qual modelo é escolhido, só com o parsing/decisão da resposta.
+    monkeypatch.setattr(quota_gemini, "proximo_modelo", lambda: quota_gemini.MODELO_PADRAO)
+    monkeypatch.setattr(quota_gemini, "registrar_chamada", lambda: None)
 
 
 class _RespostaFalsa:

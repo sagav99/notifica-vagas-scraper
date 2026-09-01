@@ -1,12 +1,17 @@
 import pytest
 
-from notifica_vagas_scraper import gemini_pdf
+from notifica_vagas_scraper import gemini_pdf, quota_gemini
 
 
 @pytest.fixture(autouse=True)
 def _sem_rate_limit_real(monkeypatch):
     # sem isso, cada teste esperaria de verdade os 4.5s do rate limit
     monkeypatch.setattr(gemini_pdf, "_esperar_rate_limit", lambda: None)
+    # proximo_modelo() agora consulta o Postgres (quota_gemini.py,
+    # migration 010) -- esses testes não têm DATABASE_URL nem se importam
+    # com qual modelo é escolhido, só com o parsing da resposta.
+    monkeypatch.setattr(quota_gemini, "proximo_modelo", lambda: quota_gemini.MODELO_PADRAO)
+    monkeypatch.setattr(quota_gemini, "registrar_chamada", lambda: None)
 
 
 class _RespostaFalsa:

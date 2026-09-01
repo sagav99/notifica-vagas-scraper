@@ -5,51 +5,54 @@ gemini-3.5-flash-lite é 500/dia), trocar pra gemini-3.1-flash-lite, que
 tem cota diária própria e separada — ganha ~470 chamadas/dia extras sem
 estourar limite de nenhum dos dois modelos.
 
-Contador persiste em arquivo (`/tmp`, efêmero por natureza — cada
-execução do cron do GitHub Actions já começa com runner limpo, então não
-precisa de lógica extra pra "resetar à meia-noite" além de comparar a
-data gravada com a data de hoje). Compartilhado entre processos
-diferentes (cada `python scripts/rodar_*.py` é um processo Python novo)
-porque os 3 módulos escrevem no mesmo arquivo — sem isso, cada processo
-recomeçaria a contagem do zero e nunca trocaria de modelo de verdade.
+Contador persiste em `public.gemini_quota_diaria` (migration 010, repo
+principal) — não em arquivo `/tmp` como antes (achado real 2026-09-01,
+TAREFAS.md: arquivo é local por processo, então mais de 1 execução do
+cron no mesmo dia contava cada uma do zero e nunca cruzava o limiar de
+troca de verdade). Incremento via `INSERT ... ON CONFLICT DO UPDATE`
+(upsert atômico do Postgres) — seguro mesmo com processos concorrentes
+escrevendo ao mesmo tempo, sem precisar de lock explícito.
 """
 
 from __future__ import annotations
 
-import json
 import os
 from datetime import date
-from pathlib import Path
 
-CAMINHO_CONTADOR = Path("/tmp/notifica_vagas_gemini_contagem.json")
+import psycopg
+
 LIMITE_ANTES_DE_TROCAR = 470
 
 MODELO_PADRAO = "gemini-3.5-flash-lite"
 MODELO_FALLBACK = "gemini-3.1-flash-lite"
 
 
+def _conectar() -> psycopg.Connection:
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        raise RuntimeError("DATABASE_URL não definida.")
+    return psycopg.connect(database_url)
+
+
 def _ler_contagem_hoje() -> int:
-    if not CAMINHO_CONTADOR.exists():
-        return 0
-    try:
-        dados = json.loads(CAMINHO_CONTADOR.read_text())
-    except (json.JSONDecodeError, OSError):
-        return 0
-    if dados.get("data") != date.today().isoformat():
-        return 0
-    return int(dados.get("contagem", 0))
+    with _conectar() as conn, conn.cursor() as cur:
+        cur.execute(
+            "select contagem from public.gemini_quota_diaria where data = %(hoje)s",
+            {"hoje": date.today()},
+        )
+        linha = cur.fetchone()
+        return linha[0] if linha else 0
 
 
 def proximo_modelo() -> str:
     """Modelo a usar na PRÓXIMA chamada, considerando quantas já foram
-    feitas hoje (somando todos os módulos que usam este rastreador).
+    feitas hoje (somando todos os processos/módulos que usam este
+    rastreador, via a tabela compartilhada).
 
-    `GEMINI_MODELO_FORCADO` (env var) sobrepõe a lógica de contagem —
-    usado quando se sabe, por fora do contador local (que não é
-    compartilhado entre execuções, ver docstring do módulo), que a cota
-    de um modelo já estourou no dia (ex: 429 confirmado numa execução
-    anterior) e não faz sentido esperar o contador local chegar no
-    limiar de novo."""
+    `GEMINI_MODELO_FORCADO` (env var) continua disponível como saída
+    manual — útil quando se sabe, por um sinal fora deste contador (ex:
+    429 confirmado), que a cota já estourou e não faz sentido esperar a
+    contagem chegar no limiar."""
     forcado = os.environ.get("GEMINI_MODELO_FORCADO")
     if forcado:
         return forcado
@@ -62,6 +65,14 @@ def registrar_chamada() -> None:
     por resposta boa). Não conta chamadas ao modelo fallback: cada modelo
     tem cota própria, só rastreamos o consumo do padrão pra saber quando
     trocar."""
-    CAMINHO_CONTADOR.write_text(
-        json.dumps({"data": date.today().isoformat(), "contagem": _ler_contagem_hoje() + 1})
-    )
+    with _conectar() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            insert into public.gemini_quota_diaria (data, contagem)
+            values (%(hoje)s, 1)
+            on conflict (data) do update
+              set contagem = gemini_quota_diaria.contagem + 1
+            """,
+            {"hoje": date.today()},
+        )
+        conn.commit()

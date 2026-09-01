@@ -1,42 +1,92 @@
-import json
+from datetime import date
 
 from notifica_vagas_scraper import quota_gemini
 
 
-def test_sem_arquivo_comeca_no_modelo_padrao(monkeypatch, tmp_path):
-    monkeypatch.setattr(quota_gemini, "CAMINHO_CONTADOR", tmp_path / "contagem.json")
+class _CursorFalso:
+    def __init__(self, tabela: dict):
+        self._tabela = tabela
+        self._ultimo_resultado = None
+
+    def execute(self, sql: str, parametros: dict):
+        hoje = parametros["hoje"]
+        if sql.strip().startswith("select"):
+            contagem = self._tabela.get(hoje)
+            self._ultimo_resultado = (contagem,) if contagem is not None else None
+        elif sql.strip().startswith("insert"):
+            self._tabela[hoje] = self._tabela.get(hoje, 0) + 1
+        else:
+            raise AssertionError(f"SQL inesperado: {sql}")
+
+    def fetchone(self):
+        return self._ultimo_resultado
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class _ConexaoFalsa:
+    def __init__(self, tabela: dict):
+        self._tabela = tabela
+
+    def cursor(self):
+        return _CursorFalso(self._tabela)
+
+    def commit(self):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _instalar_tabela_falsa(monkeypatch, tabela: dict | None = None):
+    tabela = tabela if tabela is not None else {}
+    monkeypatch.setattr(quota_gemini, "_conectar", lambda: _ConexaoFalsa(tabela))
+    return tabela
+
+
+def test_sem_registro_comeca_no_modelo_padrao(monkeypatch):
+    _instalar_tabela_falsa(monkeypatch)
     assert quota_gemini.proximo_modelo() == quota_gemini.MODELO_PADRAO
 
 
-def test_registrar_chamada_incrementa(monkeypatch, tmp_path):
-    caminho = tmp_path / "contagem.json"
-    monkeypatch.setattr(quota_gemini, "CAMINHO_CONTADOR", caminho)
+def test_registrar_chamada_incrementa(monkeypatch):
+    tabela = _instalar_tabela_falsa(monkeypatch)
 
     quota_gemini.registrar_chamada()
     quota_gemini.registrar_chamada()
 
-    dados = json.loads(caminho.read_text())
-    assert dados["contagem"] == 2
+    assert tabela[date.today()] == 2
 
 
-def test_troca_para_fallback_apos_limite(monkeypatch, tmp_path):
-    monkeypatch.setattr(quota_gemini, "CAMINHO_CONTADOR", tmp_path / "contagem.json")
-    for _ in range(quota_gemini.LIMITE_ANTES_DE_TROCAR):
-        quota_gemini.registrar_chamada()
-
+def test_troca_para_fallback_apos_limite(monkeypatch):
+    tabela = _instalar_tabela_falsa(monkeypatch, {date.today(): quota_gemini.LIMITE_ANTES_DE_TROCAR})
     assert quota_gemini.proximo_modelo() == quota_gemini.MODELO_FALLBACK
+    assert tabela[date.today()] == quota_gemini.LIMITE_ANTES_DE_TROCAR
 
 
-def test_dia_diferente_reseta_contagem(monkeypatch, tmp_path):
-    caminho = tmp_path / "contagem.json"
-    caminho.write_text(json.dumps({"data": "2000-01-01", "contagem": 999}))
-    monkeypatch.setattr(quota_gemini, "CAMINHO_CONTADOR", caminho)
-
+def test_dia_diferente_nao_conta(monkeypatch):
+    _instalar_tabela_falsa(monkeypatch, {date(2000, 1, 1): 999})
     assert quota_gemini.proximo_modelo() == quota_gemini.MODELO_PADRAO
 
 
-def test_modelo_forcado_por_env_sobrepoe_contagem(monkeypatch, tmp_path):
-    monkeypatch.setattr(quota_gemini, "CAMINHO_CONTADOR", tmp_path / "contagem.json")
+def test_modelo_forcado_por_env_sobrepoe_contagem(monkeypatch):
+    _instalar_tabela_falsa(monkeypatch)
     monkeypatch.setenv("GEMINI_MODELO_FORCADO", "gemini-3.1-flash-lite")
-
     assert quota_gemini.proximo_modelo() == "gemini-3.1-flash-lite"
+
+
+def test_incremento_e_atomico_via_upsert_concorrente(monkeypatch):
+    # Duas "execuções" concorrentes incrementando a mesma linha -- o
+    # upsert (contagem = contagem + 1 no servidor) não perde incremento
+    # como um read-then-write local perderia sob corrida real.
+    tabela = _instalar_tabela_falsa(monkeypatch)
+    for _ in range(5):
+        quota_gemini.registrar_chamada()
+    assert tabela[date.today()] == 5
