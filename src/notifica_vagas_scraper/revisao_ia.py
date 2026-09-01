@@ -40,7 +40,9 @@ import time
 
 import requests
 
-MODELO_PADRAO = "gemini-3.5-flash-lite"
+from . import quota_gemini
+
+MODELO_PADRAO = quota_gemini.MODELO_PADRAO
 URL_API = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
 INTERVALO_MINIMO_ENTRE_CHAMADAS_S = 4.5  # 15 RPM = 1 a cada 4s; margem de segurança
 TENTATIVAS_MAX = 3
@@ -73,6 +75,8 @@ def _chamar_gemini(body: dict, *, chave: str, modelo: str) -> dict:
             resposta = requests.post(
                 URL_API.format(modelo=modelo), params={"key": chave}, json=body, timeout=60
             )
+            if modelo == quota_gemini.MODELO_PADRAO:
+                quota_gemini.registrar_chamada()
             resposta.raise_for_status()
             return resposta.json()
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
@@ -123,7 +127,7 @@ class ErroRevisaoGemini(Exception):
 
 
 def decidir_revisao(
-    dados: dict, *, api_key: str | None = None, modelo: str = MODELO_PADRAO
+    dados: dict, *, api_key: str | None = None, modelo: str | None = None
 ) -> dict:
     """dados: campos estruturados da vaga (ver
     scripts/revisar_vagas.py:montar_dados_para_revisao).
@@ -132,6 +136,9 @@ def decidir_revisao(
     levanta por resposta ambígua/erro de rede — nesses casos a decisão é
     "rejeitada" com o motivo explicando a falha, para nunca aprovar uma
     vaga sem uma decisão real do Gemini por trás.
+
+    `modelo=None` (padrão) resolve dinamicamente via `quota_gemini`: ver
+    docstring de `gemini_pdf.extrair_vagas_de_pdf`.
     """
     chave = api_key or os.environ.get("GEMINI_API_KEY")
     if not chave:
@@ -139,6 +146,7 @@ def decidir_revisao(
             "decisao": "rejeitada",
             "motivo": "[revisão automática] GEMINI_API_KEY não configurada.",
         }
+    modelo = modelo or quota_gemini.proximo_modelo()
 
     body = {
         "contents": [

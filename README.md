@@ -48,6 +48,17 @@ sem precisar de `supabase-py`). Testes com `pytest`.
   os editais com inscrição aberta automaticamente, extrai vagas, grava.
 - `scripts/rodar_fgv.py` — entrypoint do cron da FGV: percorre a listagem
   paginada, casa contra município, extrai vagas do PDF via Gemini.
+- `src/notifica_vagas_scraper/fontes/instar.py` + `scripts/rodar_instar.py`
+  — entrypoint do cron da plataforma Instar Tecnologia (achado
+  2026-09-01): 230 municípios de MG confirmados
+  (`dados/municipios_instar.csv`) com endpoint JSON de dados abertos de
+  concurso (`/portal/dados-abertos/concursos/<ano>`), sem autenticação.
+  `descricao` de cada item é texto/HTML livre sem estrutura fixa — extrai
+  via Gemini (`gemini_texto.py`), igual FGV faz com PDF.
+- `src/notifica_vagas_scraper/quota_gemini.py` — rastreador de cota
+  diária compartilhado entre gemini_pdf.py/gemini_texto.py/revisao_ia.py:
+  troca de gemini-3.5-flash-lite pra gemini-3.1-flash-lite depois de
+  ~470 chamadas no dia (cota separada, ganha outras ~470/dia).
 - `src/notifica_vagas_scraper/revisao_ia.py` + `scripts/revisar_vagas.py`
   — entrypoint do cron que decide aprovar/rejeitar cada vaga pendente via
   Gemini (1 chamada por vaga, sem humano no loop). Ver

@@ -7,9 +7,10 @@ expõe cargo/salário estruturado).
 
 Modelo: Gemini 3.5 Flash-Lite por decisão explícita do usuário — cota da
 chave usada é 500 requisições/dia, 15 RPM, 250k TPM (bem mais apertada que
-o Flash normal). `_esperar_rate_limit()` garante >=4.5s entre chamadas
-nesse processo pra não estourar as 15 RPM quando o script processa vários
-concursos numa única execução.
+o Flash normal). Troca pra Gemini 3.1 Flash-Lite depois de ~470 chamadas
+no dia (cota diária separada, ver `quota_gemini.py`). `_esperar_rate_limit()`
+garante >=4.5s entre chamadas nesse processo pra não estourar as 15 RPM
+quando o script processa vários concursos numa única execução.
 """
 
 from __future__ import annotations
@@ -22,7 +23,9 @@ import time
 
 import requests
 
-MODELO_PADRAO = "gemini-3.5-flash-lite"
+from . import quota_gemini
+
+MODELO_PADRAO = quota_gemini.MODELO_PADRAO
 URL_API = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
 INTERVALO_MINIMO_ENTRE_CHAMADAS_S = 4.5  # 15 RPM = 1 a cada 4s; margem de segurança
 
@@ -64,14 +67,20 @@ class ErroExtracaoGemini(Exception):
 
 
 def extrair_vagas_de_pdf(
-    pdf_bytes: bytes, *, api_key: str | None = None, modelo: str = MODELO_PADRAO
+    pdf_bytes: bytes, *, api_key: str | None = None, modelo: str | None = None
 ) -> dict:
     """Retorna {"numero_edital", "orgao", "data_publicacao",
     "inscricoes_inicio", "inscricoes_fim", "vagas": [{"cargo", "vagas_qtd",
-    "salario", "requisitos", "carga_horaria"}, ...]} — ver PROMPT."""
+    "salario", "requisitos", "carga_horaria"}, ...]} — ver PROMPT.
+
+    `modelo=None` (padrão) resolve dinamicamente via `quota_gemini`: usa
+    gemini-3.5-flash-lite até ~470 chamadas no dia (entre todos os
+    módulos que chamam Gemini), depois troca pra gemini-3.1-flash-lite
+    (cota diária separada) — decisão do usuário, 2026-09-01."""
     chave = api_key or os.environ.get("GEMINI_API_KEY")
     if not chave:
         raise ErroExtracaoGemini("GEMINI_API_KEY não definida.")
+    modelo = modelo or quota_gemini.proximo_modelo()
 
     body = {
         "contents": [
@@ -94,6 +103,8 @@ def extrair_vagas_de_pdf(
     resposta = requests.post(
         URL_API.format(modelo=modelo), params={"key": chave}, json=body, timeout=90
     )
+    if modelo == quota_gemini.MODELO_PADRAO:
+        quota_gemini.registrar_chamada()
     resposta.raise_for_status()
     dados = resposta.json()
 

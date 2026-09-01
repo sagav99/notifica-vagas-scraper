@@ -12,7 +12,10 @@ on:
 jobs:
   coletar:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 30min -> 60min ao somar o step Instar (230 municípios) + revisão
+    # automática (pode envolver bastante chamada ao Gemini com rate limit
+    # de 4,5s cada) — commit por item torna seguro cortar no meio.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -46,6 +49,13 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_fgv.py
+
+      - name: Rodar coleta (Instar)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/rodar_instar.py
 
       - name: Revisar vagas pendentes (Gemini, automático)
         if: always()
