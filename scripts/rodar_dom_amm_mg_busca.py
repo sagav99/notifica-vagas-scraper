@@ -6,10 +6,14 @@ manual (`fontes_conhecidas.MATERIAS_DOM_AMM_MG`, 1 município só).
 
 Mecanismo (ver `fontes/sigpub_busca.py` e
 docs/fixtures/dom_amm_mg/busca_resultado_*.html no repo principal):
-1 GET pra pegar o token CSRF da sessão, depois 1 GET de busca avançada por
-entidade × termo. Sem Gemini nesta etapa — dom_amm_mg.parsear_materia já é
-extração determinística (regex/HTML), o Gemini só entra na revisão
-automática (revisar_vagas.py), igual toda outra fonte.
+1 GET pra pegar o token CSRF de sessão nova, depois 1 GET de busca
+avançada por termo — **token/sessão novos a cada entidade** (achado
+real, ver docstring de `processar_entidade`: reaproveitar 1 sessão pra
+todas as 161 entidades passa a devolver 0 resultado silenciosamente
+depois de alguns minutos de execução real). Sem Gemini nesta etapa —
+dom_amm_mg.parsear_materia já é extração determinística (regex/HTML), o
+Gemini só entra na revisão automática (revisar_vagas.py), igual toda
+outra fonte.
 
 Uso: python scripts/rodar_dom_amm_mg_busca.py
 Requer DATABASE_URL no ambiente.
@@ -71,7 +75,22 @@ def processar_materia(conn, fonte_id: int, codigo_ibge: int, url_materia: str) -
     return total
 
 
-def processar_entidade(conn, session: requests.Session, token: str, fonte_id: int, entidade: dom_amm_mg.EntidadeAmmMg) -> int:
+def processar_entidade(conn, fonte_id: int, entidade: dom_amm_mg.EntidadeAmmMg) -> int:
+    """Sessão e token novos por entidade — achado real rodando o backfill
+    completo em produção (2026-09-01): um token/sessão único reaproveitado
+    pra todas as 161 entidades funcionou nas primeiras (smoke test com 3)
+    mas, no lote inteiro (~15-20min de execução real), passou a devolver
+    0 resultado silenciosamente a partir de um certo ponto — mesmo pra
+    Pedra Dourada, que tinha resultado real confirmado minutos antes.
+    Sessão/token têm validade por tempo (não só por sessão em si, ver
+    docstring de sigpub_busca.obter_token) — pedir de novo por entidade é
+    mais requisições, mas elimina essa classe de falha silenciosa."""
+    session = requests.Session()
+    token = sigpub_busca.obter_token(session, dom_amm_mg.CAMINHO_PESQUISAR)
+    if not token:
+        print("    aviso: não obteve token pra esta entidade, pulando.")
+        return 0
+
     hoje = date.today()
     total = 0
     codigos_ja_processados: set[str] = set()
@@ -109,18 +128,13 @@ def main() -> None:
 
         fonte_id = db.upsert_fonte(conn, nome=FONTE_NOME, url=FONTE_URL, tipo="oficial", uf="MG")
 
-        session = requests.Session()
-        token = sigpub_busca.obter_token(session, dom_amm_mg.CAMINHO_PESQUISAR)
-        if not token:
-            raise RuntimeError("Não foi possível obter o token de busca do AMM-MG.")
-
         total_geral = 0
         for entidade in entidades:
             print(f"Processando {entidade.nome}/{entidade.uf} (entidade {entidade.entidade_id})...")
             try:
                 # savepoint por entidade: erro numa não derruba o lote inteiro.
                 with conn.transaction():
-                    total_geral += processar_entidade(conn, session, token, fonte_id, entidade)
+                    total_geral += processar_entidade(conn, fonte_id, entidade)
             except Exception as exc:  # nunca deixar 1 entidade derrubar o lote inteiro
                 print(f"  ERRO processando {entidade.nome}/{entidade.uf}: {exc}")
 
