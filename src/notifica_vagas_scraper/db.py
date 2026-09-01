@@ -196,3 +196,68 @@ def inserir_vaga_com_evidencia(
         evidencia_row = cur.fetchone()
 
     return {"vaga_id": vaga_id, "evidencia_id": evidencia_row[0] if evidencia_row else None}
+
+
+def listar_vagas_pendentes(conn: psycopg.Connection) -> list[dict[str, Any]]:
+    """Vagas com revisao_status='pendente', com dados de município e
+    evidências — usado pela revisão automática via Gemini
+    (revisao_ia.py + scripts/revisar_vagas.py)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            select v.id, v.orgao, v.cargo, v.salario, v.numero_edital,
+                   v.data_publicacao, v.inscricoes_inicio, v.inscricoes_fim,
+                   v.status, v.resumo, m.nome, m.uf
+            from public.vagas v
+            join public.municipios m on m.codigo_ibge = v.municipio_id
+            where v.revisao_status = 'pendente'
+            order by v.detectada_em
+            """
+        )
+        colunas = [
+            "id", "orgao", "cargo", "salario", "numero_edital", "data_publicacao",
+            "inscricoes_inicio", "inscricoes_fim", "status", "resumo",
+            "municipio_nome", "municipio_uf",
+        ]
+        vagas = [dict(zip(colunas, row)) for row in cur.fetchall()]
+
+    with conn.cursor() as cur:
+        for vaga in vagas:
+            cur.execute(
+                """
+                select ve.url, ve.tipo_documento, ve.texto_extraido, f.nome
+                from public.vaga_evidencias ve
+                join public.fontes f on f.id = ve.fonte_id
+                where ve.vaga_id = %(vaga_id)s
+                """,
+                {"vaga_id": vaga["id"]},
+            )
+            vaga["evidencias"] = [
+                {"url": row[0], "tipo_documento": row[1], "texto_extraido": row[2], "fonte": row[3]}
+                for row in cur.fetchall()
+            ]
+    return vagas
+
+
+def aplicar_revisao(conn: psycopg.Connection, *, vaga_id: str, decisao: str, motivo: str) -> None:
+    """Grava o resultado da revisão automática via Gemini: revisao_status,
+    revisao_motivo, revisado_em; revisado_por fica NULL (sem humano — ver
+    docs/revisao_automatica_gemini.md no repo principal). Marca toda
+    evidência da vaga como verificado_por_ia=true — o Gemini avaliou os
+    dados extraídos de todas elas nesta mesma chamada."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            update public.vagas
+            set revisao_status = %(decisao)s,
+                revisao_motivo = %(motivo)s,
+                revisado_em = now(),
+                revisado_por = null
+            where id = %(vaga_id)s
+            """,
+            {"decisao": decisao, "motivo": motivo, "vaga_id": vaga_id},
+        )
+        cur.execute(
+            "update public.vaga_evidencias set verificado_por_ia = true where vaga_id = %(vaga_id)s",
+            {"vaga_id": vaga_id},
+        )

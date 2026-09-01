@@ -48,6 +48,10 @@ sem precisar de `supabase-py`). Testes com `pytest`.
   os editais com inscrição aberta automaticamente, extrai vagas, grava.
 - `scripts/rodar_fgv.py` — entrypoint do cron da FGV: percorre a listagem
   paginada, casa contra município, extrai vagas do PDF via Gemini.
+- `src/notifica_vagas_scraper/revisao_ia.py` + `scripts/revisar_vagas.py`
+  — entrypoint do cron que decide aprovar/rejeitar cada vaga pendente via
+  Gemini (1 chamada por vaga, sem humano no loop). Ver
+  `docs/revisao_automatica_gemini.md` no repo principal.
 - `scripts/importar_municipios.py` / `importar_municipios_ibge.py` —
   upsert em lote do catálogo de municípios (CSV ou API do IBGE →
   `public.municipios`).
