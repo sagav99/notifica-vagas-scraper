@@ -38,7 +38,17 @@ FONTE_NOME = "Diário Oficial dos Municípios Mineiros (AMM-MG)"
 FONTE_URL = "https://www.diariomunicipal.com.br/amm-mg/"
 TERMOS_BUSCA = ("concurso público", "processo seletivo")
 JANELA_DIAS = 90
-INTERVALO_ENTRE_BUSCAS_S = 1.5  # boa cidadania, não é API com cota — só HTTP simples
+INTERVALO_ENTRE_BUSCAS_S = 3.0  # 1.5s disparou throttling silencioso do servidor sob carga sustentada (ver verificar_canario)
+
+# Canário: entidade com matéria real confirmada manualmente (Pedra Dourada,
+# ver docs/fixtures/dom_amm_mg/ no repo principal), usado pra detectar
+# throttling silencioso do servidor (ver verificar_canario). CAVEAT: só
+# vale enquanto essa matéria (2026-07-08) estiver dentro de JANELA_DIAS —
+# válido até ~2026-10-08; depois disso, trocar por outro caso confirmado
+# se a checagem começar a falhar por motivo legítimo, não throttling.
+CANARIO_ENTIDADE_ID = "273955"
+CANARIO_TERMO = "processo seletivo"
+CANARIO_A_CADA_N_ENTIDADES = 15
 
 
 def processar_materia(conn, fonte_id: int, codigo_ibge: int, url_materia: str) -> int:
@@ -120,6 +130,36 @@ def processar_entidade(conn, fonte_id: int, entidade: dom_amm_mg.EntidadeAmmMg) 
     return total
 
 
+def verificar_canario() -> bool:
+    """Confirma que o mecanismo de busca ainda funciona de verdade,
+    checando `CANARIO_ENTIDADE_ID` (resultado real conhecido) com sessão/
+    token totalmente novos. Achado real (2026-09-01): sob carga
+    sustentada (~100 entidades numa única execução), a busca passa a
+    devolver 0 resultado silenciosamente — sem erro HTTP, sem exceção —
+    e volta a funcionar normalmente assim que a carga do processo para
+    (confirmado: nova sessão isolada, mesma máquina, funciona na hora
+    depois de interromper o lote) — sinal de throttling do servidor, não
+    token expirado (testado: mesmo token/sessão aguentou 16min de uso
+    espaçado sem falhar) nem bloqueio de IP (persistiria mesmo parado).
+    Sem essa checagem, o script "terminava com sucesso" sem achar
+    nenhuma vaga — falso negativo silencioso pior que um erro visível."""
+    hoje = date.today()
+    sessao = requests.Session()
+    token = sigpub_busca.obter_token(sessao, dom_amm_mg.CAMINHO_PESQUISAR)
+    if not token:
+        return False
+    html = sigpub_busca.buscar(
+        sessao,
+        caminho_pesquisar=dom_amm_mg.CAMINHO_PESQUISAR,
+        token=token,
+        entidade_id=CANARIO_ENTIDADE_ID,
+        termo=CANARIO_TERMO,
+        data_inicio=hoje - timedelta(days=JANELA_DIAS),
+        data_fim=hoje,
+    )
+    return len(sigpub_busca.parsear_resultados(html)) > 0
+
+
 def main() -> None:
     conn = db.conectar()
     try:
@@ -127,18 +167,35 @@ def main() -> None:
         print(f"{len(entidades)} entidade(s) AMM-MG confirmada(s).")
 
         fonte_id = db.upsert_fonte(conn, nome=FONTE_NOME, url=FONTE_URL, tipo="oficial", uf="MG")
+        conn.commit()
+
+        if not verificar_canario():
+            raise RuntimeError(
+                "Canário inicial falhou — mecanismo de busca do AMM-MG não "
+                "está respondendo com resultado real conhecido. Abortando "
+                "antes de processar qualquer entidade."
+            )
 
         total_geral = 0
-        for entidade in entidades:
+        for indice, entidade in enumerate(entidades, start=1):
             print(f"Processando {entidade.nome}/{entidade.uf} (entidade {entidade.entidade_id})...")
             try:
                 # savepoint por entidade: erro numa não derruba o lote inteiro.
                 with conn.transaction():
                     total_geral += processar_entidade(conn, fonte_id, entidade)
+                conn.commit()  # por entidade — preserva o que já foi achado se abortar no meio
             except Exception as exc:  # nunca deixar 1 entidade derrubar o lote inteiro
                 print(f"  ERRO processando {entidade.nome}/{entidade.uf}: {exc}")
 
-        conn.commit()
+            if indice % CANARIO_A_CADA_N_ENTIDADES == 0 and indice < len(entidades):
+                if not verificar_canario():
+                    raise RuntimeError(
+                        f"Canário falhou depois de {indice}/{len(entidades)} entidades "
+                        "— mecanismo de busca parou de responder com resultado real "
+                        "(provável throttling do servidor). Abortando o resto do lote; "
+                        f"{total_geral} vaga(s) já processada(s) até aqui ficam preservadas."
+                    )
+
         print(f"\nOk. {total_geral} vaga(s) processada(s).")
     except Exception:
         conn.rollback()
