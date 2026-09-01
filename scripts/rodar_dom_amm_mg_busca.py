@@ -259,4 +259,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    with db.rastrear_execucao("rodar_dom_amm_mg_busca.py"):
+        main()

@@ -9,9 +9,11 @@ necessário aqui, só psycopg.
 from __future__ import annotations
 
 import os
-from datetime import date
+import traceback
+from contextlib import contextmanager
+from datetime import date, datetime, timezone
 from decimal import Decimal
-from typing import Any
+from typing import Any, Iterator
 
 import psycopg
 
@@ -261,3 +263,41 @@ def aplicar_revisao(conn: psycopg.Connection, *, vaga_id: str, decisao: str, mot
             "update public.vaga_evidencias set verificado_por_ia = true where vaga_id = %(vaga_id)s",
             {"vaga_id": vaga_id},
         )
+
+
+def _gravar_execucao(
+    script: str, *, iniciado_em: datetime, status: str, detalhe: str | None
+) -> None:
+    with conectar() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            insert into public.execucoes_scraper (script, iniciado_em, status, detalhe)
+            values (%(script)s, %(iniciado_em)s, %(status)s, %(detalhe)s)
+            """,
+            {"script": script, "iniciado_em": iniciado_em, "status": status, "detalhe": detalhe},
+        )
+        conn.commit()
+
+
+@contextmanager
+def rastrear_execucao(script: str) -> Iterator[None]:
+    """Registra em `public.execucoes_scraper` o resultado de rodar um
+    `scripts/rodar_*.py`/`revisar_vagas.py` inteiro — resolve item
+    pendente do TAREFAS.md ("Acompanhar falhas de monitoramento"): antes
+    disso, uma falha (ex: canário do DOM/AMM-MG abortando por
+    throttling, timeout do IMESO no IBGE) só existia no log do GitHub
+    Actions, sem histórico consultável.
+
+    Uso: `with db.rastrear_execucao("rodar_instar.py"): ...corpo do
+    main()...`. Grava "sucesso" se o bloco terminar sem levantar,
+    "falha" com o traceback (truncado) se levantar — e sempre relança a
+    exceção original, nunca a engole (quem chama continua decidindo o
+    que fazer com a falha, ex: não derrubar os outros steps do cron)."""
+    inicio = datetime.now(timezone.utc)
+    try:
+        yield
+    except Exception:
+        _gravar_execucao(script, iniciado_em=inicio, status="falha", detalhe=traceback.format_exc()[-4000:])
+        raise
+    else:
+        _gravar_execucao(script, iniciado_em=inicio, status="sucesso", detalhe=None)

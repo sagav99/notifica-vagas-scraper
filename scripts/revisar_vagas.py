@@ -85,4 +85,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    with db.rastrear_execucao("revisar_vagas.py"):
+        main()
