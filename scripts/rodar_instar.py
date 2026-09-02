@@ -29,6 +29,36 @@ USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com
 FONTE_TIPO = "oficial"
 DESCRICAO_MAX_CHARS = 8000
 
+#: prioridade do produto é saúde/médicos (ver TAREFAS.md, decisão do
+#: usuário 2026-09-01) — achado real na mesma data: a cota diária do
+#: Gemini estourou no meio do lote (ordem alfabética simples) e municípios
+#: com vaga de médico real de verdade (Carmo do Rio Claro, Guaraciama,
+#: Varginha) ficaram de fora até o próximo ciclo. Processar município com
+#: sinal de saúde primeiro garante que, se a cota estourar nesta execução,
+#: o prejuízo caia nos itens de menor prioridade, não nos de médico.
+PALAVRAS_SAUDE = (
+    "medic",
+    "médic",
+    "enfermeir",
+    "saude",
+    "saúde",
+    "odont",
+    "fisioterap",
+    "psicolog",
+    "nutricion",
+    "farmaceut",
+    "farmac",
+    "fonoaudiolog",
+)
+
+
+def _tem_sinal_saude(itens: list[dict]) -> bool:
+    for item in itens:
+        texto = ((item.get("titulo") or "") + " " + (item.get("descricao") or "")).lower()
+        if any(palavra in texto for palavra in PALAVRAS_SAUDE):
+            return True
+    return False
+
 
 def _parsear_data_iso(texto: str | None) -> date | None:
     if not texto:
@@ -64,15 +94,7 @@ def buscar_json_concursos(url_prefeitura: str, ano: int) -> dict | None:
         return None
 
 
-def processar_municipio(conn, municipio: instar.MunicipioInstar) -> int:
-    payload = buscar_json_concursos(municipio.url_prefeitura, datetime.now().year)
-    if payload is None:
-        return 0
-
-    itens = instar.listar_itens_abertos(payload)
-    if not itens:
-        return 0
-
+def processar_municipio(conn, municipio: instar.MunicipioInstar, itens: list[dict]) -> int:
     codigo_ibge = municipio.codigo_ibge
     fonte_id = db.upsert_fonte(
         conn,
@@ -149,14 +171,33 @@ def main() -> None:
         municipios = instar.listar_municipios_instar()
         print(f"{len(municipios)} município(s) com plataforma Instar confirmada.")
 
-        total_geral = 0
+        # 1ª passada: só busca o JSON público (sem chamar Gemini) pra poder
+        # priorizar quem tem sinal de saúde antes de gastar cota — ver
+        # PALAVRAS_SAUDE acima.
+        trabalho: list[tuple[instar.MunicipioInstar, list[dict]]] = []
         for municipio in municipios:
+            payload = buscar_json_concursos(municipio.url_prefeitura, datetime.now().year)
+            if payload is None:
+                continue
+            itens = instar.listar_itens_abertos(payload)
+            if itens:
+                trabalho.append((municipio, itens))
+
+        trabalho.sort(key=lambda par: not _tem_sinal_saude(par[1]))
+        com_sinal_saude = sum(1 for _, itens in trabalho if _tem_sinal_saude(itens))
+        print(
+            f"{len(trabalho)} município(s) com processo aberto "
+            f"({com_sinal_saude} com sinal de saúde, processados primeiro)."
+        )
+
+        total_geral = 0
+        for municipio, itens in trabalho:
             print(f"Processando {municipio.nome}/{municipio.uf}...")
             try:
                 # savepoint por município: erro num município não deixa a
                 # transação inteira do lote em estado abortado pros próximos.
                 with conn.transaction():
-                    total_geral += processar_municipio(conn, municipio)
+                    total_geral += processar_municipio(conn, municipio, itens)
             except Exception as exc:  # nunca deixar 1 município derrubar o lote inteiro
                 print(f"  ERRO processando {municipio.nome}/{municipio.uf}: {exc}")
 

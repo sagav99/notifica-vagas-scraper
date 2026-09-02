@@ -56,13 +56,6 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_fgv.py
 
-      - name: Rodar coleta (Instar)
-        if: always()
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/rodar_instar.py
-
       - name: Rodar coleta (Actcon)
         if: always()
         env:
@@ -97,6 +90,21 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_access.py
+
+      # Instar por último entre as coletas: é de longe a maior consumidora
+      # de cota do Gemini (231 municípios, até ~800 itens "aberto" numa
+      # execução só) — achado real 2026-09-01, a cota estourou no meio
+      # dela e derrubou município com vaga de médico real. Rodar por
+      # último aqui protege as fontes menores acima (garantidamente
+      # processadas antes de qualquer risco de 429); o próprio
+      # rodar_instar.py já prioriza internamente sinal de saúde primeiro
+      # pra minimizar o dano se a cota estourar dentro dela mesma.
+      - name: Rodar coleta (Instar)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/rodar_instar.py
 
       - name: Revisar vagas pendentes (Gemini, automático)
         if: always()
