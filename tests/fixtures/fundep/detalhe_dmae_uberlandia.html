@@ -1,0 +1,853 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+                    <meta charset="iso-8859-1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Sistema de Gerenciamento de Concursos</title>
+    <meta name="description" content="" />
+    <meta name="keywords" content="Processos seletivos, concursos pï¿½blicos, vestibular" />
+    <meta name="author" content="Impacta Soluï¿½ï¿½es Web | Software ProSeleta" /> 
+        <link rel="shortcut icon" href="/uploads/590/configs/782390af30c2662ba69f3c49371a644c.png" type="image/x-icon">
+    <link rel="icon" href="/uploads/590/configs/782390af30c2662ba69f3c49371a644c.png" type="image/x-icon">
+        
+
+    <script src="//static-cdn.selecao.net.br/static/js/jquery-2.1.3.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery-ui-1.11.2.custom/jquery-ui.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/php.default.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.maskedinput.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.price_format.2.0.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.validate.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.validate.extra.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/util.js?ver=202005101713"></script>
+
+    
+            <script src="https://use.fontawesome.com/c280e19625.js"></script>
+    
+    <!-- jQuery UI -->
+    <link rel="stylesheet" media="screen" href="//static-cdn.selecao.net.br/static/js/jquery-ui-1.11.2.custom/jquery-ui.min.css" /> 
+
+    <link href='//fonts.googleapis.com/css?family=Exo+2:700,500italic,400,500,200italic,800,200,700italic,300italic,600italic,600,300,800italic,400italic' rel='stylesheet' type='text/css'>
+    <link type="text/css" media="screen" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/site.css?ver=202607031200" />     <link type="text/css" media="all" rel="stylesheet" href="//static-cdn.selecao.net.br/static/texto.css" />
+    <link type="text/css" media="print" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/imprimir.css" />
+    <link type="text/css" media="screen" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/responsivo.css?ver=202609011400" />
+
+            <link type="text/css" media="all" rel="stylesheet" href="//static-cdn.selecao.net.br/static/clientes/fundep.selecao.net.br/site.css?ver=202606241618" />
+    
+    
+          <!-- Google tag (gtag.js) -->
+            <script async src="https://www.googletagmanager.com/gtag/js?id=G-13PDJ2FXPF"></script>
+      <script>
+          
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          
+          gtag('config', 'G-13PDJ2FXPF');
+      </script>
+      
+        
+        
+    
+    
+    <link type="text/css" media="screen" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/govbr.css?ver=202307251410" /> 
+    <!-- Rybena -->
+            <script type="text/javascript" src="https://cdn.rybena.com.br/dom/master/latest/rybena.js?positionPlayer=right&positionBar=right">
+            window.addEventListener('message', event => {
+                if (event.data.theme === 'dark') {
+                    document.documentElement.classList.toString().includes('dark') ? null :
+                        document.getElementsByClassName("toggle-color-mode-button")[0].click()
+                }
+                if (event.data.theme === 'light') {
+                    document.documentElement.classList.toString().includes('dark') ?
+                        document.getElementsByClassName("toggle-color-mode-button")[0].click() : null
+                }
+            });
+        </script>
+    </head>
+<body class="concurso63">
+    
+    
+<header id="TopoMobile">
+
+    <div class="logo-wrapper">
+        <a href="https://gestaodeconcursos.com.br/">
+            <img src="//static-cdn.selecao.net.br/uploads/590/configs/bde243debcda60e9d2ea960b67ff2b96.png"
+                alt="Sistema de Gerenciamento de Concursos" class="logo" style="max-height: 115px"/>
+        </a>
+    </div>
+
+    <div class="menu-fix-clear" id="menuMobileWrapper">
+        <ul class="menu-wrapper">
+            
+                     <form action="/login/logar/" method="post" autocomplete="off" class="form-top">
+        <input name="foilautofill"
+               autocomplete="new-password"
+               style="display: none;" type="password" />             <h3 class="menu-title">Acessar Área do Candidato:</h3>
+            <input type="text" name="login" id="tl-login" value="" class="texto mascara cpf item" placeholder="CPF"/>
+
+            <input autocomplete="new-password"  type="password" name="senha" id="tl-senha" value="" class="texto item" placeholder="Senha"/>
+
+            <button type="submit" class="login-top-btn item">Entrar</button>
+
+                    <a href="/login/esqueci/" class="esqueci-mobile">Esqueci a minha senha</a>
+            </form>                
+
+                <h3 class="menu-title">Menu:</h3>
+                <li class="menu-item">
+                    <a href="https://gestaodeconcursos.com.br/">Início</a>
+                </li>
+                
+                
+                            
+                        <div id="menuMobileCategorias">
+
+            </div>
+
+            
+            <form action="/index/todos/" name="formBuscaConcurso" method="get" class="barra-pesquisa-wrapper">
+                <h3 class="menu-title">Busca:</h3>
+                <input type="text" name="busca" placeholder="Busca..." class="texto search">
+                <button type="submit" class="button">Buscar</button>
+            </form>
+
+
+        </ul>
+    </div>
+
+    <div class="menu-btn-container" id="menu-mobile">
+        <h3 class="menu-indicador">Menu</h3>
+        <button class="btn-wrapper">
+            <i></i>
+            <i></i>
+            <i></i>
+        </button>
+    </div>
+</header>
+<div id="Topo" class="naoimprimir">
+
+    <div class="Conteudo">
+
+        <div id="Logo">
+            <h1><a href="https://gestaodeconcursos.com.br/"><img src="//static-cdn.selecao.net.br/static/clientes/fundep.selecao.net.br/fundep-logo-white2.png"
+                        alt="Sistema de Gerenciamento de Concursos" /></a></h1>
+        </div>
+
+        <div id="DadosEmpresa">
+            <p><b>Sistema de Gerenciamento de Concursos</b></p>
+            <p class="contatos"></p>
+                    </div>
+
+        <div id="TopLogin" class="">
+
+                            <h3><span></span>Área do Candidato</h3>
+                                    <form action="/integracoes/fundep/login" method="post" autocomplete="off" novalidate="novalidate">
+                        <input name="foilautofill" style="display: none;" type="password" />                         <div class="item">
+                            <label for="tl-login">CPF</label>
+                            <input type="text" autocomplete="new-password" name="cpf" id="tl-login" value=""
+                                class="texto mascara cpf" />
+                        </div>
+                        <div class="item">
+                            <label for="tl-senha">Senha</label>
+                            <input autocomplete="new-password" type="password" name="senha" id="tl-senha" value=""
+                                class="texto" />
+                        </div>
+                        <input type="hidden" name="ctl00$cphMain$btnEntrarLogin" value="Entrar" />
+                        <div class="botoes">
+                            <button type="submit" class="botao preto entrar">entrar</button>
+                        </div>
+                                                    <div id="TopCadastro" style="float: left;position: relative">
+                                <a href="https://gestaodeconcursos.com.br/site/LembrarSenha.aspx" class="esqueci">>
+                                    Esqueci a minha senha</a>
+                                <br /><a href="https://gestaodeconcursos.com.br/candidato/CadastroCandidato.aspx" class="esqueci">>Ainda não sou cadastrado</a>
+                            </div>
+                            <a href="#">
+                                <div style="background: #006e91" class="navbar-right" id="btn-decrease">
+                                    -A
+                                </div>
+                            </a>
+                            <a href="#">
+                                <div style="background: #005c83" class="navbar-right" id="btn-increase">
+                                    +A
+                                </div>
+                            </a>
+                            <a href="#">
+                                <div class="navbar-right" style="border-right: 1px solid #507ac9 !important;">
+                                    <i class="fa fa-print" aria-hidden="true"></i>
+                                </div>
+                            </a>
+                                            </form>
+                                    </div>
+    </div>
+
+    <div id="TopMenu">
+        <div style="width: 1020px; margin: 0 auto">
+            <ul>
+                                    <li><a href="https://gestaodeconcursos.com.br/site/Default.aspx">Concursos</a></li>
+                    <li><a href="https://gestaodeconcursos.com.br/site/AnexosConcursos.aspx">Concursos
+                            Realizados</a></li>
+                    <li><a href="https://www.gestaodeconcursos.com.br/site/site/faq.aspx">Perguntas Frequentes</a></li>
+                    <li><a href="https://fundep.selecao.net.br/noticias">Noticias</a></li>
+                    <li><a href="https://gestaodeconcursos.com.br/Candidato/Login.aspx">Espaço do
+                            Cliente</a></li>
+                
+
+                
+                
+            </ul>
+        </div>
+    </div>
+
+
+</div>
+
+
+<script>
+    $('#menu-mobile').click(function() {
+        this.classList.toggle('abrir')
+        $('#menuMobileWrapper').toggleClass('abrir');
+    })
+</script>
+<div class="bgConcurso"></div>
+<div class="Miolo">
+    
+    <h2 class="tituloPagina"><span>Concursos</span></h2>
+
+    <div id="pgInformacoes">
+
+        <div id="TopoInformacoes">
+
+            <div class="imagem">
+                <span class="helper"></span>
+                
+                                    <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/590/clientes/c9ef3632-a85f-4aa6-954d-d8f36492d119.png" style="max-width: 87px; max-height: 77px" />
+                            </div>
+            <div class="dados">
+                <p class="tipo">Concurso Público</p>
+                                    <h2 style="font-weight: normal !important;"><p><strong>Concurso P&uacute;blico DMAE - 01/2026</strong></p></h2>
+                                                                        <p class="periodoInscricoes">Inscrições de 
+                        <b>11/08/2026</b> a 
+                        <b>11/09/2026</b>
+                    </p>
+                                                        
+            </div>
+            <!-- -1940330 -->
+            <!-- 766870 -->
+
+
+            
+            <div class="botoes" align="center">
+                                                                                        <a href="/login/sair/?redir=%2Ftermo%2F63%2F" class="botao maior verde" ><span>Inscrição Online</span></a>
+                                               
+                                    
+                                                                </div>
+            
+            
+        </div>
+
+        <div class="blocoPadrao" id="blocoInformacoesGerais">
+            <h3><span>Informações Gerais</span></h3>
+            <div class="dados">
+                                                                                <p><b>Edital:</b> 01/2026 de <span>11/06/2026<span></p>
+                                                    
+                                                            <p class="insc">
+                            <b>Inscrições:</b>
+                                                            11/08/2026 09:00 a 11/09/2026 17:00
+                                                                                </p>
+                                                                                    <p class="pedidos-isencao"><b>Pedidos de Isenção:</b>
+                                                    11/08/2026 09:00 a 13/08/2026 23:59</p>
+                                                                                    <p class="situacaoConcurso"><b>Situação:</b> Em andamento</p>
+                                
+                
+                                
+                                
+            </div>
+        </div>
+
+        
+            <div class="blocoPadrao" id="blocoPublicacoes">
+        <h3><span>Publicações</span></h3>
+        <div class="dados total1">
+
+                                    
+            
+                <ul>
+                    
+                        
+                                                                                    
+                                                                                                                                                                    
+                                <li class="pdf"
+                                    style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+
+                                    <a style="flex:1;min-width:0;display:block;word-break:break-word;" data-astv="Resultado Pós Recurso Contra Indeferimento do Pedido de Isenção da Inscrição"
+                                                                                    href="https://anexos-r2.selecao.net.br/uploads/590/concursos/63/anexos/5c9a248b-4ab6-4222-9512-13d4228d949c.pdf"
+                                        target="_blank"
+                                            >
+                                        Resultado Pós Recurso Contra Indeferimento do Pedido de Isenção da Inscrição
+                                        <span>
+                                                                                            28/08/2026
+                                                                                    </span>
+                                    </a>
+
+                                    <span style="white-space:nowrap;display:flex;gap:10px;align-items:center;flex:0 0 auto;margin-left:auto;">
+                                                                                    <a href="/leitor-rybena?pdf=https://anexos-r2.selecao.net.br/uploads/590/concursos/63/anexos/5c9a248b-4ab6-4222-9512-13d4228d949c.pdf" target="_blank" title="Acessibilidade" aria-label="Acessibilidade"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" focusable="false" style="vertical-align:middle"><path d="M256 48c114.953 0 208 93.029 208 208 0 114.953-93.029 208-208 208-114.953 0-208-93.029-208-208 0-114.953 93.029-208 208-208m0-40C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 56C149.961 64 64 149.961 64 256s85.961 192 192 192 192-85.961 192-192S362.039 64 256 64zm0 44c19.882 0 36 16.118 36 36s-16.118 36-36 36-36-16.118-36-36 16.118-36 36-36zm117.741 98.023c-28.712 6.779-55.511 12.748-82.14 15.807.851 101.023.978 110.851 4.49 121.475l29.149 88.273c4.609 13.953-2.968 28.999-16.92 33.608-13.962 4.611-28.997-2.973-33.607-16.92-18.323-55.481-22.926-72.291-26.901-72.291h-3.661c-3.975 0-8.578 16.81-26.901 72.291-4.609 13.943-19.644 21.531-33.607 16.92-13.952-4.609-21.529-19.655-16.92-33.608l29.149-88.273c3.512-10.624 3.639-20.452 4.49-121.475-26.629-3.059-53.428-9.028-82.14-15.807-14.282-3.375-23.13-17.693-19.755-31.975 3.375-14.282 17.693-23.13 31.975-19.755C146.232 178.249 196.073 192 256 192c59.927 0 109.768-13.751 156.516-25.708 14.282-3.375 28.6 5.473 31.975 19.755 3.375 14.282-5.473 28.6-19.755 31.975z"/></svg></a>
+                                                                            </span>
+                                </li>
+                                                                                                                
+                                                                                                                                                                    
+                                <li class="pdf"
+                                    style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+
+                                    <a style="flex:1;min-width:0;display:block;word-break:break-word;" data-astv="Resumo dos Recursos Contra Indeferimento do Pedido de Isenção da Inscrição"
+                                                                                    href="https://anexos-r2.selecao.net.br/uploads/590/concursos/63/anexos/ad13afe6-e377-477a-ae75-bc5b4ed38e38.pdf"
+                                        target="_blank"
+                                            >
+                                        Resumo dos Recursos Contra Indeferimento do Pedido de Isenção da Inscrição
+                                        <span>
+                                                                                            28/08/2026
+                                                                                    </span>
+                                    </a>
+
+                                    <span style="white-space:nowrap;display:flex;gap:10px;align-items:center;flex:0 0 auto;margin-left:auto;">
+                                                                                    <a href="/leitor-rybena?pdf=https://anexos-r2.selecao.net.br/uploads/590/concursos/63/anexos/ad13afe6-e377-477a-ae75-bc5b4ed38e38.pdf" target="_blank" title="Acessibilidade" aria-label="Acessibilidade"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" focusable="false" style="vertical-align:middle"><path d="M256 48c114.953 0 208 93.029 208 208 0 114.953-93.029 208-208 208-114.953 0-208-93.029-208-208 0-114.953 93.029-208 208-208m0-40C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 56C149.961 64 64 149.961 64 256s85.961 192 192 192 192-85.961 192-192S362.039 64 256 64zm0 44c19.882 0 36 16.118 36 36s-16.118 36-36 36-36-16.118-36-36 16.118-36 36-36zm117.741 98.023c-28.712 6.779-55.511 12.748-82.14 15.807.851 101.023.978 110.851 4.49 121.475l29.149 88.273c4.609 13.953-2.968 28.999-16.92 33.608-13.962 4.611-28.997-2.973-33.607-16.92-18.323-55.481-22.926-72.291-26.901-72.291h-3.661c-3.975 0-8.578 16.81-26.901 72.291-4.609 13.943-19.644 21.531-33.607 16.92-13.952-4.609-21.529-19.655-16.92-33.608l29.149-88.273c3.512-10.624 3.639-20.452 4.49-121.475-26.629-3.059-53.428-9.028-82.14-15.807-14.282-3.375-23.13-17.693-19.755-31.975 3.375-14.282 17.693-23.13 31.975-19.755C146.232 178.249 196.073 192 256 192c59.927 0 109.768-13.751 156.516-25.708 14.282-3.375 28.6 5.473 31.975 19.755 3.375 14.282-5.473 28.6-19.755 31.975z"/></svg></a>
+                                                                            </span>
+                                </li>
+                                                                                                                
+                                                                                                                                                                    
+                                <li class="pdf"
+                                    style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+
+                                    <a style="flex:1;min-width:0;display:block;word-break:break-word;" data-astv="Resultado Preliminar dos Pedidos de Isenção da Inscrição"
+                                                                                    href="https://anexos-r2.selecao.net.br/uploads/590/concursos/63/anexos/c2dd304a-3c15-423f-91b7-daa8f65fb0db.pdf"
+                                        target="_blank"
+                                            >
+                                        Resultado Preliminar dos Pedidos de Isenção da Inscrição
+                                        <span>
+                                                                                            18/08/2026
+                                                                                    </span>
+                                    </a>
+
+                                    <span style="white-space:nowrap;display:flex;gap:10px;align-items:center;flex:0 0 auto;margin-left:auto;">
+                                                                                    <a href="/leitor-rybena?pdf=https://anexos-r2.selecao.net.br/uploads/590/concursos/63/anexos/c2dd304a-3c15-423f-91b7-daa8f65fb0db.pdf" target="_blank" title="Acessibilidade" aria-label="Acessibilidade"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" focusable="false" style="vertical-align:middle"><path d="M256 48c114.953 0 208 93.029 208 208 0 114.953-93.029 208-208 208-114.953 0-208-93.029-208-208 0-114.953 93.029-208 208-208m0-40C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 56C149.961 64 64 149.961 64 256s85.961 192 192 192 192-85.961 192-192S362.039 64 256 64zm0 44c19.882 0 36 16.118 36 36s-16.118 36-36 36-36-16.118-36-36 16.118-36 36-36zm117.741 98.023c-28.712 6.779-55.511 12.748-82.14 15.807.851 101.023.978 110.851 4.49 121.475l29.149 88.273c4.609 13.953-2.968 28.999-16.92 33.608-13.962 4.611-28.997-2.973-33.607-16.92-18.323-55.481-22.926-72.291-26.901-72.291h-3.661c-3.975 0-8.578 16.81-26.901 72.291-4.609 13.943-19.644 21.531-33.607 16.92-13.952-4.609-21.529-19.655-16.92-33.608l29.149-88.273c3.512-10.624 3.639-20.452 4.49-121.475-26.629-3.059-53.428-9.028-82.14-15.807-14.282-3.375-23.13-17.693-19.755-31.975 3.375-14.282 17.693-23.13 31.975-19.755C146.232 178.249 196.073 192 256 192c59.927 0 109.768-13.751 156.516-25.708 14.282-3.375 28.6 5.473 31.975 19.755 3.375 14.282-5.473 28.6-19.755 31.975z"/></svg></a>
+                                                                            </span>
+                                </li>
+                                                                                                                
+                                                                                                                                                                    
+                                <li class="pdf"
+                                    style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+
+                                    <a style="flex:1;min-width:0;display:block;word-break:break-word;" data-astv="EDITAL CONSOLIDADO DO CONCURSO PÚBLICO Nº 01/2026 do Departamento Municipal de Água e Esgoto  DMAE Uberlândia"
+                                                                                    href="https://anexos-r2.selecao.net.br/uploads/590/concursos/63/anexos/a83c07d7-b66e-4905-afe1-115ee4bccefb.pdf"
+                                        target="_blank"
+                                            >
+                                        EDITAL CONSOLIDADO DO CONCURSO PÚBLICO Nº 01/2026 do Departamento Municipal de Água e Esgoto  DMAE Uberlândia
+                                        <span>
+                                                                                            10/07/2026
+                                                                                    </span>
+                                    </a>
+
+                                    <span style="white-space:nowrap;display:flex;gap:10px;align-items:center;flex:0 0 auto;margin-left:auto;">
+                                                                                    <a href="/leitor-rybena?pdf=https://anexos-r2.selecao.net.br/uploads/590/concursos/63/anexos/a83c07d7-b66e-4905-afe1-115ee4bccefb.pdf" target="_blank" title="Acessibilidade" aria-label="Acessibilidade"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" focusable="false" style="vertical-align:middle"><path d="M256 48c114.953 0 208 93.029 208 208 0 114.953-93.029 208-208 208-114.953 0-208-93.029-208-208 0-114.953 93.029-208 208-208m0-40C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 56C149.961 64 64 149.961 64 256s85.961 192 192 192 192-85.961 192-192S362.039 64 256 64zm0 44c19.882 0 36 16.118 36 36s-16.118 36-36 36-36-16.118-36-36 16.118-36 36-36zm117.741 98.023c-28.712 6.779-55.511 12.748-82.14 15.807.851 101.023.978 110.851 4.49 121.475l29.149 88.273c4.609 13.953-2.968 28.999-16.92 33.608-13.962 4.611-28.997-2.973-33.607-16.92-18.323-55.481-22.926-72.291-26.901-72.291h-3.661c-3.975 0-8.578 16.81-26.901 72.291-4.609 13.943-19.644 21.531-33.607 16.92-13.952-4.609-21.529-19.655-16.92-33.608l29.149-88.273c3.512-10.624 3.639-20.452 4.49-121.475-26.629-3.059-53.428-9.028-82.14-15.807-14.282-3.375-23.13-17.693-19.755-31.975 3.375-14.282 17.693-23.13 31.975-19.755C146.232 178.249 196.073 192 256 192c59.927 0 109.768-13.751 156.516-25.708 14.282-3.375 28.6 5.473 31.975 19.755 3.375 14.282-5.473 28.6-19.755 31.975z"/></svg></a>
+                                                                            </span>
+                                </li>
+                                                                                                                
+                                                                                                                                                                    
+                                <li class="pdf"
+                                    style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+
+                                    <a style="flex:1;min-width:0;display:block;word-break:break-word;" data-astv="Retificação I do EDITAL DO CONCURSO PÚBLICO Nº 01/2026  DMAE Uberlândia"
+                                                                                    href="https://anexos-r2.selecao.net.br/uploads/590/concursos/63/anexos/dcc8d594-0e21-471b-92fc-edcf01609875.pdf"
+                                        target="_blank"
+                                            >
+                                        Retificação I do EDITAL DO CONCURSO PÚBLICO Nº 01/2026  DMAE Uberlândia
+                                        <span>
+                                                                                            10/07/2026
+                                                                                    </span>
+                                    </a>
+
+                                    <span style="white-space:nowrap;display:flex;gap:10px;align-items:center;flex:0 0 auto;margin-left:auto;">
+                                                                                    <a href="/leitor-rybena?pdf=https://anexos-r2.selecao.net.br/uploads/590/concursos/63/anexos/dcc8d594-0e21-471b-92fc-edcf01609875.pdf" target="_blank" title="Acessibilidade" aria-label="Acessibilidade"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" focusable="false" style="vertical-align:middle"><path d="M256 48c114.953 0 208 93.029 208 208 0 114.953-93.029 208-208 208-114.953 0-208-93.029-208-208 0-114.953 93.029-208 208-208m0-40C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 56C149.961 64 64 149.961 64 256s85.961 192 192 192 192-85.961 192-192S362.039 64 256 64zm0 44c19.882 0 36 16.118 36 36s-16.118 36-36 36-36-16.118-36-36 16.118-36 36-36zm117.741 98.023c-28.712 6.779-55.511 12.748-82.14 15.807.851 101.023.978 110.851 4.49 121.475l29.149 88.273c4.609 13.953-2.968 28.999-16.92 33.608-13.962 4.611-28.997-2.973-33.607-16.92-18.323-55.481-22.926-72.291-26.901-72.291h-3.661c-3.975 0-8.578 16.81-26.901 72.291-4.609 13.943-19.644 21.531-33.607 16.92-13.952-4.609-21.529-19.655-16.92-33.608l29.149-88.273c3.512-10.624 3.639-20.452 4.49-121.475-26.629-3.059-53.428-9.028-82.14-15.807-14.282-3.375-23.13-17.693-19.755-31.975 3.375-14.282 17.693-23.13 31.975-19.755C146.232 178.249 196.073 192 256 192c59.927 0 109.768-13.751 156.516-25.708 14.282-3.375 28.6 5.473 31.975 19.755 3.375 14.282-5.473 28.6-19.755 31.975z"/></svg></a>
+                                                                            </span>
+                                </li>
+                                                                                                                
+                                                                                                                                                                    
+                                <li class="pdf"
+                                    style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+
+                                    <a style="flex:1;min-width:0;display:block;word-break:break-word;" data-astv="EDITAL DO CONCURSO PÚBLICO Nº 01/2026 do Departamento Municipal de Água e Esgoto  DMAE Uberlândia"
+                                                                                    href="https://anexos.cdn.selecao.net.br/uploads/590/concursos/63/anexos/ce67ce40-644e-4c57-8d53-4ed40417b42f.pdf"
+                                        target="_blank"
+                                            >
+                                        EDITAL DO CONCURSO PÚBLICO Nº 01/2026 do Departamento Municipal de Água e Esgoto  DMAE Uberlândia
+                                        <span>
+                                                                                            11/06/2026
+                                                                                    </span>
+                                    </a>
+
+                                    <span style="white-space:nowrap;display:flex;gap:10px;align-items:center;flex:0 0 auto;margin-left:auto;">
+                                                                                    <a href="/leitor-rybena?pdf=https://anexos.cdn.selecao.net.br/uploads/590/concursos/63/anexos/ce67ce40-644e-4c57-8d53-4ed40417b42f.pdf" target="_blank" title="Acessibilidade" aria-label="Acessibilidade"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true" focusable="false" style="vertical-align:middle"><path d="M256 48c114.953 0 208 93.029 208 208 0 114.953-93.029 208-208 208-114.953 0-208-93.029-208-208 0-114.953 93.029-208 208-208m0-40C119.033 8 8 119.033 8 256s111.033 248 248 248 248-111.033 248-248S392.967 8 256 8zm0 56C149.961 64 64 149.961 64 256s85.961 192 192 192 192-85.961 192-192S362.039 64 256 64zm0 44c19.882 0 36 16.118 36 36s-16.118 36-36 36-36-16.118-36-36 16.118-36 36-36zm117.741 98.023c-28.712 6.779-55.511 12.748-82.14 15.807.851 101.023.978 110.851 4.49 121.475l29.149 88.273c4.609 13.953-2.968 28.999-16.92 33.608-13.962 4.611-28.997-2.973-33.607-16.92-18.323-55.481-22.926-72.291-26.901-72.291h-3.661c-3.975 0-8.578 16.81-26.901 72.291-4.609 13.943-19.644 21.531-33.607 16.92-13.952-4.609-21.529-19.655-16.92-33.608l29.149-88.273c3.512-10.624 3.639-20.452 4.49-121.475-26.629-3.059-53.428-9.028-82.14-15.807-14.282-3.375-23.13-17.693-19.755-31.975 3.375-14.282 17.693-23.13 31.975-19.755C146.232 178.249 196.073 192 256 192c59.927 0 109.768-13.751 156.516-25.708 14.282-3.375 28.6 5.473 31.975 19.755 3.375 14.282-5.473 28.6-19.755 31.975z"/></svg></a>
+                                                                            </span>
+                                </li>
+                                                    
+                                    </ul>
+
+            
+        </div>
+    </div>
+
+
+<script>
+    function openTab(evt, tabName) {
+        var i, x, tablinks;
+        x = document.getElementsByClassName("tab");
+
+        for (i = 0; i < x.length; i++) {
+            x[i].style.display = "none";
+        }
+
+        tablinks = document.getElementsByClassName("tablink");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" aba-active ", "");
+        }
+
+        evt.currentTarget.className += " aba-active ";
+        document.getElementById(tabName).style.display = "block";
+    }
+</script>
+                
+                                            <div class="blocoPadrao" id="blocoListaVagas">
+    <h3><span>Vagas</span></h3>
+
+                        
+            <div class="dados total28">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="cargo">Vaga</th>
+                            <th class="qtde">Qtde.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                                            <tr class="impar">
+                            <td class="cargo">
+                                101 - Auxiliar Técnico Operacional
+                                                            </td>
+                            <td class="qtde">
+                                                                    10
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="par">
+                            <td class="cargo">
+                                201 - Ag. de Saneamento em Obras
+                                                            </td>
+                            <td class="qtde">
+                                                                    10
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="impar">
+                            <td class="cargo">
+                                202 - Eletricista Industrial
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="par">
+                            <td class="cargo">
+                                203 - Hidrometrista
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="impar">
+                            <td class="cargo">
+                                204 - Mecânico de Autos
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="par">
+                            <td class="cargo">
+                                205 - Mecânico Industrial
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="impar">
+                            <td class="cargo">
+                                206 - Motorista
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="par">
+                            <td class="cargo">
+                                207 - Operador de Bombas
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="impar">
+                            <td class="cargo">
+                                208 - Op. de Máquinas Automotivas
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="par">
+                            <td class="cargo">
+                                209 - Soldador Industrial
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="impar">
+                            <td class="cargo">
+                                301 - Agente Comercial
+                                                            </td>
+                            <td class="qtde">
+                                                                    5
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="par">
+                            <td class="cargo">
+                                302 - Oficial Administrativo
+                                                            </td>
+                            <td class="qtde">
+                                                                    10
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="impar">
+                            <td class="cargo">
+                                401 - Desenhista
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="par">
+                            <td class="cargo">
+                                402 - Fiscal de Obras do Saneamento
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                            </tbody>
+                </table>
+                <table style="float:right">                 
+                    <thead>
+                        <tr>
+                            <th class="cargo">Vaga</th>
+                            <th class="qtde">Qtde.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                                                                    <tr class="impar">
+                            <td class="cargo">
+                                403 - Téc. de Op. de ETAS e ETES
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="par">
+                            <td class="cargo">
+                                404 - Téc. em Informática
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="impar">
+                            <td class="cargo">
+                                405 - Téc. em Meio Ambiente
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="par">
+                            <td class="cargo">
+                                501 - Assistente Social
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="impar">
+                            <td class="cargo">
+                                502 - Biólogo
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="par">
+                            <td class="cargo">
+                                503 - Contador
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="impar">
+                            <td class="cargo">
+                                504 - Economista
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="par">
+                            <td class="cargo">
+                                505 - Engenheiro Ambiental 
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="impar">
+                            <td class="cargo">
+                                506 - Engenheiro Civil 
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="par">
+                            <td class="cargo">
+                                507 - Engenheiro Eletricista
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="impar">
+                            <td class="cargo">
+                                508 - Eng. de Segurança do Trabalho
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="par">
+                            <td class="cargo">
+                                509 - Engenheiro Químico
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="impar">
+                            <td class="cargo">
+                                510 - Psicólogo
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                    <tr class="par">
+                            <td class="cargo">
+                                511 - Químico
+                                                            </td>
+                            <td class="qtde">
+                                                                    1
+                                                                           +  Cadastro de Reserva
+                                                                                                                                </td>
+                        </tr>
+                                                                </tbody>
+                </table>
+            </div>
+            
+            
+        
+        <div class="texto" style="padding:0 40px">
+            
+        </div>
+        
+</div>
+<style>
+#blocoListaVagas .tipo1 table { width:100% }    
+</style>
+                        
+        
+                                
+        <div align="right">
+            <a href="https://gestaodeconcursos.com.br/" class="botao">Voltar</a>
+        </div>
+                
+    </div>
+</div>
+
+<div id="Rodape" class="naoimprimir">
+<div class="preferencias-cookies naoimprimir" style="text-align:center;padding:10px 0;"><button type="button" data-cc="show-preferencesModal" style="background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit">Prefer&ecirc;ncias de cookies</button></div>
+    <div class="ProSeleta">
+        <div class="Conteudo rodape">
+            <div class="logo-rodape"></div>
+            <div>
+                <div class="fundep-box-bottom">
+                    <table width="100%">
+                        <tr>
+                            <th>
+                                <div class="box-icon-footer"><i class="fa fa-envelope" aria-hidden="true"></i></div>
+                                <a href="/cdn-cgi/l/email-protection#f3909c9d908681809cb395869d979683dd909c9edd9181" title="Concurso"><span class="__cf_email__" data-cfemail="c2a1adaca1b7b0b1ad82a4b7aca6a7b2eca1adafeca0b0">[email&#160;protected]</span></a></th>
+                            <th>
+                                <div class="box-icon-footer"><i class="fa fa-arrow-right" aria-hidden="true"></i></div>
+                                <a href="https://gestaodeconcursos.com.br/site/Site/Contato.aspx" title="Contato">Contato</a>
+                            </th>
+                            <th>
+                            </th>
+                        </tr>
+                    </table>
+
+                </div>
+
+                <div style="font-size: 12px; font-weight: 600; padding-top: 5px" class="info">
+                    <div style="display: flex; flex-direction: column">
+
+                        <div style="display: flex; justify-content: space-between;">
+                            <a style="flex: 1"
+                                    href="https://gestaodeconcursos.com.br/site/Default.aspx">Concursos</a>
+                            <a style="flex: 1" href="https://gestaodeconcursos.com.br/site/AnexosConcursos.aspx">Concursos
+                                Realizados</a>
+                            <a style="flex: 1" href="http://www.fundep.ufmg.br/pagina/100/fale-conosco.aspx">Fale com a Fundep</a>
+                            <a style="flex: 1" href="https://gestaodeconcursos.com.br/Candidato/default.aspx">Área do
+                                Candidato</a>
+                            <a style="flex: 1" href="https://gestaodeconcursos.com.br/candidato/CadastroCandidato.aspx">Dados
+                                Pessoais</a>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between;">
+                            <a style="flex: 1" href="https://www.gestaodeconcursos.com.br/site/site/faq.aspx">Perguntas
+                                Frequentes</a>
+                            <a style="flex: 1" href="https://fundep.selecao.net.br/noticias">Notícias</a>
+                            <a style="flex: 1" href="https://gestaodeconcursos.com.br/Candidato/MinhasInscricoes.aspx">Minhas
+                                Inscrições</a>
+                            <a style="flex: 1" href="https://gestaodeconcursos.com.br/Candidato/AlteraSenha.aspx">Alterar
+                                Senha</a>
+                            <div style="flex: 1"></div>
+                        </div>
+                    </div>
+
+                                                                            </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="final">
+    <div class="Conteudo" >
+        <div class="links">
+            &copy; SISTEMA DE GERENCIAMENTO DE CONCURSOS
+                                </div>
+                    <div class="DesenvolvimentoProSeleta">
+                Desenvolvido por <a href="http://www.proseleta.com.br/" target="_blank">ProSeleta - Gestão de Processos Seletivos Online</a>
+            </div>
+            </div>
+
+                    <a href="https://wa.me/5531982571243" style="position:fixed;width:45px;height:45px;bottom:1.4rem;right:1.4rem;border-radius:50px;text-align:center;
+        z-index:1000;" target="_blank">
+            <img id="icon-whatsapp" src="//static-cdn.selecao.net.br/static/img/icon-whatsapp.svg">
+        </a>
+    </div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+    var $affectedElements = $("p"); // Can be extended, ex. $("div, p, span.someClass")
+
+    // Storing the original size in a data attribute so size can be reset
+    $affectedElements.each(function () {
+        var $this = $(this);
+        $this.data("orig-size", $this.css("font-size"));
+    });
+
+    $("#btn-increase").click(function () {
+        changeFontSize(1);
+    })
+
+    $("#btn-decrease").click(function () {
+        changeFontSize(-1);
+    })
+
+    $("#btn-orig").click(function () {
+        $affectedElements.each(function () {
+            var $this = $(this);
+            $this.css("font-size", $this.data("orig-size"));
+        });
+    })
+
+    function changeFontSize(direction) {
+        $affectedElements.each(function () {
+            var $this = $(this);
+            $this.css("font-size", parseInt($this.css("font-size")) + direction);
+        });
+    }
+</script>
+
+
+
+</body>
+</html>
+
+
+
+<script>
+    
+    document.onkeyup=function(e){
+
+        if(e.which == 27){
+              $('#bannerConcurso').hide();
+        }
+
+    }   
+    
+    $( "#FechaBanner" ).click(function() {
+        $('#bannerConcurso').hide();
+    });
+    
+    var W = $("#ImgBanner").width();    
+    $("#BlocoBanner").css("width", W);
+    
+    $( document ).ready(function() {
+        $('#bannerConcurso').show();
+        var W = $("#ImgBanner").width();    
+        $("#BlocoBanner").css("width", W);
+    });   
+</script>

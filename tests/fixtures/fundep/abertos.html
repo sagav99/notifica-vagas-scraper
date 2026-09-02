@@ -1,0 +1,656 @@
+<style>
+    .cliente { margin: 0 0 20px 0; padding: 15px; border-bottom: 1px solid #ddd; font-size: 28px; color: #777; text-align: center; }
+    .cabecalhoConcurso { padding: 10px 20px; }
+    .rodapeConcurso { padding: 20px; }
+</style>
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+                    <meta charset="iso-8859-1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Sistema de Gerenciamento de Concursos</title>
+    <meta name="description" content="" />
+    <meta name="keywords" content="Processos seletivos, concursos pï¿½blicos, vestibular" />
+    <meta name="author" content="Impacta Soluï¿½ï¿½es Web | Software ProSeleta" /> 
+        <link rel="shortcut icon" href="/uploads/590/configs/782390af30c2662ba69f3c49371a644c.png" type="image/x-icon">
+    <link rel="icon" href="/uploads/590/configs/782390af30c2662ba69f3c49371a644c.png" type="image/x-icon">
+        
+
+    <script src="//static-cdn.selecao.net.br/static/js/jquery-2.1.3.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery-ui-1.11.2.custom/jquery-ui.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/php.default.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.maskedinput.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.price_format.2.0.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.validate.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.validate.extra.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/util.js?ver=202005101713"></script>
+
+    
+            <script src="https://use.fontawesome.com/c280e19625.js"></script>
+    
+    <!-- jQuery UI -->
+    <link rel="stylesheet" media="screen" href="//static-cdn.selecao.net.br/static/js/jquery-ui-1.11.2.custom/jquery-ui.min.css" /> 
+
+    <link href='//fonts.googleapis.com/css?family=Exo+2:700,500italic,400,500,200italic,800,200,700italic,300italic,600italic,600,300,800italic,400italic' rel='stylesheet' type='text/css'>
+    <link type="text/css" media="screen" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/site.css?ver=202607031200" />     <link type="text/css" media="all" rel="stylesheet" href="//static-cdn.selecao.net.br/static/texto.css" />
+    <link type="text/css" media="print" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/imprimir.css" />
+    <link type="text/css" media="screen" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/responsivo.css?ver=202609011400" />
+
+            <link type="text/css" media="all" rel="stylesheet" href="//static-cdn.selecao.net.br/static/clientes/fundep.selecao.net.br/site.css?ver=202606241618" />
+    
+    
+          <!-- Google tag (gtag.js) -->
+            <script async src="https://www.googletagmanager.com/gtag/js?id=G-13PDJ2FXPF"></script>
+      <script>
+          
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          
+          gtag('config', 'G-13PDJ2FXPF');
+      </script>
+      
+        
+        
+    
+    
+    <link type="text/css" media="screen" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/govbr.css?ver=202307251410" /> 
+    <!-- Rybena -->
+            <script type="text/javascript" src="https://cdn.rybena.com.br/dom/master/latest/rybena.js?positionPlayer=right&positionBar=right">
+            window.addEventListener('message', event => {
+                if (event.data.theme === 'dark') {
+                    document.documentElement.classList.toString().includes('dark') ? null :
+                        document.getElementsByClassName("toggle-color-mode-button")[0].click()
+                }
+                if (event.data.theme === 'light') {
+                    document.documentElement.classList.toString().includes('dark') ?
+                        document.getElementsByClassName("toggle-color-mode-button")[0].click() : null
+                }
+            });
+        </script>
+    </head>
+<body class="">
+    
+    
+<header id="TopoMobile">
+
+    <div class="logo-wrapper">
+        <a href="https://gestaodeconcursos.com.br/">
+            <img src="//static-cdn.selecao.net.br/uploads/590/configs/bde243debcda60e9d2ea960b67ff2b96.png"
+                alt="Sistema de Gerenciamento de Concursos" class="logo" style="max-height: 115px"/>
+        </a>
+    </div>
+
+    <div class="menu-fix-clear" id="menuMobileWrapper">
+        <ul class="menu-wrapper">
+            
+                     <form action="/login/logar/" method="post" autocomplete="off" class="form-top">
+        <input name="foilautofill"
+               autocomplete="new-password"
+               style="display: none;" type="password" />             <h3 class="menu-title">Acessar Área do Candidato:</h3>
+            <input type="text" name="login" id="tl-login" value="" class="texto mascara cpf item" placeholder="CPF"/>
+
+            <input autocomplete="new-password"  type="password" name="senha" id="tl-senha" value="" class="texto item" placeholder="Senha"/>
+
+            <button type="submit" class="login-top-btn item">Entrar</button>
+
+                    <a href="/login/esqueci/" class="esqueci-mobile">Esqueci a minha senha</a>
+            </form>                
+
+                <h3 class="menu-title">Menu:</h3>
+                <li class="menu-item">
+                    <a href="https://gestaodeconcursos.com.br/">Início</a>
+                </li>
+                
+                
+                            
+                        <div id="menuMobileCategorias">
+
+            </div>
+
+            
+            <form action="/index/todos/" name="formBuscaConcurso" method="get" class="barra-pesquisa-wrapper">
+                <h3 class="menu-title">Busca:</h3>
+                <input type="text" name="busca" placeholder="Busca..." class="texto search">
+                <button type="submit" class="button">Buscar</button>
+            </form>
+
+
+        </ul>
+    </div>
+
+    <div class="menu-btn-container" id="menu-mobile">
+        <h3 class="menu-indicador">Menu</h3>
+        <button class="btn-wrapper">
+            <i></i>
+            <i></i>
+            <i></i>
+        </button>
+    </div>
+</header>
+<div id="Topo" class="naoimprimir">
+
+    <div class="Conteudo">
+
+        <div id="Logo">
+            <h1><a href="https://gestaodeconcursos.com.br/"><img src="//static-cdn.selecao.net.br/static/clientes/fundep.selecao.net.br/fundep-logo-white2.png"
+                        alt="Sistema de Gerenciamento de Concursos" /></a></h1>
+        </div>
+
+        <div id="DadosEmpresa">
+            <p><b>Sistema de Gerenciamento de Concursos</b></p>
+            <p class="contatos"></p>
+                    </div>
+
+        <div id="TopLogin" class="">
+
+                            <h3><span></span>Área do Candidato</h3>
+                                    <form action="/integracoes/fundep/login" method="post" autocomplete="off" novalidate="novalidate">
+                        <input name="foilautofill" style="display: none;" type="password" />                         <div class="item">
+                            <label for="tl-login">CPF</label>
+                            <input type="text" autocomplete="new-password" name="cpf" id="tl-login" value=""
+                                class="texto mascara cpf" />
+                        </div>
+                        <div class="item">
+                            <label for="tl-senha">Senha</label>
+                            <input autocomplete="new-password" type="password" name="senha" id="tl-senha" value=""
+                                class="texto" />
+                        </div>
+                        <input type="hidden" name="ctl00$cphMain$btnEntrarLogin" value="Entrar" />
+                        <div class="botoes">
+                            <button type="submit" class="botao preto entrar">entrar</button>
+                        </div>
+                                                    <div id="TopCadastro" style="float: left;position: relative">
+                                <a href="https://gestaodeconcursos.com.br/site/LembrarSenha.aspx" class="esqueci">>
+                                    Esqueci a minha senha</a>
+                                <br /><a href="https://gestaodeconcursos.com.br/candidato/CadastroCandidato.aspx" class="esqueci">>Ainda não sou cadastrado</a>
+                            </div>
+                            <a href="#">
+                                <div style="background: #006e91" class="navbar-right" id="btn-decrease">
+                                    -A
+                                </div>
+                            </a>
+                            <a href="#">
+                                <div style="background: #005c83" class="navbar-right" id="btn-increase">
+                                    +A
+                                </div>
+                            </a>
+                            <a href="#">
+                                <div class="navbar-right" style="border-right: 1px solid #507ac9 !important;">
+                                    <i class="fa fa-print" aria-hidden="true"></i>
+                                </div>
+                            </a>
+                                            </form>
+                                    </div>
+    </div>
+
+    <div id="TopMenu">
+        <div style="width: 1020px; margin: 0 auto">
+            <ul>
+                                    <li><a href="https://gestaodeconcursos.com.br/site/Default.aspx">Concursos</a></li>
+                    <li><a href="https://gestaodeconcursos.com.br/site/AnexosConcursos.aspx">Concursos
+                            Realizados</a></li>
+                    <li><a href="https://www.gestaodeconcursos.com.br/site/site/faq.aspx">Perguntas Frequentes</a></li>
+                    <li><a href="https://fundep.selecao.net.br/noticias">Noticias</a></li>
+                    <li><a href="https://gestaodeconcursos.com.br/Candidato/Login.aspx">Espaço do
+                            Cliente</a></li>
+                
+
+                
+                
+            </ul>
+        </div>
+    </div>
+
+
+</div>
+
+
+<script>
+    $('#menu-mobile').click(function() {
+        this.classList.toggle('abrir')
+        $('#menuMobileWrapper').toggleClass('abrir');
+    })
+</script>
+<div id="MenuLateral" class="bgConcurso">
+
+    <div class="Conteudo">
+        <div class="CategoriasConcursos">
+
+            <h3>Concursos:</h3>
+            <ul>
+                <li class="ativo">
+                    <a href="/index/abertos/">Inscrições Abertas</a>
+                </li>
+                                    <li>
+                        <a href="/index/1/">Em andamento</a>
+                    </li>
+                                    <li>
+                        <a href="/index/2/">Homologado</a>
+                    </li>
+                                    <li>
+                        <a href="/index/3/">Finalizado</a>
+                    </li>
+                                    <li>
+                        <a href="/index/4/">Suspenso</a>
+                    </li>
+                                    <li>
+                        <a href="/index/5/">Cancelado</a>
+                    </li>
+                            </ul>
+        </div>
+        <div class="BsucarConcurso">
+            <form action="/index/todos/" name="formBuscaConcurso" method="get">
+                <input type="text" name="busca" placeholder="Busca..." class="texto" style="width:140px;">
+                <button type="submit" class="botao preto">ok</button>
+            </form>
+        </div>
+
+        
+        
+    </div>
+</div>
+
+<div class="Miolo Index">
+
+        
+            <div class="listaConcursos">
+    <h2 class="tituloPagina" style="font-size:24px;">
+        <span>
+             
+                Concursos
+                                        -
+                        <b>Inscrições Abertas</b>
+        </span>
+    </h2>
+    <br>
+    
+    
+    <ul class="lista">
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/74/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/590/clientes/SXx9woi6JDsCtcnCucxHFByE6uNW24Uux2Ai02UN.jpg" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Vestibular </p>
+                            
+                                                            <a href="/informacoes/74/" ><p><span style="color: #000000;"><strong>Vestibular para provimento de vagas no curso de Medicina - FAME/FUNJOB com entrada no 1&ordm; Semestre de 2027.</strong></span></p></a>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 02/2026</p>
+                                                                                                                                                </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/74/" class="qtde" >
+                                                                    <span>Quantidade de Vagas</span>
+                                    <b>60</b>
+                                                                                                </a>
+                                                        <a href="/informacoes/74/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/69/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/590/clientes/MSQnve94NPTiHPX84n7kS6UpIkTAYTdYZZQoVz6A.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Vestibular </p>
+                            
+                                                            <a href="/informacoes/69/" ><p><strong>Vestibular de Medicina - EMESCAM 01/2027</strong></p></a>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 01/2027</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>10/08/2026</b> a 
+                                            <b>01/10/2026</b>
+
+                                                                                            <a href="/informacoes/69/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/69/" class="qtde" >
+                                                                    <span>Quantidade de Vagas</span>
+                                    <b>69</b>
+                                                                                                </a>
+                                                        <a href="/informacoes/69/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/68/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/590/clientes/e3739549-a288-463a-8082-f3e29b075529.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Processo Seletivo </p>
+                            
+                                                            <a href="/informacoes/68/" ><p><strong>Processo Seletivo de Especializa&ccedil;&atilde;o Lato Sensu 01/2027 - Hospital Fel&iacute;cio Rocho</strong></p></a>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 01/2026</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>10/08/2026</b> a 
+                                            <b>05/10/2026</b>
+
+                                                                                            <a href="/informacoes/68/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/68/" class="qtde" >
+                                                                    <span>Quantidade de Vagas</span>
+                                    <b>74</b>
+                                                                                                </a>
+                                                        <a href="/informacoes/68/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/65/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/590/clientes/903a7ee6-5806-4715-9403-65ffb66ef4da.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <a href="/informacoes/65/" ><p><strong>Concurso P&uacute;blico&nbsp;da C&acirc;mara Municipal de Passos - 01/2026</strong></p></a>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 01/2026</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>03/08/2026</b> a 
+                                            <b>03/09/2026</b>
+
+                                                                                            <a href="/informacoes/65/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>03/08/2026</b> a 
+                                        <b>05/08/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/65/" class="qtde" >
+                                                                    <span>Quantidade de Vagas</span>
+                                    <b>16</b>
+                                                                                                </a>
+                                                        <a href="/informacoes/65/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/63/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/590/clientes/c9ef3632-a85f-4aa6-954d-d8f36492d119.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <a href="/informacoes/63/" ><p><strong>Concurso P&uacute;blico DMAE - 01/2026</strong></p></a>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 01/2026</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>11/08/2026</b> a 
+                                            <b>11/09/2026</b>
+
+                                                                                            <a href="/informacoes/63/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>11/08/2026</b> a 
+                                        <b>13/08/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/63/" class="qtde" >
+                                                                    <span>Quantidade de Vagas</span>
+                                    <b>59</b>
+                                                                                                </a>
+                                                        <a href="/informacoes/63/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+            </ul>
+
+</div>
+
+    </div>
+
+
+
+
+
+<div id="Rodape" class="naoimprimir">
+<div class="preferencias-cookies naoimprimir" style="text-align:center;padding:10px 0;"><button type="button" data-cc="show-preferencesModal" style="background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit">Prefer&ecirc;ncias de cookies</button></div>
+    <div class="ProSeleta">
+        <div class="Conteudo rodape">
+            <div class="logo-rodape"></div>
+            <div>
+                <div class="fundep-box-bottom">
+                    <table width="100%">
+                        <tr>
+                            <th>
+                                <div class="box-icon-footer"><i class="fa fa-envelope" aria-hidden="true"></i></div>
+                                <a href="/cdn-cgi/l/email-protection#fa999594998f888995ba9c8f949e9f8ad4999597d49888" title="Concurso"><span class="__cf_email__" data-cfemail="8ae9e5e4e9fff8f9e5caecffe4eeeffaa4e9e5e7a4e8f8">[email&#160;protected]</span></a></th>
+                            <th>
+                                <div class="box-icon-footer"><i class="fa fa-arrow-right" aria-hidden="true"></i></div>
+                                <a href="https://gestaodeconcursos.com.br/site/Site/Contato.aspx" title="Contato">Contato</a>
+                            </th>
+                            <th>
+                            </th>
+                        </tr>
+                    </table>
+
+                </div>
+
+                <div style="font-size: 12px; font-weight: 600; padding-top: 5px" class="info">
+                    <div style="display: flex; flex-direction: column">
+
+                        <div style="display: flex; justify-content: space-between;">
+                            <a style="flex: 1"
+                                    href="https://gestaodeconcursos.com.br/site/Default.aspx">Concursos</a>
+                            <a style="flex: 1" href="https://gestaodeconcursos.com.br/site/AnexosConcursos.aspx">Concursos
+                                Realizados</a>
+                            <a style="flex: 1" href="http://www.fundep.ufmg.br/pagina/100/fale-conosco.aspx">Fale com a Fundep</a>
+                            <a style="flex: 1" href="https://gestaodeconcursos.com.br/Candidato/default.aspx">Área do
+                                Candidato</a>
+                            <a style="flex: 1" href="https://gestaodeconcursos.com.br/candidato/CadastroCandidato.aspx">Dados
+                                Pessoais</a>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between;">
+                            <a style="flex: 1" href="https://www.gestaodeconcursos.com.br/site/site/faq.aspx">Perguntas
+                                Frequentes</a>
+                            <a style="flex: 1" href="https://fundep.selecao.net.br/noticias">Notícias</a>
+                            <a style="flex: 1" href="https://gestaodeconcursos.com.br/Candidato/MinhasInscricoes.aspx">Minhas
+                                Inscrições</a>
+                            <a style="flex: 1" href="https://gestaodeconcursos.com.br/Candidato/AlteraSenha.aspx">Alterar
+                                Senha</a>
+                            <div style="flex: 1"></div>
+                        </div>
+                    </div>
+
+                                                                            </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="final">
+    <div class="Conteudo" >
+        <div class="links">
+            &copy; SISTEMA DE GERENCIAMENTO DE CONCURSOS
+                                </div>
+                    <div class="DesenvolvimentoProSeleta">
+                Desenvolvido por <a href="http://www.proseleta.com.br/" target="_blank">ProSeleta - Gestão de Processos Seletivos Online</a>
+            </div>
+            </div>
+
+                    <a href="https://wa.me/5531982571243" style="position:fixed;width:45px;height:45px;bottom:1.4rem;right:1.4rem;border-radius:50px;text-align:center;
+        z-index:1000;" target="_blank">
+            <img id="icon-whatsapp" src="//static-cdn.selecao.net.br/static/img/icon-whatsapp.svg">
+        </a>
+    </div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+    var $affectedElements = $("p"); // Can be extended, ex. $("div, p, span.someClass")
+
+    // Storing the original size in a data attribute so size can be reset
+    $affectedElements.each(function () {
+        var $this = $(this);
+        $this.data("orig-size", $this.css("font-size"));
+    });
+
+    $("#btn-increase").click(function () {
+        changeFontSize(1);
+    })
+
+    $("#btn-decrease").click(function () {
+        changeFontSize(-1);
+    })
+
+    $("#btn-orig").click(function () {
+        $affectedElements.each(function () {
+            var $this = $(this);
+            $this.css("font-size", $this.data("orig-size"));
+        });
+    })
+
+    function changeFontSize(direction) {
+        $affectedElements.each(function () {
+            var $this = $(this);
+            $this.css("font-size", parseInt($this.css("font-size")) + direction);
+        });
+    }
+</script>
+
+
+
+</body>
+</html>
+
+
+
+<script>
+
+    document.onkeyup=function(e){
+
+        if(e.which == 27){
+            $('#bannerConcurso').hide();
+        }
+
+    }
+
+    $( "#FechaBanner" ).click(function() {
+        $('#bannerConcurso').hide();
+    });
+
+    var W = $("#ImgBanner").width();
+    $("#BlocoBanner").css("width", W);
+
+    $( document ).ready(function() {
+        $('#bannerConcurso').show();
+        var W = $("#ImgBanner").width();
+        $("#BlocoBanner").css("width", W);
+    });
+
+    $(function() {
+        $("#menuMobileCategorias").html(`<h3 class="menu-title menu-lateral-mobile-title">         Concursos:
+    </h3>
+
+    <li class="menu-item  active">
+        <a href="/index/abertos/">Inscrições Abertas</a>
+    </li>
+    <li class="menu-item ">
+        <a href="/index/1/">Em andamento</a>
+    </li>
+    <li class="menu-item ">
+        <a href="/index/2/">Homologado</a>
+    </li>
+    <li class="menu-item ">
+        <a href="/index/3/">Finalizado</a>
+    </li>
+    <li class="menu-item ">
+        <a href="/index/4/">Suspenso</a>
+    </li>
+    <li class="menu-item ">
+        <a href="/index/5/">Cancelado</a>
+    </li>
+
+
+
+`);
+    })
+
+</script>
+
+
