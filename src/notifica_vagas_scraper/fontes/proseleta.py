@@ -64,8 +64,20 @@ def escolher_edital(documentos: list[Documento]) -> Documento | None:
     municipais com a mesma data, mas a retificação mais recente veio
     depois) — por isso compara datas explicitamente em vez de pegar
     1ª/última posição. Documento sem data (`None`) fica por último no
-    critério de desempate."""
+    critério de desempate.
+
+    Exclui título com "convocação" mesmo contendo "edital" — achado real
+    na ACCESS (Contagem/MG): um concurso teve 5 "EDITAL DE CONVOCAÇÃO
+    PARA ..." (verificação de indígena/quilombola/PcD, avaliação de
+    títulos) publicados na MESMA data do
+    "EDITAL DE ABERTURA CONSOLIDADO" de verdade — sem esse filtro,
+    `max()` desempatava pela 1ª ordem de aparição e escolhia uma
+    convocação (sem cargo/salário nenhum) em vez do edital com as ~40
+    especialidades médicas do cargo."""
     candidatos = [d for d in documentos if "edital" in d.titulo.lower()]
+    se_nao_for_convocacao = [d for d in candidatos if "convocação" not in d.titulo.lower() and "convocacao" not in d.titulo.lower()]
+    if se_nao_for_convocacao:
+        candidatos = se_nao_for_convocacao
     if not candidatos:
         return documentos[0] if documentos else None
     return max(candidatos, key=lambda d: d.data or date.min)

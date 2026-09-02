@@ -77,3 +77,27 @@ def test_listar_vagas_html_reaproveita_proseleta():
     assert len(vagas) == 1
     assert vagas[0].cargo == "Professor Auxiliar"
     assert vagas[0].quantidade == 10
+
+
+def test_escolher_edital_ignora_convocacao_com_mesma_data_do_edital_real():
+    # achado real (2026-09-01, motivado pela prioridade de não perder
+    # vaga de médico): o concurso de Contagem/MG teve 5 "EDITAL DE
+    # CONVOCAÇÃO PARA ..." (verificação de indígena/quilombola/PcD,
+    # avaliação de títulos) publicados na MESMA data do
+    # "EDITAL DE ABERTURA CONSOLIDADO" de verdade — sem o filtro de
+    # convocação, o desempate por data escolhia a 1ª convocação da lista
+    # (sem cargo/salário nenhum) em vez do edital com as 44 vagas de
+    # médico.
+    documentos = access.listar_documentos(_ler_fixture("detalhe_contagem.html"))
+    convocacoes = [d for d in documentos if "convocação" in d.titulo.lower()]
+    assert len(convocacoes) >= 5  # confirma que o cenário de risco está no fixture
+
+    edital = access.escolher_edital(documentos)
+    assert edital is not None
+    assert edital.titulo == "EDITAL DE ABERTURA CONSOLIDADO – CONFORME RETIFICAÇÃO IV"
+
+
+def test_listar_vagas_html_contagem_tem_44_cargos_de_medico():
+    vagas = access.listar_vagas_html(_ler_fixture("detalhe_contagem.html"))
+    medicos = [v for v in vagas if "médico" in v.cargo.lower()]
+    assert len(medicos) == 44
