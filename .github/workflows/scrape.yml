@@ -91,6 +91,13 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_access.py
 
+      - name: Rodar coleta (Ache Concursos)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/rodar_ache_concursos.py
+
       # Instar por último entre as coletas: é de longe a maior consumidora
       # de cota do Gemini (231 municípios, até ~800 itens "aberto" numa
       # execução só) — achado real 2026-09-01, a cota estourou no meio
