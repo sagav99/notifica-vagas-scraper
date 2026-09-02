@@ -12,10 +12,12 @@ vezes só texto corrido). Quando não há nenhum registro, `dados` vem como
 `[["Nenhum registro encontrado."]]` (lista de string, não de objeto) —
 tratar como fonte sem resultado, não como erro.
 
-Municípios confirmados: `dados/municipios_instar.csv` (230 municípios de
-MG, triagem em 2026-09-01 contra as ~1240 URLs de `public.municipios`
-já confirmadas — ver docs/dados/triagem_instar_wordpress_2026-09-01.csv
-no repo principal).
+Municípios confirmados: `dados/municipios_instar.csv` (231 municípios,
+76 de MG + 155 de SP — corrigido 2026-09-02, o texto antigo dizia "230
+de MG" mas a própria lista sempre teve as duas UFs; triagem em
+2026-09-01 contra as ~1240 URLs de `public.municipios` já confirmadas —
+ver docs/dados/triagem_instar_wordpress_2026-09-01.csv no repo
+principal).
 """
 
 from __future__ import annotations
