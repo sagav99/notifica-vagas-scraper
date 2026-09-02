@@ -13,6 +13,16 @@ Fonte de dados: a página-índice de cada UF (`/concursos/<uf>/`) já lista
 ~60 notícias recentes num único GET, sem precisar varrer município por
 município.
 
+Cada notícia também é buscada (1 GET a mais por achado) pra extrair os
+links externos citados no corpo (`parse_external_references`, portado do
+protótipo `docs/handoff_2026-08-31/.../pci.py` no repo principal) —
+medição real em 2026-09-02 (TAREFAS.md) confirmou 6/6 notícias da amostra
+com pelo menos 1 link externo utilizável (banca ou prefeitura), então
+vale sempre exportar isso: quando o domínio já é um adaptador conhecido
+(Instar/Actcon/etc., conferir manualmente), a vaga já vem por aquele
+parser e a linha da PCI é só confirmação; quando não é, é candidato a
+banca nova pra fila de triagem.
+
 Uso: python scripts/descobrir_pci.py
 Requer DATABASE_URL no ambiente (só pra ler `municipios`, não escreve).
 """
@@ -23,16 +33,33 @@ import csv
 import re
 import sys
 from pathlib import Path
+from urllib.parse import urljoin, urlparse
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
+from bs4 import BeautifulSoup
 
 from notifica_vagas_scraper import db
 from notifica_vagas_scraper.fontes import fgv
 
 USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com/sagav99/notifica-vagas-scraper)"
 UFS = ("mg", "sp")
+PCI_HOST = "www.pciconcursos.com.br"
+HOSTS_IGNORADOS = {
+    PCI_HOST,
+    "t.me",
+    "linkedin.com",
+    "www.linkedin.com",
+    "facebook.com",
+    "www.facebook.com",
+    "x.com",
+    "instagram.com",
+    "www.instagram.com",
+    "whatsapp.com",
+    "web.whatsapp.com",
+    "api.whatsapp.com",
+}
 
 
 def buscar_noticias(uf_lower: str) -> list[tuple[str, str]]:
@@ -68,6 +95,23 @@ def casar_municipio_com_guarda_de_uf(titulo: str, uf_alvo: str, municipios: list
     return match
 
 
+def buscar_links_externos(url_noticia: str) -> list[str]:
+    """Domínios de referências externas citadas no corpo da notícia
+    (link do edital na banca/prefeitura, quando a PCI não hospeda o PDF —
+    ver `parse_external_references` no protótipo de referência)."""
+    resposta = requests.get(url_noticia, headers={"User-Agent": USER_AGENT}, timeout=20)
+    resposta.raise_for_status()
+    soup = BeautifulSoup(resposta.text, "html.parser")
+    hosts: dict[str, None] = {}
+    for anchor in soup.select("a[href]"):
+        url = urljoin(url_noticia, str(anchor["href"]))
+        host = urlparse(url).netloc.lower()
+        if not host or host in HOSTS_IGNORADOS:
+            continue
+        hosts.setdefault(host, None)
+    return list(hosts)
+
+
 def main() -> None:
     conn = db.conectar()
     try:
@@ -89,7 +133,15 @@ def main() -> None:
             vistos.add(chave)
             achados.append({"municipio": match[0], "uf": match[1], "titulo": titulo, "url": url})
 
-    escritor = csv.DictWriter(sys.stdout, fieldnames=["municipio", "uf", "titulo", "url"])
+    for a in achados:
+        try:
+            hosts = buscar_links_externos(a["url"])
+        except requests.RequestException as exc:
+            print(f"aviso: falha buscando links externos de {a['url']}: {exc}", file=sys.stderr)
+            hosts = []
+        a["links_externos"] = ";".join(hosts)
+
+    escritor = csv.DictWriter(sys.stdout, fieldnames=["municipio", "uf", "titulo", "url", "links_externos"])
     escritor.writeheader()
     for a in achados:
         escritor.writerow(a)
