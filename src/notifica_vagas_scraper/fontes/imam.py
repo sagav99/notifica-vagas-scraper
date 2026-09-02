@@ -157,11 +157,16 @@ def listar_documentos(html: str, url_pagina: str) -> list[Documento]:
 
 
 def escolher_edital(documentos: list[Documento]) -> Documento | None:
-    """Documentos vêm ordenados por data decrescente — o 1º título que
-    contém "edital" já é a versão mais recente (ex: "Edital com
-    alterações da retificação nº 01" antes do "Edital 001/2026" original),
-    sem precisar comparar datas manualmente."""
-    for documento in documentos:
-        if "edital" in documento.titulo.lower():
-            return documento
-    return documentos[0] if documentos else None
+    """Compara datas em vez de confiar na ordem da grade (achado de code
+    review, 2026-09-02: `proseleta.py`, usado por JCM/ACCESS, encontrou
+    caso real de ordem não-cronológica numa plataforma parecida — mais
+    seguro não assumir o mesmo aqui não ter acontecido ainda só porque não
+    foi visto). Também ignora "convocação" mesmo contendo "edital" (nunca
+    é o edital de abertura com cargo/salário, só aviso procedural)."""
+    candidatos = [d for d in documentos if "edital" in d.titulo.lower()]
+    sem_convocacao = [d for d in candidatos if "convocação" not in d.titulo.lower()]
+    if sem_convocacao:
+        candidatos = sem_convocacao
+    if not candidatos:
+        return documentos[0] if documentos else None
+    return max(candidatos, key=lambda d: d.data or datetime.min)

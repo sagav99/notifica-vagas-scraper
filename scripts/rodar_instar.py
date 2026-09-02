@@ -173,13 +173,21 @@ def main() -> None:
 
         # 1ª passada: só busca o JSON público (sem chamar Gemini) pra poder
         # priorizar quem tem sinal de saúde antes de gastar cota — ver
-        # PALAVRAS_SAUDE acima.
+        # PALAVRAS_SAUDE acima. try/except por município aqui também
+        # (achado de code review, 2026-09-02): payload malformado de 1
+        # entre 231 municípios (ex: JSON que não é um dict) não pode
+        # derrubar a passada inteira antes de qualquer Gemini rodar — isso
+        # anularia justo a proteção que essa priorização existe pra dar.
         trabalho: list[tuple[instar.MunicipioInstar, list[dict]]] = []
         for municipio in municipios:
-            payload = buscar_json_concursos(municipio.url_prefeitura, datetime.now().year)
-            if payload is None:
+            try:
+                payload = buscar_json_concursos(municipio.url_prefeitura, datetime.now().year)
+                if payload is None:
+                    continue
+                itens = instar.listar_itens_abertos(payload)
+            except Exception as exc:
+                print(f"  aviso: falha buscando {municipio.nome}/{municipio.uf}: {exc}")
                 continue
-            itens = instar.listar_itens_abertos(payload)
             if itens:
                 trabalho.append((municipio, itens))
 

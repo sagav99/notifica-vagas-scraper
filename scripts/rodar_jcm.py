@@ -28,6 +28,12 @@ from notifica_vagas_scraper.fontes import jcm
 USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com/sagav99/notifica-vagas-scraper)"
 FONTE_NOME = "JCM Concursos"
 
+#: só MG foi visto na amostra até agora, mas a JCM roda na mesma
+#: plataforma ProSeleta da ACCESS, que atende várias UFs (RJ/SP/MG/GO/SC)
+#: — filtra por segurança, mesmo padrão do rodar_access.py (achado de
+#: code review, 2026-09-02: risco não coberto aqui antes).
+UFS_DO_PROJETO = {"MG", "SP"}
+
 
 def processar_processo(conn, fonte_id: str, item: jcm.ItemListagem) -> int:
     codigo_ibge = ibge.buscar_codigo_ibge(item.municipio, item.uf)
@@ -90,9 +96,10 @@ def processar_processo(conn, fonte_id: str, item: jcm.ItemListagem) -> int:
 def main() -> None:
     resposta = requests.get(f"{jcm.BASE_URL}/index/abertos/", headers={"User-Agent": USER_AGENT}, timeout=20)
     resposta.raise_for_status()
-    itens = jcm.listar_processos_abertos(resposta.text)
+    todos = jcm.listar_processos_abertos(resposta.text)
+    itens = [i for i in todos if i.uf in UFS_DO_PROJETO]
 
-    print(f"{len(itens)} processo(s) com inscrição aberta.")
+    print(f"{len(itens)} processo(s) com inscrição aberta em MG/SP (de {len(todos)} encontrados).")
 
     conn = db.conectar()
     try:
