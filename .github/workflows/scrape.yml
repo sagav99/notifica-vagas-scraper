@@ -91,6 +91,13 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_jcm.py
 
+      - name: Rodar coleta (ACCESS)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/rodar_access.py
+
       - name: Revisar vagas pendentes (Gemini, automático)
         if: always()
         env:
