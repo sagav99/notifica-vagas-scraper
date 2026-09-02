@@ -34,6 +34,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import date, datetime
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
@@ -45,6 +46,9 @@ class ItemListagem:
     titulo: str
     url: str
     inscricoes_fim: date | None
+    #: capturado pra uso futuro (`vagas.quantidade`, ver TAREFAS.md) —
+    #: `rodar_ache_concursos.py` ainda não consome isso, cargo/quantidade
+    #: reais vêm do Gemini por vaga individual.
     quantidade_vagas: int | None
 
 
@@ -84,7 +88,7 @@ def listar_concursos(html: str) -> list[ItemListagem]:
         itens.append(
             ItemListagem(
                 titulo=titulo,
-                url=link["href"],
+                url=urljoin(BASE_URL, link["href"]),
                 inscricoes_fim=_parsear_data(inscricao_tag.get_text()) if inscricao_tag else None,
                 quantidade_vagas=_parsear_inteiro(vagas_tag.get_text()) if vagas_tag else None,
             )

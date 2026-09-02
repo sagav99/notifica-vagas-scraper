@@ -69,7 +69,12 @@ def processar_item(conn, item: ache.ItemListagem, municipio: str, uf: str) -> in
 
     slug_item = item.url.rstrip("/").rsplit("/", 1)[-1]
     orgao = extraido.get("orgao") or item.titulo
-    numero_edital = extraido.get("numero_edital")
+    # sem fallback aqui, db.inserir_vaga_com_evidencia só considera dedup
+    # por município+órgão+edital quando numero_edital é truthy — Gemini
+    # pode devolver null (achado de code review, 2026-09-02), e sem
+    # fallback isso cria vaga duplicada a cada execução do cron pra
+    # mesma vaga real. Mesmo padrão de fallback dos scripts irmãos.
+    numero_edital = extraido.get("numero_edital") or item.titulo
 
     total = 0
     for vaga in extraido["vagas"]:
@@ -111,9 +116,18 @@ def main() -> None:
         hoje = date.today()
         total_geral = 0
         for uf, caminho in LISTAGENS.items():
-            resposta = requests.get(f"{ache.BASE_URL}{caminho}", headers={"User-Agent": USER_AGENT}, timeout=30)
-            resposta.raise_for_status()
-            itens = ache.listar_concursos(resposta.text)
+            try:
+                resposta = requests.get(f"{ache.BASE_URL}{caminho}", headers={"User-Agent": USER_AGENT}, timeout=30)
+                resposta.raise_for_status()
+                itens = ache.listar_concursos(resposta.text)
+            except requests.exceptions.RequestException as exc:
+                # commit por item logo abaixo já garante que o progresso de
+                # uma UF não se perde se a OUTRA falhar aqui (achado de code
+                # review, 2026-09-02: antes, um único commit no fim do main()
+                # fazia uma falha na listagem de SP descartar tudo que já
+                # tinha sido inserido de MG na mesma execução).
+                print(f"  ERRO buscando listagem de {uf}: {exc}")
+                continue
             abertos = [i for i in itens if i.inscricoes_fim is None or i.inscricoes_fim >= hoje]
             print(f"{uf}: {len(abertos)} item(ns) com inscrição aberta de {len(itens)} listados.")
 
@@ -133,10 +147,10 @@ def main() -> None:
                     # inteira do lote em estado abortado pros próximos.
                     with conn.transaction():
                         total_geral += processar_item(conn, item, municipio, municipio_uf)
+                    conn.commit()
                 except Exception as exc:  # nunca deixar 1 item derrubar o lote inteiro
                     print(f"  ERRO processando '{item.titulo}': {exc}")
 
-        conn.commit()
         print(f"\nOk. {total_geral} vaga(s) processada(s).")
     except Exception:
         conn.rollback()
