@@ -84,6 +84,7 @@ def processar_processo(conn, fonte_id: str, item: fundep.ItemListagem) -> int:
     db.upsert_municipio(conn, codigo_ibge=codigo_ibge, nome=municipio, uf=uf)
     orgao = extraido.get("orgao") or f"{item.tipo_processo} de {municipio}/{uf}"
     numero_edital = extraido.get("numero_edital") or item.numero_edital
+    tipo_oportunidade = extraido.get("tipo_oportunidade")
 
     total = 0
     for vaga in extraido["vagas"]:
@@ -99,6 +100,8 @@ def processar_processo(conn, fonte_id: str, item: fundep.ItemListagem) -> int:
             orgao=orgao,
             cargo=cargo,
             salario=vaga.get("salario"),
+            salario_tipo=vaga.get("salario_tipo"),
+            tipo_oportunidade=tipo_oportunidade,
             numero_edital=numero_edital,
             data_publicacao=edital.data,
             inscricoes_inicio=None,

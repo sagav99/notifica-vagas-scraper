@@ -75,6 +75,7 @@ def processar_item(conn, item: ache.ItemListagem, municipio: str, uf: str) -> in
     # fallback isso cria vaga duplicada a cada execução do cron pra
     # mesma vaga real. Mesmo padrão de fallback dos scripts irmãos.
     numero_edital = extraido.get("numero_edital") or item.titulo
+    tipo_oportunidade = extraido.get("tipo_oportunidade")
 
     total = 0
     for vaga in extraido["vagas"]:
@@ -90,6 +91,8 @@ def processar_item(conn, item: ache.ItemListagem, municipio: str, uf: str) -> in
             orgao=orgao,
             cargo=cargo,
             salario=vaga.get("salario"),
+            salario_tipo=vaga.get("salario_tipo"),
+            tipo_oportunidade=tipo_oportunidade,
             numero_edital=numero_edital,
             data_publicacao=None,
             inscricoes_inicio=None,

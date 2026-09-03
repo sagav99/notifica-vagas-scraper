@@ -79,6 +79,8 @@ def processar_materia(conn, fonte_id: int, codigo_ibge: int, url_materia: str) -
             orgao=vaga.orgao,
             cargo=vaga.cargo,
             salario=vaga.salario,
+            salario_tipo=None,
+            tipo_oportunidade=None,
             numero_edital=vaga.numero_edital,
             data_publicacao=vaga.data_publicacao,
             inscricoes_inicio=vaga.inscricoes_inicio,

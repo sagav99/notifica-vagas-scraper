@@ -111,6 +111,8 @@ def inserir_vaga_com_evidencia(
     orgao: str | None,
     cargo: str,
     salario: Decimal | float | None,
+    salario_tipo: str | None,
+    tipo_oportunidade: str | None,
     numero_edital: str | None,
     data_publicacao: date | None,
     inscricoes_inicio: date | None,
@@ -157,10 +159,11 @@ def inserir_vaga_com_evidencia(
             cur.execute(
                 """
                 insert into public.vagas
-                    (municipio_id, orgao, cargo, salario, numero_edital,
-                     data_publicacao, inscricoes_inicio, inscricoes_fim, status, resumo)
-                values (%(municipio_id)s, %(orgao)s, %(cargo)s, %(salario)s, %(numero_edital)s,
-                        %(data_publicacao)s, %(inscricoes_inicio)s, %(inscricoes_fim)s, %(status)s, %(resumo)s)
+                    (municipio_id, orgao, cargo, salario, salario_tipo, tipo_oportunidade,
+                     numero_edital, data_publicacao, inscricoes_inicio, inscricoes_fim, status, resumo)
+                values (%(municipio_id)s, %(orgao)s, %(cargo)s, %(salario)s, %(salario_tipo)s,
+                        %(tipo_oportunidade)s, %(numero_edital)s, %(data_publicacao)s,
+                        %(inscricoes_inicio)s, %(inscricoes_fim)s, %(status)s, %(resumo)s)
                 returning id
                 """,
                 {
@@ -168,6 +171,8 @@ def inserir_vaga_com_evidencia(
                     "orgao": orgao,
                     "cargo": cargo,
                     "salario": salario,
+                    "salario_tipo": salario_tipo,
+                    "tipo_oportunidade": tipo_oportunidade,
                     "numero_edital": numero_edital,
                     "data_publicacao": data_publicacao,
                     "inscricoes_inicio": inscricoes_inicio,

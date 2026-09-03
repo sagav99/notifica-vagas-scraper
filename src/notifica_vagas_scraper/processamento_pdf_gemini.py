@@ -54,6 +54,7 @@ def processar_pdf_e_gravar_vagas(
     db.upsert_municipio(conn, codigo_ibge=codigo_ibge, nome=municipio_nome, uf=uf)
     orgao = extraido.get("orgao") or orgao_fallback
     numero_edital = extraido.get("numero_edital") or numero_edital_fallback
+    tipo_oportunidade = extraido.get("tipo_oportunidade")
 
     total = 0
     for vaga in extraido["vagas"]:
@@ -69,6 +70,8 @@ def processar_pdf_e_gravar_vagas(
             orgao=orgao,
             cargo=cargo,
             salario=vaga.get("salario"),
+            salario_tipo=vaga.get("salario_tipo"),
+            tipo_oportunidade=tipo_oportunidade,
             numero_edital=numero_edital,
             data_publicacao=data_publicacao,
             inscricoes_inicio=None,

@@ -84,6 +84,7 @@ def processar_concurso(conn, item: fgv.ItemConcurso, municipio: str, uf: str) ->
     inscricoes_fim = _parsear_data_iso(extraido.get("inscricoes_fim"))
     orgao = extraido.get("orgao") or item.titulo
     numero_edital = extraido.get("numero_edital")
+    tipo_oportunidade = extraido.get("tipo_oportunidade")
 
     total = 0
     for vaga in extraido["vagas"]:
@@ -99,6 +100,8 @@ def processar_concurso(conn, item: fgv.ItemConcurso, municipio: str, uf: str) ->
             orgao=orgao,
             cargo=cargo,
             salario=vaga.get("salario"),
+            salario_tipo=vaga.get("salario_tipo"),
+            tipo_oportunidade=tipo_oportunidade,
             numero_edital=numero_edital,
             data_publicacao=data_publicacao,
             inscricoes_inicio=inscricoes_inicio,

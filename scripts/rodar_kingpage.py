@@ -71,6 +71,7 @@ def processar_processo(conn, fonte_id: str, municipio: kingpage.MunicipioKingpag
 
     orgao = extraido.get("orgao") or f"Prefeitura Municipal de {municipio.nome}/{municipio.uf}"
     numero_edital = extraido.get("numero_edital") or item.numero_ano
+    tipo_oportunidade = extraido.get("tipo_oportunidade")
 
     total = 0
     for vaga in extraido["vagas"]:
@@ -86,6 +87,8 @@ def processar_processo(conn, fonte_id: str, municipio: kingpage.MunicipioKingpag
             orgao=orgao,
             cargo=cargo,
             salario=vaga.get("salario"),
+            salario_tipo=vaga.get("salario_tipo"),
+            tipo_oportunidade=tipo_oportunidade,
             numero_edital=numero_edital,
             data_publicacao=edital.data,
             inscricoes_inicio=None,

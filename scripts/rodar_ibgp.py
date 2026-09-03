@@ -99,10 +99,17 @@ def processar_concurso(conn, fonte_id: str, item: ibgp.ItemListagem) -> int:
     # descartado) — o Gemini só entra pra casar salário por código, ver
     # docstring de `parear_salario_por_codigo`.
     salarios_por_codigo = ibgp.parear_salario_por_codigo(cargos, extraido.get("vagas") or [])
+    # `parear_salario_por_codigo` já casa por código, mas devolve só o
+    # valor — nenhum edital IBGP visto até agora tem remuneração por
+    # plantão (todos os cargos reais confirmados são mensais), então
+    # "mensal" quando há salário é o valor real conhecido, não um chute
+    # sem evidência. Revisitar se aparecer edital IBGP com plantão real.
+    salario_tipo_padrao = "mensal"
 
     db.upsert_municipio(conn, codigo_ibge=codigo_ibge, nome=municipio, uf=uf)
     orgao = extraido.get("orgao") or f"{item.tipo.title()} de {municipio}/{uf}"
     numero_edital = extraido.get("numero_edital") or item.numero_edital or None
+    tipo_oportunidade = extraido.get("tipo_oportunidade")
     inscricoes_inicio = item.inicio_inscricao.date() if item.inicio_inscricao else None
     inscricoes_fim = item.fim_inscricao.date() if item.fim_inscricao else None
 
@@ -117,6 +124,8 @@ def processar_concurso(conn, fonte_id: str, item: ibgp.ItemListagem) -> int:
             orgao=orgao,
             cargo=cargo.nome,
             salario=salario,
+            salario_tipo=salario_tipo_padrao if salario is not None else None,
+            tipo_oportunidade=tipo_oportunidade,
             numero_edital=numero_edital,
             data_publicacao=edital.data,
             inscricoes_inicio=inscricoes_inicio,

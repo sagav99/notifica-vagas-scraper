@@ -58,6 +58,8 @@ def processar_edital(conn, item: imeso.ItemListagem, fonte_id: str) -> int:
             orgao=vaga.orgao,
             cargo=vaga.cargo,
             salario=vaga.salario,
+            salario_tipo=None,
+            tipo_oportunidade=None,
             numero_edital=vaga.numero_edital,
             data_publicacao=None,
             inscricoes_inicio=vaga.inscricoes_inicio,

@@ -88,6 +88,8 @@ def processar_processo(conn, fonte_id: str, item: avancasp.ItemListagem) -> int:
             orgao=orgao,
             cargo=vaga.cargo,
             salario=vaga.salario,
+            salario_tipo=None,
+            tipo_oportunidade=None,
             numero_edital=item.numero_edital,
             data_publicacao=data_publicacao,
             inscricoes_inicio=None,

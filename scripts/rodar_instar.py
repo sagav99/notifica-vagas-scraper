@@ -134,6 +134,7 @@ def processar_municipio(conn, municipio: instar.MunicipioInstar, itens: list[dic
         orgao = extraido.get("orgao") or f"Prefeitura Municipal de {municipio.nome}/{municipio.uf}"
         numero_edital = extraido.get("numero_edital") or item.get("numeroEdital")
         numero_processo = item.get("numeroProcesso")
+        tipo_oportunidade = extraido.get("tipo_oportunidade")
 
         for vaga in extraido["vagas"]:
             cargo = vaga.get("cargo")
@@ -148,6 +149,8 @@ def processar_municipio(conn, municipio: instar.MunicipioInstar, itens: list[dic
                 orgao=orgao,
                 cargo=cargo,
                 salario=Decimal(str(vaga["salario"])) if vaga.get("salario") is not None else None,
+                salario_tipo=vaga.get("salario_tipo"),
+                tipo_oportunidade=tipo_oportunidade,
                 numero_edital=numero_edital,
                 data_publicacao=data_publicacao,
                 inscricoes_inicio=inscricoes_inicio,

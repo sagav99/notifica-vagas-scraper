@@ -49,13 +49,30 @@ Extraia um objeto JSON com:
   original; null se não encontrar nenhuma data de publicação/retificação)
 - inscricoes_inicio (data "AAAA-MM-DD" de início das inscrições, ou null)
 - inscricoes_fim (data "AAAA-MM-DD" de fim das inscrições, ou null)
+- tipo_oportunidade (classifique o processo como um destes valores fixos,
+  baseado no que o edital diz sobre o vínculo — use null só se genuinamente
+  não der pra determinar):
+  - "concurso_efetivo": concurso público pra cargo efetivo/estatutário
+  - "processo_seletivo_temporario": processo seletivo simplificado (PSS)
+    pra contrato temporário
+  - "credenciamento": credenciamento de prestador de serviço, sem vínculo
+    empregatício
+  - "contratacao_emergencial": contratação emergencial/urgente
+  - "selecao_plantao": seleção específica pra plantonista/escala de
+    plantão (só use esta se TODAS as vagas do edital forem de plantão —
+    se for um concurso normal com só ALGUMAS vagas de plantão, use
+    "concurso_efetivo" e marque salario_tipo="plantao" nas vagas
+    específicas)
 - vagas: lista de vagas, cada uma com:
   - cargo (string)
   - vagas_qtd (int ou null)
-  - salario (number, só o valor numérico mensal em reais, sem "R$", ou
-    null — se a remuneração for por hora/aula ou outra unidade que não dá
-    pra converter num valor mensal fixo sem informação adicional, deixe
-    null; não invente um valor mensal a partir de uma taxa horária)
+  - salario (number, o valor numérico em reais, sem "R$", ou null — se a
+    remuneração for por hora/aula ou outra unidade que não dá pra
+    converter num valor fixo sem informação adicional, deixe null; não
+    invente um valor a partir de uma taxa horária)
+  - salario_tipo ("mensal" se `salario` for remuneração fixa mensal,
+    "plantao" se `salario` for valor por plantão/turno/escala, ou null
+    se `salario` for null ou não der pra determinar qual dos dois é)
   - requisitos (string curta ou null)
   - carga_horaria (string ou null)
 Responda APENAS com o objeto JSON, sem markdown, sem texto adicional."""
@@ -69,8 +86,9 @@ def extrair_vagas_de_pdf(
     pdf_bytes: bytes, *, api_key: str | None = None, modelo: str | None = None
 ) -> dict:
     """Retorna {"numero_edital", "orgao", "data_publicacao",
-    "inscricoes_inicio", "inscricoes_fim", "vagas": [{"cargo", "vagas_qtd",
-    "salario", "requisitos", "carga_horaria"}, ...]} — ver PROMPT.
+    "inscricoes_inicio", "inscricoes_fim", "tipo_oportunidade",
+    "vagas": [{"cargo", "vagas_qtd", "salario", "salario_tipo",
+    "requisitos", "carga_horaria"}, ...]} — ver PROMPT.
 
     `modelo=None` (padrão) resolve dinamicamente via `quota_gemini`: usa
     gemini-3.5-flash-lite até ~470 chamadas no dia (entre todos os

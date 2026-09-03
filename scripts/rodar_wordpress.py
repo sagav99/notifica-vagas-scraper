@@ -44,6 +44,7 @@ def processar_post(conn, fonte_id: str, municipio: wp.MunicipioWordpress, post: 
 
     orgao = extraido.get("orgao") or f"Prefeitura Municipal de {municipio.nome}/{municipio.uf}"
     numero_edital = extraido.get("numero_edital")
+    tipo_oportunidade = extraido.get("tipo_oportunidade")
 
     total = 0
     for vaga in extraido["vagas"]:
@@ -59,6 +60,8 @@ def processar_post(conn, fonte_id: str, municipio: wp.MunicipioWordpress, post: 
             orgao=orgao,
             cargo=cargo,
             salario=vaga.get("salario"),
+            salario_tipo=vaga.get("salario_tipo"),
+            tipo_oportunidade=tipo_oportunidade,
             numero_edital=numero_edital,
             data_publicacao=post.data,
             inscricoes_inicio=None,
