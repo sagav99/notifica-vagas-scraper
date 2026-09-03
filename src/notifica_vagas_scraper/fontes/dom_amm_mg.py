@@ -154,16 +154,23 @@ def parsear_materia(html: str, url: str) -> list[VagaExtraida]:
             continue
 
         cabecalho = [_normalizar_cabecalho(c.get_text(strip=True)) for c in linhas[0].find_all(["td", "th"])]
-        if "funcoes" not in cabecalho and "funcao" not in cabecalho:
+        if "funcoes" not in cabecalho and "funcao" not in cabecalho and "cargo" not in cabecalho:
             continue  # tabela não é de cargos/vagas
 
         def indice(*nomes: str) -> int | None:
             for nome in nomes:
                 if nome in cabecalho:
                     return cabecalho.index(nome)
+            # também aceita cabeçalho começando pelo nome (ex: "salario
+            # inicial", "carga horaria semanal/mensal" — achado real na
+            # fixture de Barra do Turvo/SP, apm_sp)
+            for nome in nomes:
+                for i, coluna in enumerate(cabecalho):
+                    if coluna.startswith(nome):
+                        return i
             return None
 
-        idx_cargo = indice("funcoes", "funcao")
+        idx_cargo = indice("funcoes", "funcao", "cargo")
         idx_vagas = indice("vagas")
         idx_carga = indice("carga horaria")
         idx_salario = indice("salario base", "salario")

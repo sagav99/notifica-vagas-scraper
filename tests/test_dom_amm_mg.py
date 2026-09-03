@@ -69,3 +69,14 @@ def test_processo_seletivo_simplificado_multiplas_tabelas():
     auxiliar = next(v for v in vagas if v.cargo == "Auxiliar de Cuidador")
     assert auxiliar.salario == Decimal("1621.00")
     assert auxiliar.tipo_processo == "Processo Seletivo Simplificado"
+
+
+def test_extrato_sem_tabela_nao_e_falso_positivo():
+    """Tombos: extrato de retificação que só remete pra banca externa, sem
+    nenhuma tabela de cargo/vagas/salário — precisa continuar devolvendo
+    lista vazia (não pode virar falso positivo depois do ajuste que passou
+    a aceitar cabeçalho "Cargo" como sinônimo de "Funções"/"Função")."""
+    html = _ler_fixture("tombos_extrato_retificacao_concurso_001_2026_sem_tabela.html")
+    vagas = dom_amm_mg.parsear_materia(html, url="https://www.diariomunicipal.com.br/amm-mg/materia/exemplo/exemplo")
+
+    assert vagas == []
