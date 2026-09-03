@@ -32,6 +32,8 @@ from dataclasses import dataclass
 
 from bs4 import BeautifulSoup
 
+from notifica_vagas_scraper.formatacao import separar_prefixo_orgao_municipal
+
 from .proseleta import Documento, VagaHtml, escolher_edital, listar_documentos, listar_vagas_html
 
 __all__ = [
@@ -47,13 +49,6 @@ __all__ = [
 ]
 
 BASE_URL = "https://concursos.access.org.br"
-
-_PREFIXOS_ENTIDADE = (
-    ("Prefeitura Municipal de ", "Prefeitura Municipal"),
-    ("Prefeitura de ", "Prefeitura"),
-    ("Câmara Municipal de ", "Câmara Municipal"),
-    ("Câmara de ", "Câmara"),
-)
 
 
 @dataclass
@@ -76,10 +71,11 @@ def extrair_municipio_uf(entidade: str) -> tuple[str, str, str] | None:
         return None
     resto, uf = match.group(1).strip(), match.group(2).upper()
 
-    for prefixo, orgao in _PREFIXOS_ENTIDADE:
-        if resto.startswith(prefixo):
-            return orgao, resto[len(prefixo):].strip(), uf
-    return None
+    separado = separar_prefixo_orgao_municipal(resto)
+    if separado is None:
+        return None
+    orgao, municipio = separado
+    return orgao, municipio, uf
 
 
 def listar_processos_abertos(html: str) -> list[ItemListagem]:

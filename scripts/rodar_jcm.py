@@ -22,8 +22,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 
-from notifica_vagas_scraper import db, gemini_pdf, ibge
+from notifica_vagas_scraper import db, ibge
 from notifica_vagas_scraper.fontes import jcm
+from notifica_vagas_scraper.processamento_pdf_gemini import processar_pdf_e_gravar_vagas
 
 USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com/sagav99/notifica-vagas-scraper)"
 FONTE_NOME = "JCM Concursos"
@@ -49,48 +50,21 @@ def processar_processo(conn, fonte_id: str, item: jcm.ItemListagem) -> int:
         print(f"  aviso: '{item.tipo_processo} {item.numero_edital}' sem documentos listados")
         return 0
 
-    pdf_resposta = requests.get(edital.url_pdf, headers={"User-Agent": USER_AGENT}, timeout=60)
-    pdf_resposta.raise_for_status()
-
-    extraido = gemini_pdf.extrair_vagas_de_pdf(pdf_resposta.content)
-    if not extraido.get("vagas"):
-        print(f"  aviso: Gemini não retornou vagas pra '{item.tipo_processo} {item.numero_edital}' ({edital.url_pdf})")
-        return 0
-
-    db.upsert_municipio(conn, codigo_ibge=codigo_ibge, nome=item.municipio, uf=item.uf)
-    orgao = extraido.get("orgao") or f"{item.orgao} de {item.municipio}/{item.uf}"
-    numero_edital = extraido.get("numero_edital") or item.numero_edital
-
-    total = 0
-    for vaga in extraido["vagas"]:
-        cargo = vaga.get("cargo")
-        if not cargo:
-            continue
-        slug_cargo = "".join(c if c.isalnum() else "-" for c in cargo.lower()).strip("-")
-        resultado = db.inserir_vaga_com_evidencia(
-            conn,
-            fonte_id=fonte_id,
-            municipio_id=codigo_ibge,
-            identificador_externo=f"jcm-{item.processo_id}-{slug_cargo}",
-            orgao=orgao,
-            cargo=cargo,
-            salario=vaga.get("salario"),
-            numero_edital=numero_edital,
-            data_publicacao=edital.data,
-            inscricoes_inicio=None,
-            inscricoes_fim=None,
-            status="aberta",
-            resumo=f"{item.tipo_processo} nº {item.numero_edital} — {cargo}"
-            + (f" ({vaga['requisitos']})" if vaga.get("requisitos") else "."),
-            url_evidencia=edital.url_pdf,
-            tipo_documento="pdf",
-            texto_extraido=None,
-        )
-        novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
-        print(f"    {cargo}: vaga_id={resultado['vaga_id']} ({novo})")
-        total += 1
-
-    return total
+    return processar_pdf_e_gravar_vagas(
+        conn,
+        fonte_id=fonte_id,
+        codigo_ibge=codigo_ibge,
+        municipio_nome=item.municipio,
+        uf=item.uf,
+        url_pdf=edital.url_pdf,
+        data_publicacao=edital.data,
+        orgao_fallback=f"{item.orgao} de {item.municipio}/{item.uf}",
+        numero_edital_fallback=item.numero_edital,
+        id_prefix="jcm",
+        processo_id=item.processo_id,
+        resumo_prefixo=f"{item.tipo_processo} nº {item.numero_edital}",
+        user_agent=USER_AGENT,
+    )
 
 
 def main() -> None:

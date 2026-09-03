@@ -37,6 +37,8 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
+from notifica_vagas_scraper.formatacao import separar_prefixo_orgao_municipal
+
 BASE_URL = "https://www.imam.org.br/sitenoticia"
 
 #: rótulo de status por id de grid — só "Novo" e "Inscrições Abertas"
@@ -49,14 +51,6 @@ _GRID_PARA_STATUS = {
     "gridAndamento": "Em andamento (inscrições encerradas)",
     "gridConcluidos": "Concluído",
 }
-
-_PREFIXOS_ENTIDADE = (
-    "PREFEITURA MUNICIPAL DE ",
-    "PREFEITURA DE ",
-    "CÂMARA MUNICIPAL DE ",
-    "CÂMARA DE ",
-)
-
 
 @dataclass
 class ItemListagem:
@@ -84,12 +78,11 @@ def _parsear_data_hora(texto: str) -> datetime | None:
 def extrair_municipio(entidade: str) -> str | None:
     """`None` pra entidade que não é prefeitura/câmara (ex: consórcio
     intermunicipal, que não mapeia 1:1 pra um município) — chamador decide
-    pular."""
-    alvo = entidade.strip().upper()
-    for prefixo in _PREFIXOS_ENTIDADE:
-        if alvo.startswith(prefixo):
-            return entidade.strip()[len(prefixo):].strip().title()
-    return None
+    pular. `.title()` porque a entidade chega em CAIXA ALTA da grade
+    ASP.NET (ver `separar_prefixo_orgao_municipal`, compartilhado com
+    `fontes/access.py`)."""
+    separado = separar_prefixo_orgao_municipal(entidade)
+    return separado[1].title() if separado else None
 
 
 def listar_processos(html: str) -> list[ItemListagem]:
