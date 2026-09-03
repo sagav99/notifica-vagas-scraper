@@ -17,7 +17,8 @@ escrevendo ao mesmo tempo, sem precisar de lock explícito.
 from __future__ import annotations
 
 import os
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 import psycopg
 
@@ -25,6 +26,19 @@ LIMITE_ANTES_DE_TROCAR = 470
 
 MODELO_PADRAO = "gemini-3.5-flash-lite"
 MODELO_FALLBACK = "gemini-3.1-flash-lite"
+
+FUSO_HORARIO = ZoneInfo("America/Sao_Paulo")
+
+
+def _hoje() -> date:
+    """`date.today()` usa o fuso do processo — nos runners do GitHub
+    Actions isso é UTC, então a cota "diária" reiniciaria às 21h de
+    Brasília (meia-noite UTC), não à meia-noite local (achado real,
+    2026-09-03: usuário conferiu e viu o fallback em uso mais cedo do que
+    esperava). Ancora explicitamente em America/Sao_Paulo, mesmo fuso já
+    usado em toda formatação de data do site (`timeZone:
+    "America/Sao_Paulo"` em `lib/visual`/painéis admin)."""
+    return datetime.now(FUSO_HORARIO).date()
 
 
 def _conectar() -> psycopg.Connection:
@@ -38,7 +52,7 @@ def _ler_contagem_hoje() -> int:
     with _conectar() as conn, conn.cursor() as cur:
         cur.execute(
             "select contagem from public.gemini_quota_diaria where data = %(hoje)s",
-            {"hoje": date.today()},
+            {"hoje": _hoje()},
         )
         linha = cur.fetchone()
         return linha[0] if linha else 0
@@ -73,6 +87,6 @@ def registrar_chamada() -> None:
             on conflict (data) do update
               set contagem = gemini_quota_diaria.contagem + 1
             """,
-            {"hoje": date.today()},
+            {"hoje": _hoje()},
         )
         conn.commit()

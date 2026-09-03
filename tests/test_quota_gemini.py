@@ -62,13 +62,13 @@ def test_registrar_chamada_incrementa(monkeypatch):
     quota_gemini.registrar_chamada()
     quota_gemini.registrar_chamada()
 
-    assert tabela[date.today()] == 2
+    assert tabela[quota_gemini._hoje()] == 2
 
 
 def test_troca_para_fallback_apos_limite(monkeypatch):
-    tabela = _instalar_tabela_falsa(monkeypatch, {date.today(): quota_gemini.LIMITE_ANTES_DE_TROCAR})
+    tabela = _instalar_tabela_falsa(monkeypatch, {quota_gemini._hoje(): quota_gemini.LIMITE_ANTES_DE_TROCAR})
     assert quota_gemini.proximo_modelo() == quota_gemini.MODELO_FALLBACK
-    assert tabela[date.today()] == quota_gemini.LIMITE_ANTES_DE_TROCAR
+    assert tabela[quota_gemini._hoje()] == quota_gemini.LIMITE_ANTES_DE_TROCAR
 
 
 def test_dia_diferente_nao_conta(monkeypatch):
@@ -89,4 +89,4 @@ def test_incremento_e_atomico_via_upsert_concorrente(monkeypatch):
     tabela = _instalar_tabela_falsa(monkeypatch)
     for _ in range(5):
         quota_gemini.registrar_chamada()
-    assert tabela[date.today()] == 5
+    assert tabela[quota_gemini._hoje()] == 5
