@@ -118,6 +118,19 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_ibgp.py
 
+      - name: Rodar coleta (MSConcursos)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/rodar_msconcursos.py
+
+      - name: Rodar coleta (INEPAM)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/rodar_inepam.py
+
       - name: Rodar coleta (Kingpage)
         if: always()
         env:
