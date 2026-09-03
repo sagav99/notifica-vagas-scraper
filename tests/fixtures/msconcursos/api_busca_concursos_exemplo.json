@@ -1,0 +1,128 @@
+{
+  "descricao": "Exemplo de resposta da API JSON nao documentada de busca do MSConcursos (endpoint /busca-concursos.php?q=<termo>). Sem dado pessoal - so metadados institucionais de concursos.",
+  "endpoint": "https://msconcursos.com.br/busca-concursos.php?q=<termo>",
+  "busca_q_sp": [
+    {
+      "titulo": "CONCURSO PÚBLICO PARA MÉDICO E MÉDICO PLANTONISTA - PREFEITURA DE SANTANA DE PARNAÍBA, SP",
+      "url": "https://msconcursos.com.br/concurso/54/concurso-publico-para-medico-e-medico-plantonista-prefeitura-de-santana-de-parnaiba-sp",
+      "origem": "novo"
+    },
+    {
+      "titulo": "CONCURSO PÚBLICO PARA AGENTE DE TRÂNSITO - PREFEITURA DE SANTANA DE PARNAÍBA, SP",
+      "url": "https://msconcursos.com.br/concurso/55/concurso-publico-para-agente-de-transito-prefeitura-de-santana-de-parnaiba-sp",
+      "origem": "novo"
+    },
+    {
+      "titulo": "CONCURSO PÚBLICO PARA PROFESSOR - PREFEITURA DE SANTANA DE PARNAÍBA, SP",
+      "url": "https://msconcursos.com.br/concurso/53/concurso-publico-para-professor-prefeitura-de-santana-de-parnaiba-sp",
+      "origem": "novo"
+    },
+    {
+      "titulo": "PROCESSO SELETIVO PARA PROFESSOR - PREFEITURA DE SANTANA DE PARNAÍBA, SP",
+      "url": "https://msconcursos.com.br/concurso/50/processo-seletivo-para-professor-prefeitura-de-santana-de-parnaiba-sp",
+      "origem": "novo"
+    },
+    {
+      "titulo": "CONCURSO PÚBLICO - VÁRIOS CARGOS - PREFEITURA DE SANTANA DE PARNAÍBA, SP",
+      "url": "https://msconcursos.com.br/concurso/44/concurso-publico-varios-cargos-prefeitura-de-santana-de-parnaiba-sp",
+      "origem": "novo"
+    },
+    {
+      "titulo": "PROCESSO SELETIVO SIMPLIFICADO PARA MÉDICO - PREFEITURA DE SANTANA DE PARNAÍBA, SP",
+      "url": "https://msconcursos.com.br/concurso/49/processo-seletivo-simplificado-para-medico-prefeitura-de-santana-de-parnaiba-sp",
+      "origem": "novo"
+    },
+    {
+      "titulo": "PROCESSO SELETIVO – VÁRIAS FUNÇÕES - PREFEITURA DE SANTANA DE PARNAÍBA, SP",
+      "url": "https://msconcursos.com.br/concurso/45/processo-seletivo-varias-funcoes-prefeitura-de-santana-de-parnaiba-sp",
+      "origem": "novo"
+    },
+    {
+      "titulo": "CONCURSO PÚBLICO - MÉDICO E MÉDICO PLANTONISTA  - PREFEITURA DE SANTANA DE PARNAÍBA, SP",
+      "url": "https://msconcursos.com.br/concurso/47/concurso-publico-medico-e-medico-plantonista-prefeitura-de-santana-de-parnaiba-sp",
+      "origem": "novo"
+    },
+    {
+      "titulo": "PROCESSO SELETIVO SIMPLIFICADO PARA MÉDICO - EDITAL DE ABERTURA N° 04/2025 - PREFEITURA MUNICIPAL DE SANTANA DE PARNAÍBA, SP.",
+      "url": "https://msconcursos.com.br/antigo/concurso/1309877/processo-seletivo-simplificado-para-medico-edital-de-abertura-n-04-2025-prefeitura-municipal-de-santana-de-parnaiba-sp",
+      "origem": "legado"
+    },
+    {
+      "titulo": "PROCESSO SELETIVO PARA VÁRIAS FUNÇÕES - EDITAL N° 03/2025 - PREFEITURA MUNICIPAL DE SANTANA DE PARNAÍBA, SP - OPÇÃO II",
+      "url": "https://msconcursos.com.br/antigo/concurso/1301206/processo-seletivo-para-varias-funcoes-edital-n-03-2025-prefeitura-municipal-de-santana-de-parnaiba-sp-opcao-ii",
+      "origem": "legado"
+    },
+    {
+      "titulo": "PROCESSO SELETIVO PARA VÁRIAS FUNÇÕES - EDITAL N° 03/2025 - PREFEITURA MUNICIPAL DE SANTANA DE PARNAÍBA, SP - OPÇÃO I",
+      "url": "https://msconcursos.com.br/antigo/concurso/1301205/processo-seletivo-para-varias-funcoes-edital-n-03-2025-prefeitura-municipal-de-santana-de-parnaiba-sp-opcao-i",
+      "origem": "legado"
+    },
+    {
+      "titulo": "CONCURSO PÚBLICO - PREFEITURA MUNICIPAL DE SANTANA DE PARNAÍBA, SP - EDITAL N° 01/2025 - OPÇÃO II",
+      "url": "https://msconcursos.com.br/antigo/concurso/1266842/concurso-publico-prefeitura-municipal-de-santana-de-parnaiba-sp-edital-n-01-2025-opcao-ii",
+      "origem": "legado"
+    },
+    {
+      "titulo": "CONCURSO PÚBLICO - PREFEITURA MUNICIPAL DE SANTANA DE PARNAÍBA, SP - EDITAL N° 01/2025 - OPÇÃO I",
+      "url": "https://msconcursos.com.br/antigo/concurso/1266841/concurso-publico-prefeitura-municipal-de-santana-de-parnaiba-sp-edital-n-01-2025-opcao-i",
+      "origem": "legado"
+    },
+    {
+      "titulo": "CONCURSO PÚBLICO - EDITAL N° 04/2025 - PREFEITURA MUNICIPAL DE SANTANA DE PARNAÍBA, SP - OPÇÃO II",
+      "url": "https://msconcursos.com.br/antigo/concurso/1303622/concurso-publico-edital-n-04-2025-prefeitura-municipal-de-santana-de-parnaiba-sp-opcao-ii",
+      "origem": "legado"
+    },
+    {
+      "titulo": "CONCURSO PÚBLICO - EDITAL N° 04/2025 - PREFEITURA MUNICIPAL DE SANTANA DE PARNAÍBA, SP - OPÇÃO I",
+      "url": "https://msconcursos.com.br/antigo/concurso/1303621/concurso-publico-edital-n-04-2025-prefeitura-municipal-de-santana-de-parnaiba-sp-opcao-i",
+      "origem": "legado"
+    },
+    {
+      "titulo": "PROCESSO SELETIVO - PREFEITURA MUNICIPAL DE SANTANA DE PARNAÍBA, SP - EDITAL N° 05/2025",
+      "url": "https://msconcursos.com.br/antigo/concurso/1311091/processo-seletivo-prefeitura-municipal-de-santana-de-parnaiba-sp-edital-n-05-2025",
+      "origem": "legado"
+    }
+  ],
+  "busca_q_mg": [
+    {
+      "titulo": "VESTIBULAR UEMG 2025",
+      "url": "https://msconcursos.com.br/antigo/concurso/1141921/vestibular-uemg-2025",
+      "origem": "legado"
+    },
+    {
+      "titulo": "VESTIBULAR UEMG 2024 ",
+      "url": "https://msconcursos.com.br/antigo/concurso/986084/vestibular-uemg-2024-",
+      "origem": "legado"
+    },
+    {
+      "titulo": "SERVIÇO AUTÔNOMO DE ÁGUA E ESGOTO - MANHUAÇU, MG ",
+      "url": "https://msconcursos.com.br/antigo/concurso/1052597/servico-autonomo-de-agua-e-esgoto-manhuacu-mg-",
+      "origem": "legado"
+    },
+    {
+      "titulo": "VESTIBULAR UEMG 2023",
+      "url": "https://msconcursos.com.br/antigo/concurso/826169/vestibular-uemg-2023",
+      "origem": "legado"
+    },
+    {
+      "titulo": "PREFEITURA MUNICIPAL DE PATROCÍNIO, MG.",
+      "url": "https://msconcursos.com.br/antigo/concurso/799727/prefeitura-municipal-de-patrocinio-mg",
+      "origem": "legado"
+    },
+    {
+      "titulo": "EMPRESA MUNICIPAL DE OBRAS PÚBLICAS E SERVIÇOS (EMOP) - DIVINÓPOLIS, MG.",
+      "url": "https://msconcursos.com.br/antigo/concurso/847670/empresa-municipal-de-obras-publicas-e-servicos-emop-divinopolis-mg",
+      "origem": "legado"
+    },
+    {
+      "titulo": "PREFEITURA DE UBERLÂNDIA, MG - PARA ASSISTENTE SOCIAL E PSICÓLOGO (03)",
+      "url": "https://msconcursos.com.br/antigo/concurso/811712/prefeitura-de-uberlandia-mg-para-assistente-social-e-psicologo-03",
+      "origem": "legado"
+    },
+    {
+      "titulo": "PSS - PREFEITURA DE UBERLÂNDIA, MG - OPÇÃO II - 2022 (02)",
+      "url": "https://msconcursos.com.br/antigo/concurso/797705/pss-prefeitura-de-uberlandia-mg-opcao-ii-2022-02",
+      "origem": "legado"
+    }
+  ]
+}

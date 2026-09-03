@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8"/>
+<!--
+  #228 - O titulo sai ESCAPADO. Ele carrega dado de banco (titulo do concurso) e, na
+  busca, o termo que o visitante digitou. Sem escapar, um titulo com </title><script>
+  fecha a tag e o script entra na pagina; conferido no docker antes de corrigir.
+  O caminho do titulo do concurso foi aberto neste proprio card, ao trocar text_titulo
+  (coluna que nao existe, sempre vazia) por con_titulo. Escapar aqui, na saida, resolve
+  tambem os caminhos que ja existiam: o termo da busca e o titulo vindo da inscricao.
+  Ver card #225.
+-->
+<title>MSCONCURSOS</title>
+<meta name="facebook-domain-verification" content="046270k3x7ttz1qe6hartp1a2kug95" />
+<meta name="viewport" content="width = device-width, initial-scale = 1, user-scalable = no" />
+<!-- Metas Facebook -->
+<meta property="og:site_name" content="" />
+    
+    <!-- <meta property="og:title" content="" /> <!-- Título da Página -->
+    <meta property="og:description" content="" />
+    <meta property="og:url" content="" />
+    <meta property="og:image" content="" />
+    <meta property="og:image:width" content="200" />
+	<meta property="og:image:height" content="200" />
+<!-- Fim Metas Facebook -->
+
+<base href="https://msconcursos.com.br/" />
+
+<link rel="shortcut icon" href="imagens/favicon.ico" type="image/x-icon" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,400i,700,700i" rel="stylesheet" /> 
+<link rel="stylesheet" href="css/css.css?v=1786145544" type="text/css" media="screen" />
+<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+<script type="text/javascript">if (typeof jQuery == 'undefined') { document.write(unescape("%3Cscript src='scripts/jquery-min.js' type='text/javascript'%3E%3C/script%3E"));}</script>
+<!--[if lt IE 10]><script type="text/javascript" src="Scripts/no-ie9.js"></script><![endif]-->
+<script type="text/javascript" src="scripts/efeitos.js?v=1787571867"></script>
+<script type="text/javascript">
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-99737277-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+</head>
+
+<body>
+	
+    <div id="tudo">
+    	
+        <header class="topo">
+            <div class="topo-cima">
+                <div class="content">
+                    
+                    <nav class="menu-topo">
+                        <div class="tb">
+                            <div class="tb-cell">
+                                <ul><!--
+                                    --><li><span><a href="https://www.gruposarmento.com">GRUPO SARMENTO</a></span></li><!--
+                                    --><li><a href="https://www.msconcursos.com.br/home">MSCONCURSOS</a></li><!--
+                                                                        --><li><a href="https://www.zizo2000.com.br/">Zizo 2000 Sistemas</a></li><!--                            
+                                --></ul>
+                            </div><!-- tb-cell -->
+                        </div><!-- tb -->                        
+                    </nav><!-- menu-topo -->
+                    
+                    <div class="horario-funcionamento">
+
+                        <!-- BUSCA DE CONCURSOS (topo) -->
+                        <style type="text/css">
+                            #busca-topo{ float:right; position:relative; margin:8px 0 0 18px; }
+                            #busca-topo form{ position:relative; margin:0; }
+                            #busca-topo-input{
+                                width:230px; height:30px; padding:0 36px 0 14px; font-size:13px;
+                                color:#333; background:#fff; border:1px solid #cfcfcf; border-radius:15px;
+                                box-sizing:border-box; outline:none; -webkit-appearance:none; appearance:none;
+                                transition:border-color .15s ease, box-shadow .15s ease;
+                            }
+                            #busca-topo-input::-webkit-search-cancel-button{ -webkit-appearance:none; }
+                            #busca-topo-input::placeholder{ color:#9a9a9a; }
+                            #busca-topo-input:focus{ border-color:#4E6233; box-shadow:0 0 0 2px rgba(78,98,51,.18); }
+                            #busca-topo-btn{
+                                position:absolute; top:0; right:0; width:34px; height:30px; padding:0;
+                                border:none; background:transparent; color:#4E6233; cursor:pointer;
+                                display:-webkit-box; display:flex; -webkit-box-align:center; align-items:center;
+                                -webkit-box-pack:center; justify-content:center;
+                            }
+                            #busca-topo-btn:hover{ color:#334021; }
+                            #busca-topo-btn svg{ width:15px; height:15px; display:block; }
+                            #busca-topo-preview{
+                                display:none; background:#fff; border:1px solid #ddd; border-radius:6px;
+                                box-shadow:0 8px 22px rgba(0,0,0,.18); overflow-y:auto; max-height:340px;
+                            }
+                            #busca-topo-preview a:hover{ background:#f3f6ee; }
+                            @media (max-width:880px){
+                                #busca-topo{ float:none; width:100%; max-width:420px; margin:10px auto 0; }
+                                #busca-topo-input{ width:100%; }
+                            }
+                        </style>
+                        <div id="busca-topo">
+                            <form action="/busca" method="get" autocomplete="off" onsubmit="return window.__buscaTopoSubmit ? window.__buscaTopoSubmit() : true;">
+                                <input type="search" id="busca-topo-input" name="q" placeholder="Buscar concurso..." autocomplete="off" aria-label="Buscar concurso" />
+                                <button type="submit" id="busca-topo-btn" aria-label="Buscar">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                </button>
+                            </form>
+                            <div id="busca-topo-preview" role="listbox"></div>
+                        </div>
+                        <script type="text/javascript">
+                        (function(){
+                            var BASE='/';
+                            var input=document.getElementById('busca-topo-input');
+                            var box=document.getElementById('busca-topo-preview');
+                            if(!input||!box) return;
+                            if(box.parentNode!==document.body){ document.body.appendChild(box); }
+                            var timer, itens=[], sel=-1;
+                            function esc(s){return (s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+                            function pos(){var r=input.getBoundingClientRect();var w=Math.max(r.width,300);var vw=document.documentElement.clientWidth;var left=r.left;if(left+w>vw-8){left=Math.max(8,vw-8-w);}box.style.position='fixed';box.style.top=(r.bottom+3)+'px';box.style.left=left+'px';box.style.width=w+'px';box.style.zIndex='2147483647';}
+                            function fechar(){box.style.display='none';box.innerHTML='';itens=[];sel=-1;}
+                            function resultados(){var q=input.value.trim();if(q){window.location.href=BASE+'busca?q='+encodeURIComponent(q);}return false;}
+                            window.__buscaTopoSubmit=resultados;
+                            function render(){
+                                if(!itens.length){box.innerHTML='<div style="padding:10px 14px;color:#888;font-size:13px;">Nenhum concurso encontrado.</div>';pos();box.style.display='block';return;}
+                                var h='';
+                                itens.forEach(function(it,i){
+                                    var sub=it.origem==='novo'?'msconcursos.com.br':(it.origem==='legado'?'concurso anterior':'');
+                                    h+='<a href="'+esc(it.url)+'" style="display:block;padding:9px 14px;border-bottom:1px solid #f0f0f0;color:#333;font-size:13px;line-height:1.35;text-decoration:none;'+(i===sel?'background:#eef3e6;':'background:#fff;')+'">'+esc(it.titulo)+(sub?'<span style="display:block;font-size:11px;color:#999;margin-top:2px;">'+sub+'</span>':'')+'</a>';
+                                });
+                                box.innerHTML=h;pos();box.style.display='block';
+                            }
+                            function buscar(){
+                                var q=input.value.trim();
+                                if(q.length<2){fechar();return;}
+                                fetch(BASE+'busca-concursos.php?q='+encodeURIComponent(q),{headers:{'Accept':'application/json'}})
+                                    .then(function(r){return r.json();})
+                                    .then(function(d){itens=d||[];sel=-1;render();})
+                                    .catch(function(){fechar();});
+                            }
+                            input.addEventListener('input',function(){clearTimeout(timer);timer=setTimeout(buscar,200);});
+                            input.addEventListener('keydown',function(e){
+                                if(e.key==='ArrowDown'&&itens.length){sel=Math.min(sel+1,itens.length-1);render();e.preventDefault();}
+                                else if(e.key==='ArrowUp'&&itens.length){sel=Math.max(sel-1,-1);render();e.preventDefault();}
+                                else if(e.key==='Enter'){if(sel>=0&&itens[sel]){window.location.href=itens[sel].url;}else{resultados();}e.preventDefault();}
+                                else if(e.key==='Escape'){fechar();}
+                            });
+                            input.addEventListener('focus',function(){if(itens.length){pos();box.style.display='block';}});
+                            document.addEventListener('click',function(e){if(e.target!==input && !box.contains(e.target)){fechar();}});
+                            window.addEventListener('scroll',function(e){
+                                if(box.style.display!=='block') return;
+                                if(e.target===box) return;
+                                var r=input.getBoundingClientRect();
+                                if(r.bottom<0 || r.top>document.documentElement.clientHeight){ fechar(); return; }
+                                pos();
+                            },true);
+                            window.addEventListener('resize',function(){if(box.style.display==='block'){pos();}});
+                        })();
+                        </script>
+                        <!-- /BUSCA DE CONCURSOS -->
+
+                        <div class="tb">
+                            <div class="tb-cell">
+                            	                            </div><!-- tb-cell -->
+                        </div><!-- tb -->
+                    </div><!-- horario-funcionamento -->
+
+                </div><!-- content -->
+            </div><!-- topo-cima -->
+            <div class="topo-baixo">
+                <div class="content">
+                    
+                    <div class="logo">
+                        <div class="tb">
+                            <div class="tb-cell">
+                                <a href="home" class="bt">
+                                    <h1>MSCONCURSOS</h1>
+                                </a>
+                            </div><!-- tb-cell -->
+                        </div><!-- tb -->                        
+                    </div><!-- logo -->
+					                    <div class="content-area-candidato">
+                        <div class="tb">
+                            <div class="tb-cell">
+                                <div class="area-candidato">
+                                    <h2 class="titulo">ÁREA DO CANDIDATO</h2><!-- titulo -->
+                                    <div class="wrapper">
+                                        <form id="form-login" name="" method="post" action="javascript:;" onsubmit="event.preventDefault(); logarCadastrado();">
+                                            <div class="campo"><input type="text" id="campoCpf" name="campoCpf" class="cpf" placeholder="CPF"></div><!-- campo -->
+                                            <div class="campo text-password">
+                                                <input type="password" id="campoSenha" name="campoSenha" placeholder="Senha">
+                                                <button type="button" class="showPassTopo Exibir">
+                                                    <img src="imagens/showPass.svg" alt="Exibir" width="14px">
+                                                </button>
+                                            </div><!-- campo -->
+                                            <button type="submit" id="logar3" class="btn">Entrar</button>
+                                        </form>
+                                    </div><!-- wrapper -->
+                                    <div class="cadastrar-esqueci"><a href="esqueci-minha-senha">Esqueci minha senha</a></div><!-- cadastrar-esqueci -->
+                                </div><!-- area-candidato -->
+                            </div><!-- tb-cell -->
+                        </div><!-- tb -->
+                    </div><!-- content-area-candidato -->
+					                    
+
+                </div><!-- content -->
+            </div><!-- topo-baixo -->
+        </header><!-- topo -->
+
+        <div class="menu-telefone">
+            <div class="content">
+                
+                <button class="abre-menu-mobile abre-fecha-menu">MENU<div><span></span></div></button>
+
+                <nav class="menu">                    
+                    <ul><!--
+                                                --><li><a href="duvidas-frequentes" class="">DÚVIDAS FREQUENTES</a></li><!--
+                                                                 --></ul>                                          
+                </nav><!-- menu -->
+				
+                <div class="telefone-topo">
+                    <div class="tb">
+                        <div class="tb-cell">
+                            ATENDIMENTO AO CANDIDATO:<br /><b>(67) 3253-6683</b>
+                        </div><!-- tb -cel -->
+                        <div class="tb-cell" style="padding-left:10px;">
+                            <b>De segunda-feira a sexta-feira</b><br />
+                            <small>das 8h30min às 18h (horário de BRASÍLIA)</small>
+                        </div><!-- tb -cel -->
+                    </div><!-- tb -->                    
+                </div><!-- telefone-topo -->
+				
+            </div><!-- content -->
+        </div><!-- menu-telefone -->
+     
+		
+        
+            
+			            
+                            <section class="secao secao-concursos abertas">
+                    <div class="content">                    
+                        <header class="topo-secao">
+                            <h2 class="titulo-secao link-abre-fecha bebas">INSCRIÇÕES <b>ABERTAS</b></h2>
+                        </header><!-- topo-secao -->
+                        <div class="concursos-lista drop-concurso">
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Concurso Público</b> | CONCURSO PÚBLICO PARA MÉDICO E MÉDICO PLANTONISTA - PREFEITURA DE SANTANA DE PARNAÍBA, SP - EDITAL N.º 05/2026</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>19/08/2026 a 13/09/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>27/09/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/54/concurso-publico-para-medico-e-medico-plantonista-prefeitura-de-santana-de-parnaiba-sp" class="btn saiba-mais">Saiba mais</a>
+                                        <a href="login-area-do-candidato/54/concurso-publico-para-medico-e-medico-plantonista-prefeitura-de-santana-de-parnaiba-sp" class="btn inscreva-se">Inscreva-se</a>
+                                                                            </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Concurso Público</b> | CONCURSO PÚBLICO PARA AGENTE DE TRÂNSITO - PREFEITURA DE SANTANA DE PARNAÍBA, SP - EDITAL N.º 06/2026 </h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>19/08/2026 a 13/09/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>27/09/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/55/concurso-publico-para-agente-de-transito-prefeitura-de-santana-de-parnaiba-sp" class="btn saiba-mais">Saiba mais</a>
+                                        <a href="login-area-do-candidato/55/concurso-publico-para-agente-de-transito-prefeitura-de-santana-de-parnaiba-sp" class="btn inscreva-se">Inscreva-se</a>
+                                                                            </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                    
+                        </div><!-- concursos-lista -->
+                    </div><!-- content -->
+                </section><!-- abertas -->
+			            
+                        <section class="secao secao-concursos em-andamento">
+                <div class="content">
+                    
+                    <header class="topo-secao">
+                        <h2 class="titulo-secao link-abre-fecha bebas">CONCURSOS <b>EM ANDAMENTO</b></h2>
+                    </header><!-- topo-secao -->
+                    
+                    <div class="concursos-lista drop-concurso ">
+                        	                            <div class="concurso">
+                                <h3 class="titulo"><b>Concurso Público</b> | CONCURSO PÚBLICO - PREFEITURA MUNICIPAL DE SANTANA DE PARNAÍBA, SP - EDITAL N° 05/2023</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>28/08/2023 a 27/09/2023</div>
+                                        </div><!-- data-inscricao -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/56/concurso-publico-prefeitura-municipal-de-santana-de-parnaiba-sp" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+						                            <div class="concurso">
+                                <h3 class="titulo"><b>Concurso Público</b> |  CONCURSO PÚBLICO - PREFEITURA MUNICIPAL DE ITAPERUÇU, PR - EDITAL N.º 01-2026</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>20/03/2026 a 29/07/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>13/09/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/35/-concurso-publico-prefeitura-municipal-de-itaperucu-pr" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+						                            <div class="concurso">
+                                <h3 class="titulo"><b>Processo Seletivo</b> | CONCURSO PÚBLICO MODALIDADE EMPREGO PÚBLICO – PREFEITURA MUNICIPAL DE ITAPERUÇU, PR - EDITAL N.º 002-2026</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>20/03/2026 a 29/07/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>13/09/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/36/concurso-publico-modalidade-emprego-publico-prefeitura-municipal-de-itaperucu-pr" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+						                            <div class="concurso">
+                                <h3 class="titulo"><b>Concurso Público</b> | CONCURSO PÚBLICO - VÁRIOS CARGOS - PREFEITURA DE SANTANA DE PARNAÍBA, SP - EDITAL N.º 03/2026</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>12/06/2026 a 12/07/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>02/08/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/44/concurso-publico-varios-cargos-prefeitura-de-santana-de-parnaiba-sp" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+						                            <div class="concurso">
+                                <h3 class="titulo"><b>Concurso Público</b> | CONCURSO PÚBLICO PARA PROFESSOR - PREFEITURA DE SANTANA DE PARNAÍBA, SP - EDITAL N.º 04/2026</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>08/07/2026 a 06/08/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>30/08/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/53/concurso-publico-para-professor-prefeitura-de-santana-de-parnaiba-sp" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+						  
+                        
+                        <!-- apagar isso depois -->
+                         
+                            <div class="concurso">
+                                <h3 class="titulo"><b>Certame:</b> | CONCURSO PÚBLICO - PREFEITURA MUNICIPAL DE SANTANA DE PARNAÍBA, SP - EDITAL N° 03/2025 (GUARDA CIVIL MUNICIPAL)</h3><!-- titulo -->
+                                <div class="wrapper">                                
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>09/06/2025 a 08/07/2025</div>
+                                        </div><!-- data-inscricao -->
+                                        <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>27/07/2025</div>
+                                        </div><!-- data-prova -->
+                                    </div><!-- datas -->
+                                    <div class="btns">
+                                            <a href="https://www.msconcursos.com.br/antigo/concurso/1277070/concurso-publico-prefeitura-municipal-de-santana-de-parnaiba-sp-edital-n-03-2025-guarda-civil-municipal" class="btn saiba-mais">Saiba mais</a>
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div>
+                </div><!-- content -->
+            </section><!-- em andamento -->
+			            
+                        <section class="secao secao-concursos autorizados">
+                <div class="content">
+                    
+                    <header class="topo-secao">
+                        <h2 class="titulo-secao link-abre-fecha bebas">CONCURSOS <b>REALIZADOS</b></h2>
+                    </header><!-- topo-secao -->
+                    
+                    <div class="concursos-lista drop-concurso">
+                        
+						                            <div class="concurso">
+                                <h3 class="titulo"><b>Certame</b> | PROCESSO SELETIVO PARA O PROGRAMA DE ENSINO MÉDIO DO SESI-RJ EM PARCERIA COM O SENAI-RJ - </h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>10/10/2025 a 09/11/2025</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>29/11/2025</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/19/processo-seletivo-para-o-programa-de-ensino-medio-do-sesi-rj-em-parceria-com-o-senai-rj" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Processo Seletivo</b> |  SESI-BA - PROCESSO SELETIVO PARA O PROGRAMA DE ENSINO MÉDIO DO SESI-BA - </h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>17/10/2025 a 07/11/2025</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>07/12/2025</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/22/-sesi-ba-processo-seletivo-para-o-programa-de-ensino-medio-do-sesi-ba" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Processo Seletivo</b> | PROCESSO SELETIVO - PREFEITURA MUNICIPAL DE SANTANA DE PARNAÍBA, SP - EDITAL N° 05/2025 - </h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>24/10/2025 a 02/12/2025</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>21/12/2025</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/23/processo-seletivo-prefeitura-municipal-de-santana-de-parnaiba-sp-edital-n-05-2025" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Processo Seletivo</b> | PROCESSO SELETIVO INTERNO PARA COORDENADOR PEDAGÓGICO - PREFEITURA MUNICIPAL DE SANTANA DE PARNAÍBA, SP - EDITAL N° 01/2025 - </h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>13/11/2025 a 02/12/2025</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>14/12/2025</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/24/processo-seletivo-interno-para-coordenador-pedagogico-prefeitura-municipal-de-santana-de-parnaiba-sp-edital-n-01-2025" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Certame</b> | PROCESSO DE PROMOÇÃO 2023 DAS CLASSES DE ESPECIALISTA AMBIENTAL - SECRETARIA DE MEIO AMBIENTE, INFRAESTRUTURA E LOGÍSTICA - SEMIL - EDITAL Nº 009/2025</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>19/11/2025 a 03/12/2025</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>08/02/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/25/processo-de-promocao-2023-das-classes-de-especialista-ambiental-secretaria-de-meio-ambiente-infraestrutura-e-logistica-semil" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Concurso Público</b> | CONCURSO PÚBLICO - CONSÓRCIO REGIONAL INTERMUNICIPAL DE SAÚDE (CRIS) - (MÉDICO - PSF) - Edital N.º 01/2026.</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>18/12/2025 a 18/01/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>01/02/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/26/concurso-publico-consorcio-regional-intermunicipal-de-saude-cris-medico-psf" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Certame</b> | PROCESSO SELETIVO SIMPLIFICADO PARA MÉDICO - PREFEITURA MUNICIPAL DE SANTANA DE PARNAÍBA-SP - EDITAL N.º 01/2026</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>11/02/2026 a 16/03/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/28/processo-seletivo-simplificado-para-medico-prefeitura-municipal-de-santana-de-parnaiba-sp" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Certame</b> | CONCURSO PÚBLICO - CONSÓRCIO REGIONAL INTERMUNICIPAL DE SAÚDE (CRIS) - (CUIDADOR E TÉCNICO DE ENFERMAGEM) - EDITAL N.º 01/2026</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>11/02/2026 a 11/03/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>29/03/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/29/concurso-publico-consorcio-regional-intermunicipal-de-saude-cris-cuidador-e-tecnico-de-enfermagem" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Concurso Público</b> | CONCURSO PÚBLICO PARA VÁRIOS CARGOS - PREFEITURA MUNICIPAL DE SANTANA DE PARNAÍBA, SP - EDITAL N.º 01/2026</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>06/03/2026 a 05/04/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>26/04/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/31/concurso-publico-para-varios-cargos-prefeitura-municipal-de-santana-de-parnaiba-sp" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Processo Seletivo</b> | PROCESSO SELETIVO INTERNO PARA COORDENADOR PEDAGÓGICO - PREFEITURA MUNICIPAL DE SANTANA DE PARNAÍBA, SP - EDITAL N.º 02/2026</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>04/03/2026 a 23/03/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>26/04/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/34/processo-seletivo-interno-para-coordenador-pedagogico-prefeitura-municipal-de-santana-de-parnaiba-sp" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Processo Seletivo Interno</b> | CURSO DE FORMAÇÃO DE SARGENTOS - MÉRITO INTELECTUAL - EDITAL 003-2026/DP/CBMSC</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>23/03/2026 a 22/04/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>31/05/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/39/curso-de-formacao-de-sargentos-merito-intelectual" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Processo Seletivo Interno</b> | CURSO DE FORMAÇÃO DE SARGENTOS - ANTIGUIDADE - EDITAL N° 004/2026/DP/CBMSC</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>23/03/2026 a 22/04/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/40/curso-de-formacao-de-sargentos-antiguidade" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Processo Seletivo Interno</b> | CURSO DE FORMAÇÃO DE SARGENTOS - VAGAS ADICIONAIS - EDITAL 005-2026/DP/CBMSC</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>23/03/2026 a 22/04/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/41/curso-de-formacao-de-sargentos-vagas-adicionais" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Processo Seletivo Interno</b> | CURSO DE HABILITAÇÃO DE OFICIAIS ESPECIALISTAS (CHOE) - EDITAL 006-2026/DP/CBMSC</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>23/03/2026 a 17/04/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>31/05/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/42/curso-de-habilitacao-de-oficiais-especialistas-choe" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Processo Seletivo Público</b> | PROCESSO SELETIVO PÚBLICO MODALIDADE EMPREGO PÚBLICO DE AGENTE COMUNITÁRIO DE SAÚDE - PREFEITURA DE IBIÚNA, SP - EDITAL N.º 01/2026</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>01/04/2026 a 11/04/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>25/04/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/43/processo-seletivo-publico-modalidade-emprego-publico-de-agente-comunitario-de-saude-prefeitura-de-ibiuna-sp" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Processo Seletivo</b> | PROCESSO SELETIVO – VÁRIAS FUNÇÕES - PREFEITURA DE SANTANA DE PARNAÍBA, SP - EDITAL N.º 03/2026</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>15/04/2026 a 04/05/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>31/05/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/45/processo-seletivo-varias-funcoes-prefeitura-de-santana-de-parnaiba-sp" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Concurso Público</b> | CONCURSO PÚBLICO - MÉDICO E MÉDICO PLANTONISTA  - PREFEITURA DE SANTANA DE PARNAÍBA, SP - EDITAL  N.º 02/2026</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>08/04/2026 a 10/05/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>31/05/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/47/concurso-publico-medico-e-medico-plantonista-prefeitura-de-santana-de-parnaiba-sp" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Concurso Público</b> | CONCURSO PÚBLICO - CONSÓRCIO REGIONAL INTERMUNICIPAL DE SAÚDE (CRIS) - CUIDADOR E MÉDICO PSF - EDITAL  N.º 02/2026</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>30/04/2026 a 31/05/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>14/06/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/48/concurso-publico-consorcio-regional-intermunicipal-de-saude-cris-cuidador-e-medico-psf" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Processo Seletivo Simplificado</b> | PROCESSO SELETIVO SIMPLIFICADO PARA MÉDICO - PREFEITURA DE SANTANA DE PARNAÍBA, SP - EDITAL N.º 04/2026</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>08/05/2026 a 12/05/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/49/processo-seletivo-simplificado-para-medico-prefeitura-de-santana-de-parnaiba-sp" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Processo Seletivo</b> | PROCESSO SELETIVO PARA PROFESSOR - PREFEITURA DE SANTANA DE PARNAÍBA, SP - EDITAL N.º 05/2026</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>19/06/2026 a 08/07/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>26/07/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/50/processo-seletivo-para-professor-prefeitura-de-santana-de-parnaiba-sp" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                                                        <div class="concurso">
+                                <h3 class="titulo"><b>Processo Seletivo</b> | PROCESSO SELETIVO PARA O PROGRAMA DE ENSINO MÉDIO DO SESI-RJ EM PARCERIA COM O SENAI-RJ - EDITAL N.º 01/2027</h3><!-- titulo -->
+                                <div class="wrapper">                               
+                                    <div class="datas">
+                                        <div class="data data-inscricao">
+                                            <div><b>INSCRIÇÕES</b>29/06/2026 a 14/07/2026</div>
+                                        </div><!-- data-inscricao -->
+                                                                                <div class="data data-prova">
+                                            <div><b>DATA DA PROVA</b>25/07/2026</div>
+                                        </div><!-- data-prova -->
+                                                                            </div><!-- datas -->
+                                    <div class="btns">
+                                        <a href="concurso/51/processo-seletivo-para-o-programa-de-ensino-medio-do-sesi-rj-em-parceria-com-o-senai-rj" class="btn saiba-mais">Saiba mais</a>
+                                        
+                                    </div><!-- btns -->
+                                </div><!-- wrapper -->
+                            </div><!-- concurso -->
+                               
+
+                    </div><!-- concursos-lista -->
+
+                </div><!-- content -->
+            </section><!-- autorizados -->
+                        
+        </div><!-- conteudo -->
+
+        <div class="remodal popup remodal-popup" data-remodal-id="modal-popup" data-remodal-options="closeOnOutsideClick: false, hashTracking: false">
+            <div data-remodal-action="close" class=remodal-close></div>
+            <header class="topo-popup">
+                <div class="bt logo-popup"><div class="bt">MSCONCURSOS</div></div><!-- logo-popup -->
+                <h2 class="titulo-topo-popup">ATENÇÃO CANDIDATO!</h2>
+            </header><!-- topo-popup -->
+            <div class="conteudo-popup">
+                <div class="texto">
+                	                </div><!-- texto -->
+            </div><!-- conteudo-popup -->
+        </div><!-- remodal-duvidas -->
+        
+		
+		<footer class="rodape">
+			
+			<section class="secao secao-certificado-central">
+				<div class="content">
+					<div class="wrapper">
+												<div class="central-atendimento">
+							<div class="tb">
+								<div class="tb-cell">
+									ATENDIMENTO AO CANDIDATO<br />
+									<b></b>
+								</div><!-- tb-cell -->
+							</div><!-- tb -->
+						</div><!-- central-atendimento -->
+						
+
+					</div><!-- wrapper -->
+				</div><!-- content -->
+			</section><!-- secao-certificado-central -->
+			
+			<div class="topo-rodape">
+				<div class="content">
+					
+					<div class="menu-telefone-rodape">						
+						<nav class="menu-rodape">
+							<ul>
+								<li><a href="https://www.msconcursos.com.br/antigo/" target="_blank">CONCURSOS REALIZADOS ATÉ 2025</a></li>
+		                        <li><a href="duvidas-frequentes">DÚVIDAS FREQUENTES</a></li>
+		                        <li><a href="peca-seu-certificado">PEÇA SEU CERTIFICADO</a></li>
+															</ul>
+						</nav><!-- menu-rodape -->
+                        					</div><!-- menu-telefone-rodape" -->
+
+					<div class="logo-rodape">
+						<a href="" class="bt">MSCONCURSOS</a>
+					</div><!-- logo-rodape -->
+
+				</div><!-- content -->
+			</div><!-- topo-rodape -->
+
+			<div class="baixo-rodape">
+				<div class="content">
+					Todos direitos reservados &copy; 2025 <b>MSCONCURSOS</b>
+				</div><!-- content -->
+			</div><!-- baixo-rodape -->
+
+		</footer><!-- rodape -->
+        
+        <a href="https://www.tag3.com.br" class="bt link-tag3" target="_blank">Tag3 - Desenvolvimento Digital</a>
+		
+        
+    </div><!-- tudo -->
+	<div vw class="enabled">
+    <div vw-access-button class="active"></div>
+    <div vw-plugin-wrapper>
+      <div class="vw-plugin-top-wrapper"></div>
+    </div>
+  </div>
+  <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+  <script>
+    new window.VLibras.Widget('https://vlibras.gov.br/app');
+  </script>
+     <link rel="stylesheet" type="text/css" href="//cdnjs.cloudflare.com/ajax/libs/cookieconsent2/3.0.3/cookieconsent.min.css" />
+<script src="//cdnjs.cloudflare.com/ajax/libs/cookieconsent2/3.0.3/cookieconsent.min.js"></script>
