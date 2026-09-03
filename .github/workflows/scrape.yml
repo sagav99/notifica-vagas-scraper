@@ -98,6 +98,33 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_ache_concursos.py
 
+      - name: Rodar coleta (Avança SP)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/rodar_avancasp.py
+
+      - name: Rodar coleta (FUNDEP)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/rodar_fundep.py
+
+      - name: Rodar coleta (IBGP)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/rodar_ibgp.py
+
+      - name: Rodar coleta (Kingpage)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/rodar_kingpage.py
+
       # Instar por último entre as coletas: é de longe a maior consumidora
       # de cota do Gemini (231 municípios, até ~800 itens "aberto" numa
       # execução só) — achado real 2026-09-01, a cota estourou no meio
