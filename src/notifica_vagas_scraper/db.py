@@ -40,6 +40,72 @@ def listar_nomes_municipios(conn: psycopg.Connection, ufs: list[str] | None = No
         return [(row[0], row[1]) for row in cur.fetchall()]
 
 
+def listar_municipios_com_codigo(
+    conn: psycopg.Connection, ufs: list[str] | None = None
+) -> list[tuple[int, str, str]]:
+    """(codigo_ibge, nome, uf) — usado por fonte de descoberta ampla
+    (PCI Concursos, Google News RSS) que casa o título contra o nome do
+    município (igual `listar_nomes_municipios`) mas depois precisa do
+    código IBGE pra persistir o sinal, sem chamar a API externa do IBGE
+    de novo pra um município que já está no nosso próprio cadastro."""
+    with conn.cursor() as cur:
+        if ufs:
+            cur.execute("select codigo_ibge, nome, uf from public.municipios where uf = any(%s)", (ufs,))
+        else:
+            cur.execute("select codigo_ibge, nome, uf from public.municipios")
+        return [(row[0], row[1], row[2]) for row in cur.fetchall()]
+
+
+def listar_dominios_fontes_conhecidas(conn: psycopg.Connection) -> set[str]:
+    """Domínios (netloc) de toda `fontes.url` já cadastrada — usado por
+    fonte de descoberta ampla pra decidir se um link externo citado numa
+    notícia/RSS já é coberto por um parser oficial (mera confirmação) ou
+    é candidato a fonte nova de verdade (ver `sinais_descoberta_externa`,
+    migration 015)."""
+    from urllib.parse import urlparse
+
+    with conn.cursor() as cur:
+        cur.execute("select url from public.fontes")
+        return {urlparse(row[0]).netloc.lower() for row in cur.fetchall() if row[0]}
+
+
+def registrar_sinal_descoberta(
+    conn: psycopg.Connection,
+    *,
+    fonte_descoberta: str,
+    municipio_id: int,
+    titulo: str,
+    url: str,
+    dominios_externos: list[str],
+    coberto_por_fonte_oficial: bool,
+) -> bool:
+    """Grava 1 sinal de descoberta ampla (PCI Concursos, Google News RSS)
+    em `sinais_descoberta_externa` (migration 015). Idempotente por `url`
+    (on conflict do nothing) — devolve True só quando é sinal novo, pra
+    quem chama poder logar "X novo(s) de Y encontrados" sem duplicar
+    contagem em execuções repetidas do mesmo dia."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            insert into public.sinais_descoberta_externa
+                (fonte_descoberta, municipio_id, titulo, url, dominios_externos, coberto_por_fonte_oficial)
+            values (%(fonte_descoberta)s, %(municipio_id)s, %(titulo)s, %(url)s,
+                    %(dominios_externos)s, %(coberto_por_fonte_oficial)s)
+            on conflict (url) do nothing
+            returning id
+            """,
+            {
+                "fonte_descoberta": fonte_descoberta,
+                "municipio_id": municipio_id,
+                "titulo": titulo,
+                "url": url,
+                "dominios_externos": dominios_externos,
+                "coberto_por_fonte_oficial": coberto_por_fonte_oficial,
+            },
+        )
+        return cur.fetchone() is not None
+
+
 def upsert_municipio(
     conn: psycopg.Connection,
     *,

@@ -114,6 +114,29 @@ def encontrar_municipio(titulo: str, municipios: list[tuple[str, str]]) -> tuple
     return melhor
 
 
+def casar_municipio_com_guarda_de_uf(
+    titulo: str, uf_alvo: str, municipios: list[tuple[str, str]]
+) -> tuple[str, str] | None:
+    """`encontrar_municipio` sozinho ainda deixa passar falso positivo em
+    fonte de descoberta ampla (título com marcador de UF explícito tipo
+    "- UF"): quando esse marcador existe mas não bate com o UF do
+    município casado, é sinal forte de coincidência de nome — achados
+    reais rodando a PCI Concursos contra produção (2026-09-02, TAREFAS.md):
+    "Tocantins" (MG) batendo em "Governo do Tocantins - TO", "Abaeté" (MG)
+    batendo dentro de "Abaetetuba - PA" (sem separador de palavra entre os
+    dois nomes, caso que a guarda de prefixo do `encontrar_municipio` não
+    cobre). Compartilhada entre toda fonte de descoberta ampla por índice
+    externo (PCI Concursos, Google News RSS) — não é específica de uma só.
+    """
+    match = encontrar_municipio(titulo, municipios)
+    if not match:
+        return None
+    marcadores_uf = re.findall(r"-\s*([A-Z]{2})\b", titulo)
+    if marcadores_uf and match[1] not in marcadores_uf:
+        return None
+    return match
+
+
 def encontrar_pdf_edital_principal(html: str) -> str | None:
     soup = BeautifulSoup(html, "html.parser")
     for link in soup.find_all("a", href=lambda h: h and h.endswith(".pdf")):

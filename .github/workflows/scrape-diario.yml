@@ -157,6 +157,19 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_instituto_mais.py
 
+      - name: Descoberta ampla (PCI Concursos — radar, não coleta)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/descobrir_pci.py
+
+      - name: Descoberta ampla (Google News RSS — concurso médico)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/rodar_descoberta_google_news.py
+
       - name: Revisar vagas pendentes (Gemini, automático)
         if: always()
         env:
