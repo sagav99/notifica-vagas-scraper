@@ -1,24 +1,29 @@
-name: Coleta de vagas
+name: Coleta de vagas (diário — todas menos Instar)
+
+# Dividido de scrape.yml em 2026-09-05 (decisão do usuário, registrada em
+# TAREFAS.md do repo principal): Instar sozinha consome muito mais cota do
+# Gemini (231 municípios) que o resto das fontes somadas, então ela ficou
+# isolada em scrape-instar.yml (cadência de 3 em 3 dias) enquanto as
+# demais ~17 fontes, com volume bem menor, passam a rodar todo dia aqui.
+# A etapa de revisão automática do Gemini roda ao final DESTE workflow
+# também (e não só do da Instar) porque qualquer uma das execuções diárias
+# pode deixar vaga pendente de revisão — não faz sentido esperar até 3
+# dias para revisar o que já foi coletado hoje.
 
 on:
   schedule:
-    # A cada 3 dias, 06:00 UTC. Cron não tem "a cada N dias" de verdade —
-    # isso é "todo dia-do-mês múltiplo de 3", então o intervalo pode
-    # encurtar na virada do mês (ex: dia 31 -> dia 1). Aceitável pro
-    # cadência-alvo do projeto (ver CLAUDE.md).
-    - cron: "0 6 */3 * *"
+    - cron: "0 6 * * *"
   workflow_dispatch: {}
 
 jobs:
   coletar:
     runs-on: ubuntu-latest
-    # 30min -> 60min ao somar o step Instar (230 municípios) + revisão
-    # automática (pode envolver bastante chamada ao Gemini com rate limit
-    # de 4,5s cada); 60min -> 90min ao trocar DOM/AMM-MG pra busca
-    # automática por entidade (161 municípios x 2 termos, ~1,5s entre
-    # buscas, sem Gemini nesta etapa — mas ainda soma tempo real) —
-    # commit por item/entidade torna seguro cortar no meio.
-    timeout-minutes: 90
+    # 60min: 30min de base (checkout/deps/testes + fontes de volume baixo)
+    # + ~30min pra DOM/AMM-MG em busca automática por entidade (161
+    # municípios x 2 termos, ~1,5s entre buscas) + folga pra revisão
+    # automática do Gemini sobre o que foi coletado hoje. Instar (a maior
+    # consumidora de tempo/cota) não está mais neste workflow.
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
 
@@ -144,21 +149,6 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_pbh_ibfc.py
-
-      # Instar por último entre as coletas: é de longe a maior consumidora
-      # de cota do Gemini (231 municípios, até ~800 itens "aberto" numa
-      # execução só) — achado real 2026-09-01, a cota estourou no meio
-      # dela e derrubou município com vaga de médico real. Rodar por
-      # último aqui protege as fontes menores acima (garantidamente
-      # processadas antes de qualquer risco de 429); o próprio
-      # rodar_instar.py já prioriza internamente sinal de saúde primeiro
-      # pra minimizar o dano se a cota estourar dentro dela mesma.
-      - name: Rodar coleta (Instar)
-        if: always()
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/rodar_instar.py
 
       - name: Revisar vagas pendentes (Gemini, automático)
         if: always()

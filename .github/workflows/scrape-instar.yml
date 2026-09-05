@@ -1,0 +1,56 @@
+name: Coleta de vagas (Instar — a cada 3 dias)
+
+# Dividido de scrape.yml em 2026-09-05 (decisão do usuário, registrada em
+# TAREFAS.md do repo principal): Instar (231 municípios) é de longe a
+# maior consumidora de cota do Gemini entre as fontes, então mantém a
+# cadência original de 3 em 3 dias isolada aqui enquanto as demais ~17
+# fontes passam a rodar diariamente em scrape-diario.yml. A revisão
+# automática do Gemini também roda ao final deste workflow (além do
+# diário) para cobrir o que a própria Instar deixa pendente a cada
+# execução dela.
+
+on:
+  schedule:
+    # A cada 3 dias, 06:00 UTC. Cron não tem "a cada N dias" de verdade —
+    # isso é "todo dia-do-mês múltiplo de 3", então o intervalo pode
+    # encurtar na virada do mês (ex: dia 31 -> dia 1). Aceitável pro
+    # cadência-alvo do projeto (ver CLAUDE.md).
+    - cron: "0 6 */3 * *"
+  workflow_dispatch: {}
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    # 45min: base de checkout/deps/testes + a própria Instar (230
+    # municípios, até ~800 itens "aberto" numa execução só — achado real
+    # 2026-09-01, cota estourou no meio dela) + revisão automática do
+    # Gemini sobre o que ela deixou pendente. Não inclui mais as demais
+    # fontes nem DOM/AMM-MG (agora em scrape-diario.yml).
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install -e ".[dev]"
+
+      - name: Rodar testes
+        run: pytest
+
+      # rodar_instar.py já prioriza internamente sinal de saúde primeiro,
+      # pra minimizar o dano se a cota do Gemini estourar no meio dela.
+      - name: Rodar coleta (Instar)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/rodar_instar.py
+
+      - name: Revisar vagas pendentes (Gemini, automático)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/revisar_vagas.py
