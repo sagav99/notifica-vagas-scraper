@@ -150,6 +150,13 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_pbh_ibfc.py
 
+      - name: Rodar coleta (Instituto Mais)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/rodar_instituto_mais.py
+
       - name: Revisar vagas pendentes (Gemini, automático)
         if: always()
         env:
