@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 
 from notifica_vagas_scraper import quota_gemini
 
@@ -80,6 +80,35 @@ def test_modelo_forcado_por_env_sobrepoe_contagem(monkeypatch):
     _instalar_tabela_falsa(monkeypatch)
     monkeypatch.setenv("GEMINI_MODELO_FORCADO", "gemini-3.1-flash-lite")
     assert quota_gemini.proximo_modelo() == "gemini-3.1-flash-lite"
+
+
+def test_hoje_usa_fuso_do_google_pacific_nao_brasilia(monkeypatch):
+    """Regressão do bug real de 2026-09-03: o cron
+    (`.github/workflows/scrape-diario.yml`) roda às 06:00 UTC = 03:00 em
+    Brasília, mas ainda é o dia ANTERIOR em Pacific Time (a cota RPD real
+    do Gemini reseta à meia-noite Pacific, não à meia-noite de Brasília).
+
+    Com `_hoje()` ancorado em America/Sao_Paulo (bug), essa hora exata já
+    contava como um novo dia aqui, enquanto o Google ainda atribuía as
+    chamadas ao dia anterior — daí nosso contador acumular ~470 chamadas
+    "de hoje" que o Google só ia zerar (do lado dele) horas depois,
+    explicando o contador nosso alto com a cota real do Google zerada.
+
+    Este teste fixa o instante exato do cron (2026-09-04 06:00 UTC) e
+    confirma que `_hoje()` retorna a data em Pacific Time (2026-09-03,
+    dia anterior), não a data em Brasília (2026-09-04) — se alguém
+    reintroduzir America/Sao_Paulo em `FUSO_HORARIO`, este teste falha."""
+
+    class _DatetimeFalso(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            instante_utc = datetime(2026, 9, 4, 6, 0, tzinfo=timezone.utc)
+            return instante_utc.astimezone(tz) if tz else instante_utc
+
+    monkeypatch.setattr(quota_gemini, "datetime", _DatetimeFalso)
+
+    assert quota_gemini._hoje() == date(2026, 9, 3)  # dia em Pacific Time
+    assert quota_gemini._hoje() != date(2026, 9, 4)  # dia em Brasília (bug antigo)
 
 
 def test_incremento_e_atomico_via_upsert_concorrente(monkeypatch):

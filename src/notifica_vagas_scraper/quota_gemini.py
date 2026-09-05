@@ -27,17 +27,38 @@ LIMITE_ANTES_DE_TROCAR = 470
 MODELO_PADRAO = "gemini-3.5-flash-lite"
 MODELO_FALLBACK = "gemini-3.1-flash-lite"
 
-FUSO_HORARIO = ZoneInfo("America/Sao_Paulo")
+FUSO_HORARIO = ZoneInfo("America/Los_Angeles")
 
 
 def _hoje() -> date:
     """`date.today()` usa o fuso do processo — nos runners do GitHub
-    Actions isso é UTC, então a cota "diária" reiniciaria às 21h de
-    Brasília (meia-noite UTC), não à meia-noite local (achado real,
-    2026-09-03: usuário conferiu e viu o fallback em uso mais cedo do que
-    esperava). Ancora explicitamente em America/Sao_Paulo, mesmo fuso já
-    usado em toda formatação de data do site (`timeZone:
-    "America/Sao_Paulo"` em `lib/visual`/painéis admin)."""
+    Actions isso é UTC, então uma primeira versão deste código reiniciava
+    a cota "diária" à meia-noite UTC (achado real, 2026-09-03: usuário
+    conferiu e viu o fallback em uso mais cedo do que esperava). Esse fix
+    ancorou em America/Sao_Paulo — mas isso era a causa raiz ERRADA:
+    quem decide o dia da cota não é o fuso do usuário, é o fuso em que o
+    Google reseta a cota real de `gemini-3.5-flash-lite` na conta, que é
+    meia-noite em America/Los_Angeles (Pacific Time), não meia-noite de
+    Brasília (confirmado: a cota RPD do Gemini API reseta à meia-noite
+    Pacific Time, independente de onde o cliente roda — ver
+    https://ai.google.dev/gemini-api/docs/rate-limits).
+
+    Bug real encontrado 2026-09-03 (registrado em TAREFAS.md): nosso
+    contador dizia 470/500 chamadas já feitas "hoje", mas o AI Studio do
+    Google mostrava a cota de `gemini-3.5-flash-lite` zerada. Causa raiz:
+    o cron (`.github/workflows/scrape-diario.yml`) roda às 06:00 UTC —
+    03:00 em Brasília, mas ainda 22:00-23:00 do dia anterior em Pacific
+    Time (UTC-7/UTC-8 conforme horário de verão americano). Com o fuso
+    ancorado em America/Sao_Paulo, nosso `_hoje()` já tinha virado o dia
+    (00:00 BRT já passou) quando o cron roda, então cada chamada real da
+    execução caía no bucket "hoje" nosso — enquanto o Google ainda
+    atribuía essas mesmas chamadas ao dia ANTERIOR (seu próprio "hoje"
+    só vira quando bate meia-noite Pacific, horas depois). Resultado:
+    nosso contador acumulava ~470 chamadas atribuídas a "hoje" que o
+    Google só ia zerar (nesse mesmo bucket, do ponto de vista dele) horas
+    mais tarde — daí o contador nosso alto e o real do Google zerado no
+    mesmo instante. Ancorar em America/Los_Angeles alinha nosso corte de
+    dia exatamente ao corte que o Google usa de verdade."""
     return datetime.now(FUSO_HORARIO).date()
 
 
