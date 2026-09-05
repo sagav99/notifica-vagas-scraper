@@ -168,6 +168,89 @@ def test_processar_concurso_sem_quadro_de_vagas_pula_sem_erro(monkeypatch):
     assert inserir_chamado == []
 
 
+def _item_itapira() -> instituto_mais.ItemListagem:
+    return instituto_mais.ItemListagem(
+        concurso_id=10649,
+        url="https://institutomais.org.br/Concursos/Detalhe/10649",
+        titulo="Prefeitura Municipal de Itapira / SP - Concurso Público - Edital nº 02/2026",
+        status="aberta",
+    )
+
+
+def test_processar_concurso_segue_link_pra_plataforma_nova_quando_sem_quadro_html(monkeypatch):
+    # achado real (2026-09-05): Itapira migrou 100% pra plataforma nova
+    # (Blazor) — a página antiga não tem "Quadro de Vagas" nem "EDITAIS E
+    # COMUNICADOS", só o elo "Clique aqui para acessar a página do
+    # Concurso Público" — `processar_concurso` precisa seguir esse link em
+    # vez de só pular o concurso (ver TAREFAS.md "Em andamento").
+    url_antiga = "https://institutomais.org.br/Concursos/Detalhe/10649"
+    url_nova = "https://imais.org.br/concursos/detalhesconcurso/62"
+
+    def _fake_get(url, headers=None, timeout=None):
+        if url == url_antiga:
+            return _RespostaFalsa(text=_ler_fixture("institutomais_detalhe_itapira_10649_plataforma_antiga_com_link_para_nova.html"))
+        if url == url_nova:
+            return _RespostaFalsa(text=_ler_fixture("institutomais_plataforma_nova_itapira_detalhe62_com_injecao_spam.html"))
+        return _RespostaFalsa(content=b"pdf falso")
+
+    monkeypatch.setattr(script.requests, "get", _fake_get)
+    monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", lambda nome, uf: 3523107)
+    monkeypatch.setattr(
+        script.gemini_pdf,
+        "extrair_vagas_de_pdf",
+        lambda pdf_bytes: {
+            "orgao": "Prefeitura Municipal de Itapira",
+            "numero_edital": "02/2026",
+            "vagas": [{"cargo": "Médico Clínico Geral", "salario": 8000.0, "salario_tipo": "mensal"}],
+        },
+    )
+
+    cargos_gravados = []
+
+    def _fake_inserir(conn, *, cargo, url_evidencia, **kwargs):
+        cargos_gravados.append((cargo, url_evidencia))
+        return {"vaga_id": 1, "evidencia_id": 1}
+
+    monkeypatch.setattr(script.db, "upsert_municipio", lambda *a, **k: None)
+    monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", _fake_inserir)
+
+    total = script.processar_concurso(conn=None, fonte_id="fonte-x", item=_item_itapira(), municipio="Itapira", uf="SP")
+
+    assert total == 1
+    assert cargos_gravados[0][0] == "Médico Clínico Geral"
+    assert "imais2023.blob.core.windows.net" in cargos_gravados[0][1]
+
+
+def test_processar_concurso_plataforma_nova_sem_gemini_nao_grava_nada(monkeypatch):
+    # sem "Quadro de Vagas" nesta plataforma, o cargo só existe via
+    # Gemini — se ele falhar/sem cota, não há nada estruturado pra gravar
+    # (limitação real, ver docstring de `_processar_concurso_plataforma_nova`).
+    url_antiga = "https://institutomais.org.br/Concursos/Detalhe/10649"
+    url_nova = "https://imais.org.br/concursos/detalhesconcurso/62"
+
+    def _fake_get(url, headers=None, timeout=None):
+        if url == url_antiga:
+            return _RespostaFalsa(text=_ler_fixture("institutomais_detalhe_itapira_10649_plataforma_antiga_com_link_para_nova.html"))
+        if url == url_nova:
+            return _RespostaFalsa(text=_ler_fixture("institutomais_plataforma_nova_itapira_detalhe62_com_injecao_spam.html"))
+        return _RespostaFalsa(content=b"pdf falso")
+
+    monkeypatch.setattr(script.requests, "get", _fake_get)
+    monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", lambda nome, uf: 3523107)
+    monkeypatch.setattr(
+        script.gemini_pdf,
+        "extrair_vagas_de_pdf",
+        lambda pdf_bytes: (_ for _ in ()).throw(script.gemini_pdf.ErroExtracaoGemini("cota esgotada")),
+    )
+    inserir_chamado = []
+    monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", lambda *a, **k: inserir_chamado.append(1))
+
+    total = script.processar_concurso(conn=None, fonte_id="fonte-x", item=_item_itapira(), municipio="Itapira", uf="SP")
+
+    assert total == 0
+    assert inserir_chamado == []
+
+
 def test_processar_concurso_municipio_sem_codigo_ibge_pula_sem_erro(monkeypatch):
     monkeypatch.setattr(
         script.requests,

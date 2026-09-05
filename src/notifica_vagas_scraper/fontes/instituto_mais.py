@@ -50,15 +50,19 @@ Estrutura investigada — **duas plataformas coexistem**:
    página é um app Blazor que não renderiza sem JS completo, mas o link do
    PDF do edital (Azure Blob Storage com SAS token) já vem embutido no HTML
    estático, então `listar_documentos_novo` funciona sem executar JS.
-   **Pendência conhecida**: não há fixture real de uma página `/Concursos/
-   Detalhe/{id}` (plataforma antiga) que already contenha o link "Clique
-   aqui para acessar a página do Concurso Público" apontando pra essa URL
-   nova — sem esse elo capturado, `scripts/rodar_instituto_mais.py` não
-   segue esse link (evita inventar seletor não testado); as funções deste
-   módulo pra plataforma nova ficam prontas e testadas contra a fixture
-   real (`institutomais_plataforma_nova_itapira_detalhe62_com_injecao_spam.
-   html`) pra quando esse elo for investigado (`pesquisador-fonte`) e
-   registrado em TAREFAS.md.
+   **Elo confirmado (2026-09-05)**: quando o concurso migra 100% pra
+   plataforma nova, a página antiga (`/Concursos/Detalhe/{id}`) fica sem
+   "Quadro de Vagas" nem "EDITAIS E COMUNICADOS", mas tem um parágrafo
+   "► Clique aqui para acessar a página do Concurso Público." com um
+   `<a>` apontando pra `imais.org.br/concursos/detalhesconcurso/{id}`
+   (achado real: Itapira Edital nº 02/2026, fixture
+   `institutomais_detalhe_itapira_10649_plataforma_antiga_com_link_para_
+   nova.html`) — `encontrar_link_plataforma_nova` lê esse link,
+   `scripts/rodar_instituto_mais.py` segue ele quando `listar_quadro_vagas`
+   devolve vazio e processa via `listar_documentos_novo`/Gemini (sem tabela
+   HTML nesta plataforma, então aqui o cargo só existe se o Gemini
+   extrair do PDF — diferente da plataforma antiga, que nunca depende só
+   do Gemini pra saber quais cargos existem).
 
    Achado à parte, não bloqueador (ver docstring do repo principal): a
    página nova tem um bloco de script injetado com 3 links invisíveis de
@@ -102,6 +106,7 @@ __all__ = [
     "listar_quadro_vagas",
     "listar_documentos",
     "listar_documentos_novo",
+    "encontrar_link_plataforma_nova",
     "escolher_edital",
     "extrair_numero_edital",
     "identificador_externo",
@@ -120,6 +125,7 @@ _SECAO_PARA_STATUS = {
 _RE_DETALHE_ID = re.compile(r"/Concursos/Detalhe/(\d+)")
 _RE_CODIGO_CARGO = re.compile(r"^(\d+)\s*-\s*(.+)$")
 _RE_PDF = re.compile(r"\.pdf($|\?)", re.IGNORECASE)
+_RE_LINK_PLATAFORMA_NOVA = re.compile(r"^https?://(?:www\.)?imais\.org\.br/concursos/detalhesconcurso/\d+", re.IGNORECASE)
 
 #: "edital nº 04/2026", "Edital 01/2025" (sem "nº"), "EDITAL N.º 04/2025" —
 #: até 20 caracteres não-dígitos entre a palavra e o número, pra cobrir
@@ -326,6 +332,23 @@ def listar_documentos_novo(html: str) -> list[Documento]:
             documentos.append(Documento(titulo=titulo, url_pdf=link["href"]))
 
     return documentos
+
+
+def encontrar_link_plataforma_nova(html: str) -> str | None:
+    """Lê o parágrafo "► Clique aqui para acessar a página do Concurso
+    Público." da página de detalhe (plataforma antiga) — presente quando o
+    concurso migrou 100% pra plataforma nova (Blazor), sem "Quadro de
+    Vagas" nem "EDITAIS E COMUNICADOS" nesta página (ver docstring do
+    módulo, achado real: Itapira Edital nº 02/2026). Devolve `None` se a
+    página não tiver esse link (concurso normal, só na plataforma
+    antiga)."""
+    soup = BeautifulSoup(html, "html.parser")
+    for link in soup.find_all("a", href=_RE_LINK_PLATAFORMA_NOVA):
+        paragrafo = link.find_parent("p")
+        texto = paragrafo.get_text(" ", strip=True) if paragrafo else link.get_text(" ", strip=True)
+        if "concurso público" in texto.lower():
+            return link["href"]
+    return None
 
 
 def escolher_edital(documentos: list[Documento]) -> Documento | None:

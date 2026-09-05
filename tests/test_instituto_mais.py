@@ -104,6 +104,27 @@ def test_listar_quadro_vagas_pagina_sem_a_secao_devolve_lista_vazia():
     assert instituto_mais.listar_quadro_vagas("<html><body>sem quadro aqui</body></html>") == []
 
 
+def test_listar_quadro_vagas_jarinu_nao_descarta_nenhuma_das_23_especialidades_medicas():
+    # fixture mais densa da fonte (CP 02/2025 "Saúde", capturada 2026-09-05
+    # pra fechar a pendência de teste ponta a ponta do edital mais denso —
+    # ver TAREFAS.md). PRIORIDADE #1 do produto (CLAUDE.md): nenhuma
+    # especialidade médica pode ser descartada.
+    vagas = instituto_mais.listar_quadro_vagas(
+        _ler_fixture("institutomais_detalhe_jarinu_10608_edital02_2025_saude_16cargos_medicos.html")
+    )
+    assert len(vagas) == 39
+
+    medicos = {v.codigo: v.cargo for v in vagas if "MÉDICO" in v.cargo}
+    assert len(medicos) == 23
+    assert medicos["334"] == "MÉDICO PSIQUIATRA 16 HORAS"
+    assert medicos["331"] == "MÉDICO PEDIATRA 16 HORAS"
+    assert medicos["323"] == "MÉDICO GINECOLOGISTA 16 HORAS"
+
+    pediatra = next(v for v in vagas if v.codigo == "331")
+    assert pediatra.requisitos is not None
+    assert "Medicina" in pediatra.requisitos or "medicina" in pediatra.requisitos.lower()
+
+
 # --- listar_documentos (EDITAIS E COMUNICADOS, plataforma antiga) ----------
 
 
@@ -152,6 +173,25 @@ def test_listar_documentos_novo_ignora_script_de_spam_injetado():
         _ler_fixture("institutomais_plataforma_nova_itapira_detalhe62_com_injecao_spam.html")
     )
     assert not any("gozy" in d.url_pdf.lower() for d in documentos)
+
+
+# --- encontrar_link_plataforma_nova (elo entre as 2 plataformas) -----------
+
+
+def test_encontrar_link_plataforma_nova_acha_o_link_de_itapira():
+    link = instituto_mais.encontrar_link_plataforma_nova(
+        _ler_fixture("institutomais_detalhe_itapira_10649_plataforma_antiga_com_link_para_nova.html")
+    )
+    assert link == "https://imais.org.br/concursos/detalhesconcurso/62"
+
+
+def test_encontrar_link_plataforma_nova_pagina_normal_devolve_none():
+    # concurso normal, só na plataforma antiga (ex: Itapeva) não tem esse
+    # parágrafo — não pode inventar link nenhum.
+    link = instituto_mais.encontrar_link_plataforma_nova(
+        _ler_fixture("institutomais_detalhe_itapeva_10637_medico_psiquiatra.html")
+    )
+    assert link is None
 
 
 # --- escolher_edital (compartilhado pelas 2 plataformas) --------------------

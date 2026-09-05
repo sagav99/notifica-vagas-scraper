@@ -83,11 +83,17 @@ def processar_concurso(conn, fonte_id: str, item: instituto_mais.ItemListagem, m
 
     quadro = instituto_mais.listar_quadro_vagas(resposta.text)
     if not quadro:
-        # sem "Quadro de Vagas" em HTML — layout inesperado ou concurso já
-        # migrado pra plataforma nova (Blazor, ver docstring do módulo);
-        # não inventamos fallback não testado, só registramos e pulamos.
-        print(f"  aviso: '{item.titulo}' sem 'Quadro de Vagas' em HTML, pulando")
-        return 0
+        # sem "Quadro de Vagas" em HTML — pode ser concurso já migrado pra
+        # plataforma nova (Blazor, ver docstring do módulo): segue o elo
+        # "Clique aqui para acessar a página do Concurso Público" quando
+        # presente; sem esse link, é layout inesperado mesmo, e não
+        # inventamos fallback não testado.
+        link_novo = instituto_mais.encontrar_link_plataforma_nova(resposta.text)
+        if link_novo is None:
+            print(f"  aviso: '{item.titulo}' sem 'Quadro de Vagas' em HTML nem link pra plataforma nova, pulando")
+            return 0
+        print(f"  '{item.titulo}' migrou pra plataforma nova ({link_novo}), seguindo o link...")
+        return _processar_concurso_plataforma_nova(conn, fonte_id, item, municipio, uf, link_novo)
 
     codigo_ibge = ibge.buscar_codigo_ibge(municipio, uf)
     if codigo_ibge is None:
@@ -152,6 +158,73 @@ def processar_concurso(conn, fonte_id: str, item: instituto_mais.ItemListagem, m
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         salario_str = f"R$ {salario:.2f}" if salario else "salário não identificado"
         print(f"    {vaga.cargo} ({salario_str}): vaga_id={resultado['vaga_id']} ({novo})")
+        total += 1
+
+    return total
+
+
+def _processar_concurso_plataforma_nova(conn, fonte_id: str, item: instituto_mais.ItemListagem, municipio: str, uf: str, url_nova: str) -> int:
+    """Processa concurso que migrou pra plataforma nova (Blazor,
+    `imais.org.br`, ver docstring de `instituto_mais.py`) — diferente de
+    `processar_concurso`, não existe "Quadro de Vagas" em HTML aqui, então
+    o cargo SÓ existe se o Gemini extrair do PDF do edital: sem Gemini
+    disponível, não há nada estruturado pra gravar (limitação real desta
+    plataforma, não um bug — a antiga nunca depende só do Gemini)."""
+    resposta = requests.get(url_nova, headers={"User-Agent": USER_AGENT}, timeout=20)
+    resposta.raise_for_status()
+
+    documentos = instituto_mais.listar_documentos_novo(resposta.text)
+    edital = instituto_mais.escolher_edital(documentos)
+    if edital is None:
+        print(f"  aviso: '{item.titulo}' (plataforma nova) sem documento de edital identificado, pulando")
+        return 0
+
+    codigo_ibge = ibge.buscar_codigo_ibge(municipio, uf)
+    if codigo_ibge is None:
+        print(f"  aviso: município '{municipio}/{uf}' não encontrado no IBGE, pulando")
+        return 0
+
+    extraido = _extrair_com_gemini(edital.url_pdf)
+    vagas_gemini = [vaga for vaga in extraido.get("vagas", []) if vaga.get("cargo")]
+    if not vagas_gemini:
+        print(f"  aviso: '{item.titulo}' (plataforma nova) sem cargo extraído (Gemini indisponível/sem cota), pulando")
+        return 0
+
+    db.upsert_municipio(conn, codigo_ibge=codigo_ibge, nome=municipio, uf=uf)
+    orgao = extraido.get("orgao") or item.titulo
+    numero_edital = extraido.get("numero_edital") or instituto_mais.extrair_numero_edital(item.titulo)
+    tipo_oportunidade = extraido.get("tipo_oportunidade")
+    data_publicacao = extraido.get("data_publicacao")
+    inscricoes_inicio = extraido.get("inscricoes_inicio")
+    inscricoes_fim = extraido.get("inscricoes_fim")
+
+    total = 0
+    for vaga in vagas_gemini:
+        cargo = vaga["cargo"]
+        salario = vaga.get("salario")
+        resultado = db.inserir_vaga_com_evidencia(
+            conn,
+            fonte_id=fonte_id,
+            municipio_id=codigo_ibge,
+            identificador_externo=instituto_mais.identificador_externo(item.concurso_id, cargo),
+            orgao=orgao,
+            cargo=cargo,
+            salario=salario,
+            salario_tipo=vaga.get("salario_tipo"),
+            tipo_oportunidade=tipo_oportunidade,
+            numero_edital=numero_edital,
+            data_publicacao=data_publicacao,
+            inscricoes_inicio=inscricoes_inicio,
+            inscricoes_fim=inscricoes_fim,
+            status="aberta",
+            resumo=f"{item.titulo} — {cargo}",
+            url_evidencia=edital.url_pdf,
+            tipo_documento="pdf",
+            texto_extraido=None,
+        )
+        novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
+        salario_str = f"R$ {salario:.2f}" if salario else "salário não identificado"
+        print(f"    {cargo} ({salario_str}): vaga_id={resultado['vaga_id']} ({novo})")
         total += 1
 
     return total
