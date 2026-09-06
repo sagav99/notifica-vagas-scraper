@@ -1,0 +1,883 @@
+<style>
+.cliente { margin: 0 0 20px 0; padding: 15px; border-bottom: 1px solid #ddd; font-size: 28px; color: #777; text-align: center; }
+.cabecalhoConcurso { padding: 10px 20px; }
+.rodapeConcurso { padding: 20px; }
+</style>
+
+
+
+    <!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+                    <meta charset="iso-8859-1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>IBAM - Concursos Públicos no Estado de São Paulo</title>
+    <meta name="description" content="" />
+    <meta name="keywords" content="Processos seletivos, concursos pï¿½blicos, vestibular" />
+    <meta name="author" content="Impacta Soluï¿½ï¿½es Web | Software ProSeleta" /> 
+        <link rel="shortcut icon" href="/uploads/810/configs/8abff50fa2081d0d6d841ba2fb1147cc.png" type="image/x-icon">
+    <link rel="icon" href="/uploads/810/configs/8abff50fa2081d0d6d841ba2fb1147cc.png" type="image/x-icon">
+        
+
+    <script src="//static-cdn.selecao.net.br/static/js/jquery-2.1.3.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery-ui-1.11.2.custom/jquery-ui.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/php.default.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.maskedinput.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.price_format.2.0.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.validate.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.validate.extra.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/util.js?ver=202005101713"></script>
+
+    
+    
+    <!-- jQuery UI -->
+    <link rel="stylesheet" media="screen" href="//static-cdn.selecao.net.br/static/js/jquery-ui-1.11.2.custom/jquery-ui.min.css" /> 
+
+    <link href='//fonts.googleapis.com/css?family=Exo+2:700,500italic,400,500,200italic,800,200,700italic,300italic,600italic,600,300,800italic,400italic' rel='stylesheet' type='text/css'>
+    <link type="text/css" media="screen" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/site.css?ver=202607031200" />     <link type="text/css" media="all" rel="stylesheet" href="//static-cdn.selecao.net.br/static/texto.css" />
+    <link type="text/css" media="print" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/imprimir.css" />
+    <link type="text/css" media="screen" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/responsivo.css?ver=202609011400" />
+
+            <link type="text/css" media="all" rel="stylesheet" href="//static-cdn.selecao.net.br/static/clientes/ibam.selecao.net.br/site.css?ver=202606241618" />
+    
+    
+          <!-- Google tag (gtag.js) -->
+            <script async src="https://www.googletagmanager.com/gtag/js?id=G-13PDJ2FXPF"></script>
+      <script>
+          
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          
+          gtag('config', 'G-13PDJ2FXPF');
+      </script>
+      
+        
+        
+    
+    
+    <link type="text/css" media="screen" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/govbr.css?ver=202307251410" /> 
+    <!-- Rybena -->
+    </head>
+<body class="">
+    
+    
+    
+            <header id="TopoMobile">
+
+    <div class="logo-wrapper">
+        <a href="/">
+            <img src="//static-cdn.selecao.net.br/uploads/810/configs/f86882482dc1e90ca02b9820ca16ef1d.png"
+                alt="IBAM - Concursos Públicos no Estado de São Paulo" class="logo" style="max-height: 115px"/>
+        </a>
+    </div>
+
+    <div class="menu-fix-clear" id="menuMobileWrapper">
+        <ul class="menu-wrapper">
+            
+                     <form action="/login/logar/" method="post" autocomplete="off" class="form-top">
+        <input name="foilautofill"
+               autocomplete="new-password"
+               style="display: none;" type="password" />             <h3 class="menu-title">Acessar Área do Candidato:</h3>
+            <input type="text" name="login" id="tl-login" value="" class="texto mascara cpf item" placeholder="CPF"/>
+
+            <input autocomplete="new-password"  type="password" name="senha" id="tl-senha" value="" class="texto item" placeholder="Senha"/>
+
+            <button type="submit" class="login-top-btn item">Entrar</button>
+
+                    <a href="/login/esqueci/" class="esqueci-mobile">Esqueci a minha senha</a>
+            </form>                
+
+                <h3 class="menu-title">Menu:</h3>
+                <li class="menu-item">
+                    <a href="/">Início</a>
+                </li>
+                                    <li class="menu-item">
+                                                     <a href="https://www.ibam.org.br/" target="_blank">IBAM SEDE</a>
+                                            </li>
+                                    <li class="menu-item">
+                                                    <a href="/conteudo/1006/">Recuperação de Senha</a>
+                                            </li>
+                                    <li class="menu-item">
+                                                     <a href="https://antigo.ibamsp-concursos.org.br/site/" target="_blank">Concursos Encerrados</a>
+                                            </li>
+                                    <li class="menu-item">
+                                                     <a href="https://www.ibam.org.br/contato/" target="_blank">Contato</a>
+                                            </li>
+                                    <li class="menu-item">
+                                                     <a href="https://www.ibam.org.br/trabalhe-conosco/" target="_blank">Trabalhe Conosco</a>
+                                            </li>
+                
+                
+                            
+                        <div id="menuMobileCategorias">
+
+            </div>
+
+            
+            <form action="/index/todos/" name="formBuscaConcurso" method="get" class="barra-pesquisa-wrapper">
+                <h3 class="menu-title">Busca:</h3>
+                <input type="text" name="busca" placeholder="Busca..." class="texto search">
+                <button type="submit" class="button">Buscar</button>
+            </form>
+
+
+        </ul>
+    </div>
+
+    <div class="menu-btn-container" id="menu-mobile">
+        <h3 class="menu-indicador">Menu</h3>
+        <button class="btn-wrapper">
+            <i></i>
+            <i></i>
+            <i></i>
+        </button>
+    </div>
+</header>    
+                <div id="TopMenu">
+            <ul>
+                <li><a href="/">Início</a></li>
+
+                                    <li>
+                                                     <a href="https://www.ibam.org.br/" target="_blank">IBAM SEDE</a>
+                                            </li>
+                                    <li>
+                                                    <a href="/conteudo/1006/">Recuperação de Senha</a>
+                                            </li>
+                                    <li>
+                                                     <a href="https://antigo.ibamsp-concursos.org.br/site/" target="_blank">Concursos Encerrados</a>
+                                            </li>
+                                    <li>
+                                                     <a href="https://www.ibam.org.br/contato/" target="_blank">Contato</a>
+                                            </li>
+                                    <li>
+                                                     <a href="https://www.ibam.org.br/trabalhe-conosco/" target="_blank">Trabalhe Conosco</a>
+                                            </li>
+                                                
+                            </ul>
+        </div>
+    
+    <div id="Topo" class="naoimprimir">
+
+        <div class="Conteudo">
+
+                        
+                <div id="Logo">
+                    <h1><a href="/"><img
+                                src="//static-cdn.selecao.net.br/uploads/810/configs/f86882482dc1e90ca02b9820ca16ef1d.png"
+                                alt="IBAM - Concursos Públicos no Estado de São Paulo" style="max-height: 115px"/></a></h1>
+                </div>
+
+            
+            
+                <div id="DadosEmpresa">
+                    <p><b>IBAM - Concursos Públicos no Estado de São Paulo</b></p>
+                    <p class="contatos">(11) 5583-3388</p>
+                                    </div>
+
+                <div id="TopLogin" class="">
+                    <div class="item botoes" style="margin: 20px 0px 0px 70px;float: right;">
+                        <a href="/painel/" >
+                            <span class="btn-areacandidato">
+                                <svg style="width: 30px;padding: 5px;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.2" stroke="currentColor" class="w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Área do Candidato
+                            </span>
+                        </a>
+                    </div>                    
+                </div>
+
+            
+        </div>
+
+    </div>
+
+    
+    <script>
+        $('#menu-mobile').click(function() {
+            this.classList.toggle('abrir')
+            $('#menuMobileWrapper').toggleClass('abrir');
+        })
+    </script>
+
+<div id="MenuLateral" class="bgConcurso">
+    
+    <div class="Conteudo">
+        <div class="CategoriasConcursos">
+            <h3>                    Concursos/ Processos Seletivos/ Vestibulares:
+                             </h3>
+            <ul>
+                                                                <li  class="ativo">
+                    <a href="/index/abertos/">Inscrições Abertas</a>
+                </li>
+                                                    <li >
+                        <a href="/index/1/">Em andamento</a>
+                    </li>
+                                    <li >
+                        <a href="/index/2/">Homologado</a>
+                    </li>
+                                    <li >
+                        <a href="/index/3/">Finalizado</a>
+                    </li>
+                                    <li >
+                        <a href="/index/4/">Suspenso</a>
+                    </li>
+                                    <li >
+                        <a href="/index/5/">Cancelado</a>
+                    </li>
+                
+                
+            </ul>
+        </div>
+        <div class="BsucarConcurso">
+            <form action="/index/todos/" name="formBuscaConcurso" method="get">
+                <input type="text" name="busca" placeholder="Busca..." class="texto" style="width:140px;">
+                <button type="submit" class="botao preto">ok</button>
+            </form>
+        </div>
+
+        
+
+        
+    </div>
+</div>
+
+<div class="Miolo Index">
+
+        
+
+
+        
+    
+            <div class="listaConcursos">
+    <h2 class="tituloPagina" style="font-size:24px;">
+        <span>
+             
+                Concursos/ Processos Seletivos/ Vestibulares
+                                        -
+                        <b>Inscrições Abertas</b>
+        </span>
+    </h2>
+    <br>
+    
+    
+    <ul class="lista">
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/186/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/810/clientes/Ao7iNVu7Ku9jT9rHPCsEpof6wzW2ldG3YDHO6YnU.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Vestibular </p>
+                            
+                                                            <h3><a href="/informacoes/186/" >VESTIBULAR - FACULDADE DE CIÊNCIAS MÉDICAS DA SANTA CASA DE SÃO PAULO - 1º SEMESTRE 2027 - ETAPA 1</a></h3>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 12/2026</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>10/08/2026</b> a 
+                                            <b>14/09/2026</b>
+
+                                                                                            <a href="/informacoes/186/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/186/" class="qtde" >
+                                                                    <span>Quantidade de Vagas</span>
+                                    <b>2610</b>
+                                                                                                </a>
+                                                        <a href="/informacoes/186/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/196/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/810/clientes/bih2w7jccA2o7yDDfO4A2SAl4BEBej84WzkNam68.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Processo Seletivo </p>
+                            
+                                                            <h3><a href="/informacoes/196/" >CATANDUVA - PROCESSO SELETIVO - 03/2026</a></h3>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 03/2026</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>01/09/2026</b> a 
+                                            <b>01/10/2026</b>
+
+                                                                                            <a href="/informacoes/196/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/196/" class="qtde" >
+                                                                    <span>Quantidade de Vagas</span>
+                                    <b>66</b>
+                                                                                                </a>
+                                                        <a href="/informacoes/196/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/195/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/810/clientes/bih2w7jccA2o7yDDfO4A2SAl4BEBej84WzkNam68.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Processo Seletivo </p>
+                            
+                                                            <h3><a href="/informacoes/195/" >CATANDUVA - PROCESSO SELETIVO - 02/2026</a></h3>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 02/2026</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>24/08/2026</b> a 
+                                            <b>24/09/2026</b>
+
+                                                                                            <a href="/informacoes/195/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/195/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/191/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/810/clientes/o2hi6uqKRNHliZBVERSQeWjAhvmhy4NT53zqwBuk.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/191/" >GUARULHOS - CONCURSO PÚBLICO - 05/2026-SGE01</a></h3>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 05/2026</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>19/08/2026</b> a 
+                                            <b>17/09/2026</b>
+
+                                                                                            <a href="/informacoes/191/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>19/08/2026</b> a 
+                                        <b>20/08/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/191/" class="qtde" >
+                                                                    <span>Quantidade de Vagas</span>
+                                    <b>1</b>
+                                                                                                </a>
+                                                        <a href="/informacoes/191/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/192/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/810/clientes/o2hi6uqKRNHliZBVERSQeWjAhvmhy4NT53zqwBuk.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/192/" >GUARULHOS - CONCURSO PÚBLICO - 06/2026-SGE01</a></h3>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 06/2026</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>19/08/2026</b> a 
+                                            <b>17/09/2026</b>
+
+                                                                                            <a href="/informacoes/192/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>19/08/2026</b> a 
+                                        <b>20/08/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/192/" class="qtde" >
+                                                                    <span>Quantidade de Vagas</span>
+                                    <b>10</b>
+                                                                                                </a>
+                                                        <a href="/informacoes/192/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/193/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/810/clientes/o2hi6uqKRNHliZBVERSQeWjAhvmhy4NT53zqwBuk.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/193/" >GUARULHOS - CONCURSO PÚBLICO - 07/2026-SGE01</a></h3>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 07/2026</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>19/08/2026</b> a 
+                                            <b>17/09/2026</b>
+
+                                                                                            <a href="/informacoes/193/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>19/08/2026</b> a 
+                                        <b>20/08/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/193/" class="qtde" >
+                                                                    <span>Quantidade de Vagas</span>
+                                    <b>8</b>
+                                                                                                </a>
+                                                        <a href="/informacoes/193/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/194/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/810/clientes/o2hi6uqKRNHliZBVERSQeWjAhvmhy4NT53zqwBuk.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/194/" >GUARULHOS - CONCURSO PÚBLICO - 08/2026-SGE01</a></h3>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 08/2026</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>19/08/2026</b> a 
+                                            <b>17/09/2026</b>
+
+                                                                                            <a href="/informacoes/194/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>19/08/2026</b> a 
+                                        <b>20/08/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/194/" class="qtde" >
+                                                                    <span>Quantidade de Vagas</span>
+                                    <b>3</b>
+                                                                                                </a>
+                                                        <a href="/informacoes/194/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/187/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/810/clientes/97275495-d439-4dc6-beba-37725abb424f.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/187/" >MOGI MIRIM - CONCURSO PÚBLICO - 02/2026 - EDITAL 01</a></h3>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 02/2026 - Edital 01</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>13/08/2026</b> a 
+                                            <b>10/09/2026</b>
+
+                                                                                            <a href="/informacoes/187/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>13/08/2026</b> a 
+                                        <b>14/08/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/187/" class="qtde" >
+                                                                    <span>Quantidade de Vagas</span>
+                                    <b>9</b>
+                                                                                                </a>
+                                                        <a href="/informacoes/187/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/189/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/810/clientes/97275495-d439-4dc6-beba-37725abb424f.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/189/" >MOGI MIRIM - CONCURSO PÚBLICO - 02/2026 - EDITAL 02</a></h3>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 02/2026 - Edital 02</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>13/08/2026</b> a 
+                                            <b>10/09/2026</b>
+
+                                                                                            <a href="/informacoes/189/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>13/08/2026</b> a 
+                                        <b>14/08/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/189/" class="qtde" >
+                                                                    <span>Quantidade de Vagas</span>
+                                    <b>12</b>
+                                                                                                </a>
+                                                        <a href="/informacoes/189/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/190/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/810/clientes/97275495-d439-4dc6-beba-37725abb424f.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/190/" >MOGI MIRIM - CONCURSO PÚBLICO - 02/2026 - EDITAL 03</a></h3>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 02/2026 - Edital 03</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>13/08/2026</b> a 
+                                            <b>10/09/2026</b>
+
+                                                                                            <a href="/informacoes/190/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>13/08/2026</b> a 
+                                        <b>14/08/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/190/" class="qtde" >
+                                                                    <span>Quantidade de Vagas</span>
+                                    <b>12</b>
+                                                                                                </a>
+                                                        <a href="/informacoes/190/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+            </ul>
+
+</div>
+
+    <div class="paginacao">
+    <p class="mostrando">Mostrando 1-10</b> de <b>12</b></p>
+    <p class="opcoes">
+                
+                    <a href="/index/abertos/?&ord=&dir=&pg=1&q=&pp=10" class="item  active " >1</a>
+                    <a href="/index/abertos/?&ord=&dir=&pg=2&q=&pp=10" class="item " >2</a>
+          
+        
+                    <a href="/index/abertos/?&ord=&dir=&pg=2&q=&pp=10" class="proxima">Próxima &rsaquo;</a>
+            <a href="/index/abertos/?&ord=&dir=&pg=2&q=&pp=10" class="ultima">Última &raquo;</a>
+            </p>
+</div>
+    
+    
+    </div>
+
+
+
+
+
+
+
+
+<div id="Rodape" class="naoimprimir">
+<div class="preferencias-cookies naoimprimir" style="text-align:center;padding:10px 0;"><button type="button" data-cc="show-preferencesModal" style="background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit">Prefer&ecirc;ncias de cookies</button></div>
+                
+        
+        <div class="ProSeleta">
+            <div class="Conteudo">
+                
+                <div class="info">
+                    <a href="/">Início</a>
+                                                                         <a href="https://www.ibam.org.br/" target="_blank">IBAM SEDE</a>
+                         /
+                                                                        <a href="/conteudo/1006/">Recuperação de Senha</a>
+                         /
+                                                                         <a href="https://antigo.ibamsp-concursos.org.br/site/" target="_blank">Concursos Encerrados</a>
+                         /
+                                                                         <a href="https://www.ibam.org.br/contato/" target="_blank">Contato</a>
+                         /
+                                                                         <a href="https://www.ibam.org.br/trabalhe-conosco/" target="_blank">Trabalhe Conosco</a>
+                         /
+                                                                            </div>
+
+                
+                <div class="siteSeguro">
+                    <p>Site 100% Seguro</p>
+                </div>
+                
+            </div>
+        </div>
+
+        
+                    <div class="final">
+                <div class="Conteudo" style='display: flex; justify-content: center; text-align: center;'>
+                    <div class="links">
+                        &copy; IBAM - CONCURSOS PÚBLICOS NO ESTADO DE SÃO PAULO
+                                                                    </div>
+                                    </div>
+            </div>
+                    
+        </div>
+        
+    </div>
+    
+
+
+
+
+        <a href="https://wa.me/1155833388" style="position:fixed;width:45px;height:45px;bottom:1.4rem;right:1.4rem;border-radius:50px;text-align:center;
+    z-index:1000;" target="_blank">
+    <img id="icon-whatsapp" src="//static-cdn.selecao.net.br/static/img/icon-whatsapp.svg">
+    </a>
+
+        <div vw class="enabled">
+        <div vw-access-button class="active"></div>
+        <div vw-plugin-wrapper>
+        <div class="vw-plugin-top-wrapper"></div>
+        </div>
+    </div>
+    
+    <style>
+        /* Ancorado em rem (escala no zoom e na fonte) e acima do WhatsApp; z-index alto
+           pra nao sumir atras do topo. */
+        div[vw].enabled { transform: none !important; }
+        div[vw].enabled div[vw-access-button] {
+            position: fixed !important;
+            right: 1rem !important;
+            bottom: 6rem !important;
+            top: auto !important;
+            left: auto !important;
+            z-index: 1000000 !important;
+        }
+        @media (max-width: 768px) {
+            div[vw].enabled div[vw-access-button] {
+                right: .75rem !important;
+                bottom: 5rem !important;
+            }
+        }
+    </style>
+    
+    <script src="https://vlibras.gov.br/app/vlibras-plugin.js" charset="UTF-8"></script>
+    <script>
+        try {
+            new window.VLibras.Widget('https://vlibras.gov.br/app');
+        } finally {
+        }
+    </script>
+
+
+
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a36e5606cb23210d',t:'MTc4ODcwNjc1MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
+
+
+<script>
+
+    document.onkeyup=function(e){
+
+        if(e.which == 27){
+              $('#bannerConcurso').hide();
+        }
+
+    }
+
+    $( "#FechaBanner" ).click(function() {
+        $('#bannerConcurso').hide();
+    });
+
+    var W = $("#ImgBanner").width();
+    $("#BlocoBanner").css("width", W);
+
+    $( document ).ready(function() {
+        $('#bannerConcurso').show();
+        var W = $("#ImgBanner").width();
+        $("#BlocoBanner").css("width", W);
+    });
+
+    $(function() {
+        $("#menuMobileCategorias").html(`<h3 class="menu-title menu-lateral-mobile-title">         Concursos/ Processos Seletivos/ Vestibulares:
+    </h3>
+
+    <li class="menu-item  active">
+        <a href="/index/abertos/">Inscrições Abertas</a>
+    </li>
+    <li class="menu-item ">
+        <a href="/index/1/">Em andamento</a>
+    </li>
+    <li class="menu-item ">
+        <a href="/index/2/">Homologado</a>
+    </li>
+    <li class="menu-item ">
+        <a href="/index/3/">Finalizado</a>
+    </li>
+    <li class="menu-item ">
+        <a href="/index/4/">Suspenso</a>
+    </li>
+    <li class="menu-item ">
+        <a href="/index/5/">Cancelado</a>
+    </li>
+
+
+
+`);
+    })
+
+
+
+</script>
+
+
