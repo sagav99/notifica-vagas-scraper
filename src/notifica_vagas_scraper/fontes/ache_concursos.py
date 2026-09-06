@@ -6,10 +6,15 @@ server-rendered, sem JS necessário.
 
 Estrutura:
 - GET `/concursos-minas-gerais` ou `/concursos-sao-paulo` lista os
-  concursos em uma `<table class="tbl-conc">` só, sem paginação nem
-  filtro de "aberto" (mistura tudo) — cada linha tem só título+link,
-  data limite de inscrição, quantidade agregada de vagas e salário
-  máximo. **Sem cargo nem município estruturado** — cargo só existe no
+  concursos em **duas** `<table class="tbl-conc">` (achado 2026-09-06,
+  bug confirmado): "Concursos abertos em <UF>" e "Concursos em andamento
+  em <UF>" — `listar_concursos` precisa varrer as duas (`find_all`, não
+  `find` singular) e agregar as linhas de ambas, senão perde item
+  silenciosamente (casos reais: Congonhal/MG e Itanhaém/SP ACS só
+  aparecem na 2ª tabela). Sem paginação nem filtro de "aberto" dentro de
+  cada tabela (mistura tudo) — cada linha tem só título+link, data limite
+  de inscrição, quantidade agregada de vagas e salário máximo. **Sem
+  cargo nem município estruturado** — cargo só existe no
   PDF (Gemini lê, igual Actcon/FGV/WordPress/IMAM/JCM/ACCESS);
   município reaproveita `fgv.encontrar_municipio` contra o título (achado
   real: nem todo item nomeia o município no título — ex: "Prefeitura em
@@ -68,31 +73,37 @@ def _parsear_inteiro(texto: str) -> int | None:
 
 def listar_concursos(html: str) -> list[ItemListagem]:
     soup = BeautifulSoup(html, "html.parser")
-    tabela = soup.find("table", class_="tbl-conc")
-    if tabela is None:
+    # A página de listagem por UF tem DUAS tabelas com essa classe
+    # ("Concursos abertos em <UF>" e "Concursos em andamento em <UF>") —
+    # `find_all`, nunca `find` singular, senão a 2ª tabela some
+    # silenciosamente (bug real, achado 2026-09-06: Congonhal/MG e
+    # Itanhaém/SP ACS só existem na 2ª).
+    tabelas = soup.find_all("table", class_="tbl-conc")
+    if not tabelas:
         return []
 
     itens: list[ItemListagem] = []
-    for linha in tabela.find_all("tr"):
-        link = linha.find("a", href=True)
-        if link is None:
-            continue
-        titulo_tag = link.find("span", class_="titulo")
-        titulo = (titulo_tag.get_text(strip=True) if titulo_tag else link.get_text(strip=True)).strip()
-        if not titulo:
-            continue
+    for tabela in tabelas:
+        for linha in tabela.find_all("tr"):
+            link = linha.find("a", href=True)
+            if link is None:
+                continue
+            titulo_tag = link.find("span", class_="titulo")
+            titulo = (titulo_tag.get_text(strip=True) if titulo_tag else link.get_text(strip=True)).strip()
+            if not titulo:
+                continue
 
-        inscricao_tag = linha.find("span", class_="inscricao_fim")
-        vagas_tag = linha.find("span", class_="numero_vagas")
+            inscricao_tag = linha.find("span", class_="inscricao_fim")
+            vagas_tag = linha.find("span", class_="numero_vagas")
 
-        itens.append(
-            ItemListagem(
-                titulo=titulo,
-                url=urljoin(BASE_URL, link["href"]),
-                inscricoes_fim=_parsear_data(inscricao_tag.get_text()) if inscricao_tag else None,
-                quantidade_vagas=_parsear_inteiro(vagas_tag.get_text()) if vagas_tag else None,
+            itens.append(
+                ItemListagem(
+                    titulo=titulo,
+                    url=urljoin(BASE_URL, link["href"]),
+                    inscricoes_fim=_parsear_data(inscricao_tag.get_text()) if inscricao_tag else None,
+                    quantidade_vagas=_parsear_inteiro(vagas_tag.get_text()) if vagas_tag else None,
+                )
             )
-        )
 
     return itens
 
