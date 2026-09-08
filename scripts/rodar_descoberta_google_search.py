@@ -2,8 +2,15 @@
 """Descoberta ampla via Google Custom Search API.
 
 Uso normal: ``python scripts/rodar_descoberta_google_search.py``.
-Use ``--backfill`` somente na carga inicial manual: ele remove a restrição de
-recência da busca e grava um relatório em ``relatorios/`` ao terminar.
+Use ``--backfill`` na carga retroativa manual: ele afrouxa (ou remove) a
+restrição de recência da busca, pra achar edital com inscrição ainda aberta
+mas publicado há mais tempo, e grava um relatório em ``relatorios/`` ao
+terminar. Combine com ``--janela {semana,mes,trimestre,tudo}`` (padrão
+"tudo") pra fazer o backfill em estágios de recência — decisão do usuário,
+2026-09-08: começar pelo que tem mais chance de ainda estar aberto (semana,
+depois mês) antes de ir pra janelas maiores, em vez de um "tudo de uma vez"
+só dominado por resultado antigo/já encerrado. Cada estágio cabe várias
+vezes dentro da cota diária gratuita — dá pra rodar todos no mesmo dia.
 """
 
 from __future__ import annotations
@@ -47,7 +54,7 @@ def _parsear_data_iso(texto: str | None) -> date | None:
         return None
 
 
-def buscar_itens(*, api_key: str, engine_id: str, backfill: bool = False) -> list[google_search.ItemBusca]:
+def buscar_itens(*, api_key: str, engine_id: str, backfill: bool = False, janela: str | None = None) -> list[google_search.ItemBusca]:
     """Faz no máximo uma consulta por query, nunca excedendo a cota diária."""
     queries = google_search.QUERIES[: google_search.COTA_DIARIA_GRATUITA]
     if len(google_search.QUERIES) > len(queries):
@@ -64,7 +71,7 @@ def buscar_itens(*, api_key: str, engine_id: str, backfill: bool = False) -> lis
             resposta = requests.get(
                 google_search.BASE_URL,
                 params=google_search.montar_parametros(
-                    query, api_key=api_key, engine_id=engine_id, backfill=backfill
+                    query, api_key=api_key, engine_id=engine_id, backfill=backfill, janela=janela
                 ),
                 headers={"User-Agent": USER_AGENT},
                 timeout=20,
@@ -255,11 +262,11 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
     return int(sinal_novo), total
 
 
-def escrever_relatorio_backfill(*, itens: int, casados: int, sinais_novos: int, vagas: int) -> Path:
+def escrever_relatorio_backfill(*, janela: str, itens: int, casados: int, sinais_novos: int, vagas: int) -> Path:
     RELATORIOS_DIR.mkdir(exist_ok=True)
-    caminho = RELATORIOS_DIR / f"backfill_google_custom_search_{datetime.now(timezone.utc):%Y-%m-%d}.md"
+    caminho = RELATORIOS_DIR / f"backfill_google_custom_search_{janela}_{datetime.now(timezone.utc):%Y-%m-%d}.md"
     caminho.write_text(
-        "# Backfill Google Custom Search API\n\n"
+        f"# Backfill Google Custom Search API — janela: {janela}\n\n"
         f"Executado em {datetime.now(timezone.utc):%Y-%m-%d %H:%M UTC}.\n\n"
         f"- Resultados únicos: {itens}\n- Casados com municípios MG/SP: {casados}\n"
         f"- Sinais novos: {sinais_novos}\n- Vagas extraídas: {vagas}\n",
@@ -270,7 +277,11 @@ def escrever_relatorio_backfill(*, itens: int, casados: int, sinais_novos: int, 
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--backfill", action="store_true", help="busca sem restrição de recência; usar apenas na carga inicial")
+    parser.add_argument("--backfill", action="store_true", help="busca com recência afrouxada/removida; usar na carga retroativa manual")
+    parser.add_argument(
+        "--janela", choices=sorted(google_search.JANELAS_BACKFILL), default="tudo",
+        help='só com --backfill: estágio de recência ("semana", "mes", "trimestre" ou "tudo", padrão "tudo")',
+    )
     args = parser.parse_args(argv)
     api_key = os.environ.get("GOOGLE_CUSTOM_SEARCH_API_KEY")
     engine_id = os.environ.get("GOOGLE_CUSTOM_SEARCH_ENGINE_ID")
@@ -281,7 +292,7 @@ def main(argv: list[str] | None = None) -> None:
     if faltando:
         raise RuntimeError(f"Variáveis de ambiente obrigatórias não definidas: {', '.join(faltando)}")
 
-    itens = buscar_itens(api_key=api_key, engine_id=engine_id, backfill=args.backfill)
+    itens = buscar_itens(api_key=api_key, engine_id=engine_id, backfill=args.backfill, janela=args.janela if args.backfill else None)
     print(f"{len(itens)} resultado(s) único(s) da Google Custom Search API.")
     conn = db.conectar()
     try:
@@ -307,7 +318,7 @@ def main(argv: list[str] | None = None) -> None:
                 print(f"  ERRO processando '{item.titulo[:80]}': {exc}", file=sys.stderr)
         print(f"\nOk. {casados} casado(s), {sinais_novos} sinal(is) novo(s), {vagas} vaga(s) processada(s).")
         if args.backfill:
-            print(f"Relatório do backfill: {escrever_relatorio_backfill(itens=len(itens), casados=casados, sinais_novos=sinais_novos, vagas=vagas)}")
+            print(f"Relatório do backfill: {escrever_relatorio_backfill(janela=args.janela, itens=len(itens), casados=casados, sinais_novos=sinais_novos, vagas=vagas)}")
     except Exception:
         conn.rollback()
         raise

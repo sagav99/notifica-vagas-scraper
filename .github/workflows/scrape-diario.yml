@@ -18,10 +18,20 @@ on:
   workflow_dispatch:
     inputs:
       google_search_backfill:
-        description: "Executa Google Custom Search sem restrição de recência (usar só na carga inicial)"
+        description: "Executa Google Custom Search em modo backfill retroativo (usar --janela pra escolher o estágio)"
         required: false
         default: false
         type: boolean
+      google_search_janela:
+        description: "Só com backfill=true: estágio de recência do backfill"
+        required: false
+        default: "tudo"
+        type: choice
+        options:
+          - semana
+          - mes
+          - trimestre
+          - tudo
 
 jobs:
   coletar:
@@ -203,4 +213,4 @@ jobs:
           GOOGLE_CUSTOM_SEARCH_API_KEY: ${{ secrets.GOOGLE_CUSTOM_SEARCH_API_KEY }}
           GOOGLE_CUSTOM_SEARCH_ENGINE_ID: ${{ secrets.GOOGLE_CUSTOM_SEARCH_ENGINE_ID }}
           GEMINI_API_KEY_DESCOBERTA_GOOGLE: ${{ secrets.GEMINI_API_KEY_DESCOBERTA_GOOGLE }}
-        run: python scripts/rodar_descoberta_google_search.py ${{ inputs.google_search_backfill && '--backfill' || '' }}
+        run: python scripts/rodar_descoberta_google_search.py ${{ inputs.google_search_backfill && format('--backfill --janela {0}', inputs.google_search_janela) || '' }}

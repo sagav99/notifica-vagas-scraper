@@ -17,6 +17,22 @@ BASE_URL = "https://www.googleapis.com/customsearch/v1"
 COTA_DIARIA_GRATUITA = 100
 JANELA_DIAS = 2
 
+#: Janelas de recência disponíveis pro backfill retroativo (decisão do
+#: usuário, 2026-09-08): em vez de só "tudo de uma vez" (sem filtro
+#: nenhum, resultado dominado por ruído antigo), o backfill roda em
+#: estágios — primeiro o que é mais provável ainda estar com inscrição
+#: aberta (semana/mês), só then indo pra janelas maiores. Cada estágio
+#: já cabe várias vezes dentro da cota diária gratuita (20 queries por
+#: rodada, cota de 100/dia — ver `COTA_DIARIA_GRATUITA`), então dá pra
+#: rodar todos os estágios no mesmo dia sem estourar. Sintaxe de
+#: `dateRestrict`: https://developers.google.com/custom-search/v1/reference/rest/v1/cse/list
+JANELAS_BACKFILL: dict[str, str | None] = {
+    "semana": "d7",
+    "mes": "m1",
+    "trimestre": "m3",
+    "tudo": None,
+}
+
 
 @dataclass
 class ItemBusca:
@@ -26,12 +42,16 @@ class ItemBusca:
     publicado_em: datetime | None
 
 
-def montar_parametros(query: str, *, api_key: str, engine_id: str, backfill: bool = False) -> dict[str, str | int]:
+def montar_parametros(
+    query: str, *, api_key: str, engine_id: str, backfill: bool = False, janela: str | None = None
+) -> dict[str, str | int]:
     """Parâmetros de uma única consulta à API.
 
-    No cron normal, ``dateRestrict`` pede resultados dos últimos dois dias;
-    o backfill deliberadamente o omite para encontrar editais ainda abertos,
-    porém publicados há semanas ou meses.
+    No cron normal (`backfill=False`), ``dateRestrict`` pede resultados dos
+    últimos dois dias. Com `backfill=True`, aceita `janela` (uma chave de
+    `JANELAS_BACKFILL`: "semana"/"mes"/"trimestre"/"tudo") pra fazer o
+    backfill em estágios de recência — `janela=None` (ou omitido) mantém o
+    comportamento antigo de backfill sem filtro nenhum ("tudo").
     """
     parametros: dict[str, str | int] = {
         "key": api_key,
@@ -43,6 +63,10 @@ def montar_parametros(query: str, *, api_key: str, engine_id: str, backfill: boo
     }
     if not backfill:
         parametros["dateRestrict"] = f"d{JANELA_DIAS}"
+    elif janela is not None:
+        date_restrict = JANELAS_BACKFILL[janela]
+        if date_restrict is not None:
+            parametros["dateRestrict"] = date_restrict
     return parametros
 
 
