@@ -16,14 +16,14 @@ import unicodedata
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 from bs4 import BeautifulSoup
 
-from notifica_vagas_scraper import db, gemini_texto
+from notifica_vagas_scraper import db, gemini_pdf, gemini_texto
 from notifica_vagas_scraper.fontes import fgv, google_search
 
 USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com/sagav99/notifica-vagas-scraper)"
@@ -93,17 +93,53 @@ def buscar_itens(*, api_key: str, engine_id: str, backfill: bool = False) -> lis
     return [item for item in todos if not (item.link in vistos or vistos.add(item.link))]
 
 
-def buscar_texto_pagina(url: str) -> str | None:
+def buscar_pagina_html(url: str) -> str | None:
     try:
         resposta = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=20)
         resposta.raise_for_status()
     except requests.RequestException:
         return None
-    soup = BeautifulSoup(resposta.text, "html.parser")
+    return resposta.text
+
+
+def extrair_texto_de_html(html: str) -> str | None:
+    soup = BeautifulSoup(html, "html.parser")
     for tag in soup(["script", "style", "nav", "footer", "header"]):
         tag.decompose()
     texto = soup.get_text(separator="\n", strip=True)
     return texto[:TEXTO_MAX_CHARS] if texto else None
+
+
+def buscar_texto_pagina(url: str) -> str | None:
+    html = buscar_pagina_html(url)
+    return extrair_texto_de_html(html) if html else None
+
+
+def encontrar_pdf_edital(html: str, url_base: str) -> str | None:
+    """Heurística genérica pra achar o PDF do edital numa página de
+    origem desconhecida a priori (diferente dos parsers dedicados por
+    banca, que já sabem a estrutura exata do site). Prioriza link cujo
+    texto ou URL contenha "edital"; sem isso, cai pro primeiro PDF
+    linkado na página."""
+    soup = BeautifulSoup(html, "html.parser")
+    candidatos = [
+        (link.get_text(strip=True), urljoin(url_base, link["href"]))
+        for link in soup.find_all("a", href=True)
+        if ".pdf" in link["href"].lower()
+    ]
+    for texto, url_pdf in candidatos:
+        if "edital" in texto.lower() or "edital" in url_pdf.lower():
+            return url_pdf
+    return candidatos[0][1] if candidatos else None
+
+
+def baixar_pdf(url: str) -> bytes | None:
+    try:
+        resposta = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=60)
+        resposta.raise_for_status()
+    except requests.RequestException:
+        return None
+    return resposta.content
 
 
 def normalizar_dominio(url: str) -> str:
@@ -137,12 +173,38 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
         # poderia criar uma evidência duplicada, sem acrescentar informação.
         return int(sinal_novo), 0
 
-    texto = buscar_texto_pagina(item.link) or item.resumo or item.titulo
-    try:
-        extraido = gemini_texto.extrair_vagas_de_texto(item.titulo, texto, api_key=gemini_api_key)
-    except gemini_texto.ErroExtracaoGemini as exc:
-        print(f"  aviso: falha na extração Gemini de '{item.titulo[:60]}': {exc}", file=sys.stderr)
-        return int(sinal_novo), 0
+    # Prioriza ler o PDF do edital quando dá pra achar um (informação de
+    # cargo/salário costuma estar completa só lá, igual às fontes oficiais
+    # ACCESS/IMAM/JCM) — cai pro texto da página (HTML) só quando não tem
+    # PDF ou a extração dele falha.
+    url_pdf = item.link if urlparse(item.link).path.lower().endswith(".pdf") else None
+    html = None
+    if url_pdf is None:
+        html = buscar_pagina_html(item.link)
+        if html:
+            url_pdf = encontrar_pdf_edital(html, item.link)
+
+    extraido = None
+    tipo_documento = "pagina_html"
+    url_evidencia = item.link
+    if url_pdf:
+        pdf_bytes = baixar_pdf(url_pdf)
+        if pdf_bytes:
+            try:
+                extraido = gemini_pdf.extrair_vagas_de_pdf(pdf_bytes, api_key=gemini_api_key)
+                tipo_documento = "pdf"
+                url_evidencia = url_pdf
+            except gemini_pdf.ErroExtracaoGemini as exc:
+                print(f"  aviso: falha na extração Gemini (PDF) de '{item.titulo[:60]}': {exc}", file=sys.stderr)
+
+    if extraido is None:
+        texto = (extrair_texto_de_html(html) if html else None) or item.resumo or item.titulo
+        try:
+            extraido = gemini_texto.extrair_vagas_de_texto(item.titulo, texto, api_key=gemini_api_key)
+        except gemini_texto.ErroExtracaoGemini as exc:
+            print(f"  aviso: falha na extração Gemini de '{item.titulo[:60]}': {exc}", file=sys.stderr)
+            return int(sinal_novo), 0
+
     if not extraido.get("vagas"):
         return int(sinal_novo), 0
 
@@ -162,8 +224,8 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
             numero_edital=extraido.get("numero_edital"), data_publicacao=_parsear_data_iso(extraido.get("data_publicacao")),
             inscricoes_inicio=_parsear_data_iso(extraido.get("inscricoes_inicio")),
             inscricoes_fim=_parsear_data_iso(extraido.get("inscricoes_fim")), status="aberta",
-            resumo=f"{item.titulo} (via Google Custom Search)", url_evidencia=item.link,
-            tipo_documento="pagina_html", texto_extraido=None,
+            resumo=f"{item.titulo} (via Google Custom Search)", url_evidencia=url_evidencia,
+            tipo_documento=tipo_documento, texto_extraido=None,
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         print(f"    {cargo}: vaga_id={resultado['vaga_id']} ({novo})")

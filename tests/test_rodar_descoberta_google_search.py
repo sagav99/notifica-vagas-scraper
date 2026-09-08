@@ -105,7 +105,7 @@ def test_sinal_ja_existente_nao_reextrai_com_gemini(monkeypatch):
 def test_dominio_novo_extrai_com_chave_gemini_dedicada_e_grava(monkeypatch):
     conn = Mock()
     monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
-    monkeypatch.setattr(script, "buscar_texto_pagina", lambda url: "texto do edital")
+    monkeypatch.setattr(script, "buscar_pagina_html", lambda url: "<html><body>texto do edital, sem PDF</body></html>")
     monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
     chamadas = []
     monkeypatch.setattr(
@@ -126,6 +126,121 @@ def test_dominio_novo_extrai_com_chave_gemini_dedicada_e_grava(monkeypatch):
     assert chamadas == ["chave-dedicada"]
     assert inserido["cargo"] == "Médico Clínico Geral"
     assert inserido["orgao"] == "Prefeitura Municipal de Paracatu/MG"
+
+
+def test_encontrar_pdf_edital_prioriza_link_com_edital_no_texto():
+    html = """
+    <a href="/anexos/resultado-2024.pdf">Resultado final</a>
+    <a href="/anexos/edital-01-2026.pdf">Edital de Abertura</a>
+    """
+    assert script.encontrar_pdf_edital(html, "https://prefeitura.test/noticias/1") == (
+        "https://prefeitura.test/anexos/edital-01-2026.pdf"
+    )
+
+
+def test_encontrar_pdf_edital_cai_pro_primeiro_pdf_sem_sinal_no_texto():
+    html = '<a href="/docs/anexo1.pdf">Anexo I</a><a href="/docs/anexo2.pdf">Anexo II</a>'
+    assert script.encontrar_pdf_edital(html, "https://prefeitura.test/") == "https://prefeitura.test/docs/anexo1.pdf"
+
+
+def test_encontrar_pdf_edital_retorna_none_sem_pdf_na_pagina():
+    assert script.encontrar_pdf_edital("<a href='/sobre'>Sobre</a>", "https://prefeitura.test/") is None
+
+
+def test_item_que_ja_eh_pdf_extrai_direto_sem_buscar_html(monkeypatch):
+    conn = Mock()
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
+
+    def fail_buscar_pagina_html(url):
+        raise AssertionError("não deveria buscar HTML quando o link já é PDF")
+
+    monkeypatch.setattr(script, "buscar_pagina_html", fail_buscar_pagina_html)
+    monkeypatch.setattr(script, "baixar_pdf", lambda url: b"%PDF-bytes")
+    chamadas = []
+    monkeypatch.setattr(
+        script.gemini_pdf,
+        "extrair_vagas_de_pdf",
+        lambda pdf_bytes, *, api_key: chamadas.append((pdf_bytes, api_key)) or {
+            "orgao": "Prefeitura de Paracatu", "numero_edital": "02/2026", "tipo_oportunidade": "concurso_efetivo",
+            "vagas": [{"cargo": "Médico ESF", "salario": 15000, "salario_tipo": "mensal"}],
+        },
+    )
+    inserido = {}
+    monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", lambda conn, **kw: inserido.update(kw) or {"vaga_id": "v1", "evidencia_id": "e1"})
+
+    resultado = script.processar_item(
+        conn, _item(link="https://prefeitura.test/edital-02-2026.pdf"), "Paracatu", "MG", 3106200, set(), "chave-dedicada"
+    )
+
+    assert resultado == (1, 1)
+    assert chamadas == [(b"%PDF-bytes", "chave-dedicada")]
+    assert inserido["cargo"] == "Médico ESF"
+    assert inserido["tipo_documento"] == "pdf"
+    assert inserido["url_evidencia"] == "https://prefeitura.test/edital-02-2026.pdf"
+
+
+def test_html_com_link_de_edital_segue_pro_pdf(monkeypatch):
+    conn = Mock()
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
+    monkeypatch.setattr(
+        script, "buscar_pagina_html",
+        lambda url: '<a href="/anexos/edital-01-2026.pdf">Edital de Abertura</a>',
+    )
+    monkeypatch.setattr(script, "baixar_pdf", lambda url: b"%PDF-bytes" if url.endswith("edital-01-2026.pdf") else None)
+    monkeypatch.setattr(
+        script.gemini_pdf, "extrair_vagas_de_pdf",
+        lambda pdf_bytes, *, api_key: {
+            "vagas": [{"cargo": "Médico Plantonista", "salario": 8000, "salario_tipo": "plantao"}],
+        },
+    )
+    extrair_texto = Mock()
+    monkeypatch.setattr(script.gemini_texto, "extrair_vagas_de_texto", extrair_texto)
+    inserido = {}
+    monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", lambda conn, **kw: inserido.update(kw) or {"vaga_id": "v1", "evidencia_id": "e1"})
+
+    resultado = script.processar_item(
+        conn, _item(link="https://prefeitura.test/noticias/concurso"), "Paracatu", "MG", 3106200, set(), "chave-dedicada"
+    )
+
+    assert resultado == (1, 1)
+    extrair_texto.assert_not_called()
+    assert inserido["cargo"] == "Médico Plantonista"
+    assert inserido["tipo_documento"] == "pdf"
+    assert inserido["url_evidencia"] == "https://prefeitura.test/anexos/edital-01-2026.pdf"
+
+
+def test_falha_na_extracao_do_pdf_cai_pro_texto_da_pagina(monkeypatch):
+    conn = Mock()
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
+    monkeypatch.setattr(
+        script, "buscar_pagina_html",
+        lambda url: '<a href="/anexos/edital-01-2026.pdf">Edital de Abertura</a><p>texto de apoio na página</p>',
+    )
+    monkeypatch.setattr(script, "baixar_pdf", lambda url: b"%PDF-bytes")
+
+    def fake_extrair_pdf(pdf_bytes, *, api_key):
+        raise script.gemini_pdf.ErroExtracaoGemini("PDF corrompido")
+
+    monkeypatch.setattr(script.gemini_pdf, "extrair_vagas_de_pdf", fake_extrair_pdf)
+    monkeypatch.setattr(
+        script.gemini_texto, "extrair_vagas_de_texto",
+        lambda titulo, texto, *, api_key: {
+            "vagas": [{"cargo": "Médico Clínico Geral", "salario": 10000, "salario_tipo": "mensal"}],
+        },
+    )
+    inserido = {}
+    monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", lambda conn, **kw: inserido.update(kw) or {"vaga_id": "v1", "evidencia_id": "e1"})
+
+    resultado = script.processar_item(
+        conn, _item(link="https://prefeitura.test/noticias/concurso"), "Paracatu", "MG", 3106200, set(), "chave-dedicada"
+    )
+
+    assert resultado == (1, 1)
+    assert inserido["tipo_documento"] == "pagina_html"
+    assert inserido["url_evidencia"] == "https://prefeitura.test/noticias/concurso"
 
 
 def test_backfill_nao_envia_filtro_de_recencia(monkeypatch):
