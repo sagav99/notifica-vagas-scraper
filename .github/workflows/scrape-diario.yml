@@ -5,10 +5,12 @@ name: Coleta de vagas (diário — todas menos Instar)
 # Gemini (231 municípios) que o resto das fontes somadas, então ela ficou
 # isolada em scrape-instar.yml (cadência de 3 em 3 dias) enquanto as
 # demais ~17 fontes, com volume bem menor, passam a rodar todo dia aqui.
-# A etapa de revisão automática do Gemini roda ao final DESTE workflow
-# também (e não só do da Instar) porque qualquer uma das execuções diárias
-# pode deixar vaga pendente de revisão — não faz sentido esperar até 3
-# dias para revisar o que já foi coletado hoje.
+#
+# A revisão automática do Gemini (antes rodava como último passo deste
+# workflow) foi extraída pra revisar-vagas.yml em 2026-09-08: ela vinha
+# fazendo o job inteiro estourar o timeout-minutes e ser morto no meio da
+# revisão (achado em produção, 3 execuções seguidas 06-08/09/2026) — ver
+# comentário em revisar-vagas.yml.
 
 on:
   schedule:
@@ -24,11 +26,11 @@ on:
 jobs:
   coletar:
     runs-on: ubuntu-latest
-    # 60min: 30min de base (checkout/deps/testes + fontes de volume baixo)
+    # 75min: 30min de base (checkout/deps/testes + fontes de volume baixo)
     # + ~30min pra DOM/AMM-MG em busca automática por entidade (161
-    # municípios x 2 termos, ~1,5s entre buscas) + folga pra revisão
-    # automática do Gemini sobre o que foi coletado hoje. Instar (a maior
-    # consumidora de tempo/cota) não está mais neste workflow.
+    # municípios x 2 termos, ~1,5s entre buscas) + folga. Não inclui mais
+    # revisão automática (ver revisar-vagas.yml) nem Instar (maior
+    # consumidora de tempo/cota, isolada em scrape-instar.yml).
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
@@ -202,10 +204,3 @@ jobs:
           GOOGLE_CUSTOM_SEARCH_ENGINE_ID: ${{ secrets.GOOGLE_CUSTOM_SEARCH_ENGINE_ID }}
           GEMINI_API_KEY_DESCOBERTA_GOOGLE: ${{ secrets.GEMINI_API_KEY_DESCOBERTA_GOOGLE }}
         run: python scripts/rodar_descoberta_google_search.py ${{ inputs.google_search_backfill && '--backfill' || '' }}
-
-      - name: Revisar vagas pendentes (Gemini, automático)
-        if: always()
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/revisar_vagas.py

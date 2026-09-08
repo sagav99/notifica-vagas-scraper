@@ -4,10 +4,13 @@ name: Coleta de vagas (Instar — a cada 3 dias)
 # TAREFAS.md do repo principal): Instar (231 municípios) é de longe a
 # maior consumidora de cota do Gemini entre as fontes, então mantém a
 # cadência original de 3 em 3 dias isolada aqui enquanto as demais ~17
-# fontes passam a rodar diariamente em scrape-diario.yml. A revisão
-# automática do Gemini também roda ao final deste workflow (além do
-# diário) para cobrir o que a própria Instar deixa pendente a cada
-# execução dela.
+# fontes passam a rodar diariamente em scrape-diario.yml.
+#
+# A revisão automática do Gemini (antes rodava como último passo deste
+# workflow também) foi extraída pra revisar-vagas.yml em 2026-09-08 —
+# mesmo motivo do scrape-diario.yml (ver comentário lá e em
+# revisar-vagas.yml): competir por tempo com a coleta dentro do mesmo
+# timeout-minutes vinha fazendo o job ser morto no meio da revisão.
 
 on:
   schedule:
@@ -23,9 +26,9 @@ jobs:
     runs-on: ubuntu-latest
     # 45min: base de checkout/deps/testes + a própria Instar (230
     # municípios, até ~800 itens "aberto" numa execução só — achado real
-    # 2026-09-01, cota estourou no meio dela) + revisão automática do
-    # Gemini sobre o que ela deixou pendente. Não inclui mais as demais
-    # fontes nem DOM/AMM-MG (agora em scrape-diario.yml).
+    # 2026-09-01, cota estourou no meio dela). Não inclui mais as demais
+    # fontes nem DOM/AMM-MG (agora em scrape-diario.yml) nem a revisão
+    # automática (agora em revisar-vagas.yml).
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -47,10 +50,3 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_instar.py
-
-      - name: Revisar vagas pendentes (Gemini, automático)
-        if: always()
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/revisar_vagas.py

@@ -1,0 +1,40 @@
+name: Revisar vagas pendentes (Gemini, automático)
+
+# Extraído de scrape-diario.yml/scrape-instar.yml em 2026-09-08. Antes a
+# revisão rodava como último passo de cada workflow de coleta e disputava
+# tempo com ela dentro do mesmo timeout-minutes — resultado real (achado
+# em produção nesta data): o job inteiro vinha sendo morto por SIGTERM
+# (exit 143) no meio da revisão em pelo menos 3 execuções diárias
+# seguidas (06, 07, 08/09/2026), então nenhuma vaga nova ficava
+# aprovada/rejeitada nesses dias, mesmo com a coleta em si tendo
+# funcionado. Workflow isolado com timeout bem folgado garante que a
+# revisão sempre tem uma janela cheia pra esvaziar a fila pendente,
+# independente de quanto a coleta do dia (ou da Instar) levou.
+
+on:
+  schedule:
+    - cron: "0 8 * * *" # ~2h depois do início da coleta diária (06h UTC)
+  workflow_dispatch: {}
+
+jobs:
+  revisar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install -e ".[dev]"
+
+      - name: Rodar testes
+        run: pytest
+
+      - name: Revisar vagas pendentes (Gemini, automático)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/revisar_vagas.py
