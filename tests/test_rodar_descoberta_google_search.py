@@ -51,10 +51,14 @@ def test_buscar_itens_para_apos_tres_falhas_consecutivas_sem_vazar_chave(monkeyp
     assert "HTTP 403" in saida
 
 
-def test_dominio_conhecido_para_no_sinal_sem_chamar_gemini(monkeypatch):
+def test_dominio_conhecido_marca_sinal_coberto_mas_ainda_extrai(monkeypatch):
+    """`coberto=True` só descreve o sinal — não pula mais a extração
+    (mudou em 2026-09-08: pular fazia essa função de auditoria se anular
+    quando a fonte oficial daquele domínio está quebrada)."""
     conn = Mock()
     sinais = []
     monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: sinais.append(kw) or True)
+    monkeypatch.setattr(script, "buscar_pagina_html", lambda url: "<html><body>sem PDF aqui</body></html>")
 
     chamou_gemini = False
 
@@ -70,7 +74,7 @@ def test_dominio_conhecido_para_no_sinal_sem_chamar_gemini(monkeypatch):
     )
 
     assert resultado == (1, 0)
-    assert not chamou_gemini
+    assert chamou_gemini
     assert sinais[0]["coberto_por_fonte_oficial"] is True
 
 
@@ -78,7 +82,8 @@ def test_dominio_com_www_eh_reconhecido_como_fonte_conhecida(monkeypatch):
     conn = Mock()
     sinal = {}
     monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: sinal.update(kw) or True)
-    monkeypatch.setattr(script.gemini_texto, "extrair_vagas_de_texto", Mock())
+    monkeypatch.setattr(script, "buscar_pagina_html", lambda url: "<html><body>sem PDF aqui</body></html>")
+    monkeypatch.setattr(script.gemini_texto, "extrair_vagas_de_texto", lambda *a, **kw: {"vagas": []})
 
     resultado = script.processar_item(
         conn, _item(link="https://www.banca.test/edital"), "Paracatu", "MG", 3106200,
@@ -87,7 +92,66 @@ def test_dominio_com_www_eh_reconhecido_como_fonte_conhecida(monkeypatch):
 
     assert resultado == (1, 0)
     assert sinal["coberto_por_fonte_oficial"] is True
-    script.gemini_texto.extrair_vagas_de_texto.assert_not_called()
+
+
+def test_dominio_coberto_com_vaga_nova_gera_alerta_de_cobertura(monkeypatch, capsys):
+    """Achado 2026-09-08: se o domínio já tem fonte oficial mas o Vigia
+    acha uma vaga que gera uma linha NOVA em `vagas` (não é dedup de algo
+    que a fonte oficial já tinha capturado), isso é sinal de falha
+    silenciosa na coleta oficial — precisa ficar visível (resumo + log)."""
+    conn = Mock()
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script, "buscar_pagina_html", lambda url: "<html><body>sem PDF aqui</body></html>")
+    monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
+    monkeypatch.setattr(
+        script.gemini_texto, "extrair_vagas_de_texto",
+        lambda titulo, texto, *, api_key: {
+            "vagas": [{"cargo": "Médico Clínico Geral", "salario": 12000, "salario_tipo": "mensal"}],
+        },
+    )
+    inserido = {}
+    monkeypatch.setattr(
+        script.db, "inserir_vaga_com_evidencia",
+        lambda conn, **kw: inserido.update(kw) or {"vaga_id": "v1", "evidencia_id": "e1", "vaga_criada": True},
+    )
+
+    resultado = script.processar_item(
+        conn, _item(link="https://banca.test/edital"), "Paracatu", "MG", 3106200,
+        {"banca.test"}, "chave-gemini-dedicada"
+    )
+
+    assert resultado == (1, 1)
+    assert "ALERTA cobertura" in inserido["resumo"]
+    assert "banca.test" in inserido["resumo"]
+    assert "ALERTA cobertura" in capsys.readouterr().out
+
+
+def test_dominio_coberto_mas_vaga_ja_existente_nao_loga_alerta(monkeypatch, capsys):
+    """`resumo` só é gravado quando a vaga é criada agora (dedup reaproveita
+    a linha existente sem tocar o resumo) — o log não deve alertar nesse
+    caso, mesmo com `coberto=True`."""
+    conn = Mock()
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script, "buscar_pagina_html", lambda url: "<html><body>sem PDF aqui</body></html>")
+    monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
+    monkeypatch.setattr(
+        script.gemini_texto, "extrair_vagas_de_texto",
+        lambda titulo, texto, *, api_key: {
+            "vagas": [{"cargo": "Médico Clínico Geral", "salario": 12000, "salario_tipo": "mensal"}],
+        },
+    )
+    monkeypatch.setattr(
+        script.db, "inserir_vaga_com_evidencia",
+        lambda conn, **kw: {"vaga_id": "v1", "evidencia_id": "e1", "vaga_criada": False},
+    )
+
+    resultado = script.processar_item(
+        conn, _item(link="https://banca.test/edital"), "Paracatu", "MG", 3106200,
+        {"banca.test"}, "chave-gemini-dedicada"
+    )
+
+    assert resultado == (1, 1)
+    assert "ALERTA cobertura" not in capsys.readouterr().out
 
 
 def test_sinal_ja_existente_nao_reextrai_com_gemini(monkeypatch):

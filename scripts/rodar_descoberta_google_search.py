@@ -168,10 +168,23 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
         dominios_externos=[dominio] if dominio else [],
         coberto_por_fonte_oficial=coberto,
     )
-    if coberto or not sinal_novo:
+    if not sinal_novo:
         # O sinal é idempotente por URL. Reprocessá-lo consumiria Gemini e
         # poderia criar uma evidência duplicada, sem acrescentar informação.
-        return int(sinal_novo), 0
+        return 0, 0
+
+    # `coberto=True` NÃO pula mais a extração (decisão do usuário,
+    # 2026-09-08): pular era o comportamento antigo, mas isso fazia essa
+    # função de auditoria se anular — se a fonte oficial daquele domínio
+    # estiver quebrada (achado real em produção nesta data: JCM, ACCESS,
+    # Avança SP e FUNDEP falhando ao mesmo tempo), o Vigia simplesmente
+    # descartava o sinal em vez de servir de rede de segurança. Agora
+    # sempre extrai; `inserir_vaga_com_evidencia` já dedup a nível de
+    # `vagas` (município+órgão+cargo+edital), então se a fonte oficial já
+    # capturou a mesma vaga, isso só anexa mais uma evidência à vaga
+    # existente — sem duplicar. Se criar uma vaga NOVA mesmo com
+    # `coberto=True`, é o sinal de alerta: a fonte oficial deveria ter
+    # achado isso e não achou.
 
     # Prioriza ler o PDF do edital quando dá pra achar um (informação de
     # cargo/salário costuma estar completa só lá, igual às fontes oficiais
@@ -216,6 +229,12 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
         cargo = vaga.get("cargo")
         if not cargo:
             continue
+        resumo = f"{item.titulo} (via Google Custom Search)"
+        if coberto:
+            # Achado (c): domínio já tinha parser oficial, mas essa vaga
+            # não veio dele — marca pra chamar atenção na revisão/painel
+            # admin, em vez de só logar num job que ninguém acompanha.
+            resumo = f"[ALERTA cobertura: {dominio} tem fonte oficial, mas não achou isto] {resumo}"
         resultado = db.inserir_vaga_com_evidencia(
             conn, fonte_id=fonte_id, municipio_id=codigo_ibge,
             identificador_externo=f"{_slug(item.link)}-{_slug(cargo)}", orgao=orgao, cargo=cargo,
@@ -224,11 +243,14 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
             numero_edital=extraido.get("numero_edital"), data_publicacao=_parsear_data_iso(extraido.get("data_publicacao")),
             inscricoes_inicio=_parsear_data_iso(extraido.get("inscricoes_inicio")),
             inscricoes_fim=_parsear_data_iso(extraido.get("inscricoes_fim")), status="aberta",
-            resumo=f"{item.titulo} (via Google Custom Search)", url_evidencia=url_evidencia,
+            resumo=resumo, url_evidencia=url_evidencia,
             tipo_documento=tipo_documento, texto_extraido=None,
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
-        print(f"    {cargo}: vaga_id={resultado['vaga_id']} ({novo})")
+        if coberto and resultado["vaga_criada"]:
+            print(f"    ALERTA cobertura: {cargo}: vaga_id={resultado['vaga_id']} é NOVA mesmo com domínio '{dominio}' coberto por fonte oficial ({novo})")
+        else:
+            print(f"    {cargo}: vaga_id={resultado['vaga_id']} ({novo})")
         total += 1
     return int(sinal_novo), total
 

@@ -201,6 +201,7 @@ def inserir_vaga_com_evidencia(
     """
     with conn.cursor() as cur:
         vaga_id = None
+        vaga_criada = False
         if numero_edital:
             cur.execute(
                 """
@@ -248,6 +249,7 @@ def inserir_vaga_com_evidencia(
                 },
             )
             vaga_id = cur.fetchone()[0]
+            vaga_criada = True
 
         cur.execute(
             """
@@ -268,7 +270,7 @@ def inserir_vaga_com_evidencia(
         )
         evidencia_row = cur.fetchone()
 
-    return {"vaga_id": vaga_id, "evidencia_id": evidencia_row[0] if evidencia_row else None}
+    return {"vaga_id": vaga_id, "evidencia_id": evidencia_row[0] if evidencia_row else None, "vaga_criada": vaga_criada}
 
 
 def listar_vagas_pendentes(conn: psycopg.Connection) -> list[dict[str, Any]]:
