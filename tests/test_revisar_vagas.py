@@ -1,6 +1,8 @@
 from datetime import date
+from unittest.mock import Mock
 
 import revisar_vagas
+from notifica_vagas_scraper import revisao_ia
 
 
 def _vaga(inscricoes_inicio=None, inscricoes_fim=None):
@@ -53,3 +55,33 @@ def test_montar_dados_inclui_checagem():
     }
     dados = revisar_vagas.montar_dados_para_revisao(vaga)
     assert dados["checagem_cronologica_pre_computada"].startswith("Válido")
+
+
+def _vaga_minima(cargo: str) -> dict:
+    return {
+        "id": cargo, "municipio_nome": "Cidade", "municipio_uf": "MG", "orgao": "Prefeitura",
+        "cargo": cargo, "salario": None, "numero_edital": None, "data_publicacao": None,
+        "inscricoes_inicio": None, "inscricoes_fim": None, "status": "aberta", "resumo": None,
+        "evidencias": [],
+    }
+
+
+def test_main_para_no_429_sem_rejeitar_as_restantes(monkeypatch):
+    """Achado em produção, 2026-09-08: sem parar aqui, cada vaga seguinte
+    também batia 429 e virava "rejeitada" sem revisão real nenhuma."""
+    vagas = [_vaga_minima("Enfermeiro"), _vaga_minima("Médico Cardiologista"), _vaga_minima("Dentista")]
+    monkeypatch.setattr(revisar_vagas.db, "conectar", lambda: Mock())
+
+    def _decidir(dados):
+        if dados["cargo"] == "Médico Cardiologista":
+            raise revisao_ia.CotaGeminiEsgotadaError("429")
+        return {"decisao": "aprovada", "motivo": "ok"}
+
+    monkeypatch.setattr(revisar_vagas.db, "listar_vagas_pendentes", lambda conn: vagas)
+    monkeypatch.setattr(revisar_vagas.revisao_ia, "decidir_revisao", _decidir)
+    aplicadas = []
+    monkeypatch.setattr(revisar_vagas.db, "aplicar_revisao", lambda conn, **kw: aplicadas.append(kw["vaga_id"]))
+
+    revisar_vagas.main()
+
+    assert aplicadas == ["Enfermeiro"]

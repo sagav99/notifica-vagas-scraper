@@ -220,6 +220,18 @@ class ErroRevisaoGemini(Exception):
     pass
 
 
+class CotaGeminiEsgotadaError(Exception):
+    """HTTP 429 (cota diária esgotada) — diferente de erro isolado numa
+    vaga: TODA chamada seguinte vai falhar igual, então quem chama
+    (`scripts/revisar_vagas.py`) deve parar o lote inteiro, não continuar
+    rejeitando vaga por vaga sem revisão real. Achado em produção,
+    2026-09-08: sem essa distinção, 1566 vagas (de um backlog de 2624)
+    viraram "rejeitada" só porque a cota do Gemini acabou no meio do lote
+    — incluindo vaga médica real (ex: Médico Cardiologista, Médico
+    Ginecologista-Obstetra em Dores do Indaiá/MG), violando a prioridade
+    do produto de nunca deixar passar vaga médica batido."""
+
+
 def decidir_revisao(
     dados: dict, *, api_key: str | None = None, modelo: str | None = None
 ) -> dict:
@@ -264,10 +276,22 @@ def decidir_revisao(
         corpo = _chamar_gemini(body, chave=chave, modelo=modelo)
         texto = corpo["candidates"][0]["content"]["parts"][0]["text"]
         resultado = gemini_util.parsear_json_resposta(texto)
+    except requests.exceptions.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 429:
+            # Cota esgotada não é "erro nesta vaga" — é "toda chamada
+            # seguinte vai falhar igual". Propaga em vez de rejeitar, pra
+            # quem chama parar o lote (ver CotaGeminiEsgotadaError).
+            raise CotaGeminiEsgotadaError(str(exc)) from exc
+        return {
+            "decisao": "rejeitada",
+            "motivo": f"[revisão automática] Erro ao consultar o Gemini, rejeitada por padrão: {exc}",
+        }
     except Exception as exc:
-        # Captura ampla e intencional: qualquer falha (rede, HTTP, formato
-        # de resposta, JSON inválido) tem que virar rejeição automática,
-        # nunca uma exceção que aborta o lote inteiro de revisão.
+        # Captura ampla e intencional pro resto dos casos (rede, formato de
+        # resposta, JSON inválido): tem que virar rejeição automática,
+        # nunca uma exceção que aborta o lote inteiro de revisão — isolado
+        # o suficiente pra não repetir em toda vaga seguinte, diferente do
+        # 429 acima.
         return {
             "decisao": "rejeitada",
             "motivo": f"[revisão automática] Erro ao consultar o Gemini, rejeitada por padrão: {exc}",

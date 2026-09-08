@@ -184,3 +184,17 @@ def test_erro_4xx_nao_tenta_de_novo(monkeypatch):
     resultado = revisao_ia.decidir_revisao({"cargo": "Enfermeiro"}, api_key="chave-teste")
     assert resultado["decisao"] == "rejeitada"
     assert chamadas["n"] == 1
+
+
+def test_429_propaga_cota_esgotada_em_vez_de_rejeitar(monkeypatch):
+    """Achado em produção, 2026-09-08: sem essa distinção, 429 (cota
+    esgotada) virava "rejeitada" igual qualquer outro erro — e como TODA
+    chamada seguinte também leva 429, o lote inteiro (1566 de 2624 vagas
+    nesse dia, incluindo vaga médica real) era rejeitado sem revisão
+    nenhuma. `CotaGeminiEsgotadaError` deixa quem chama decidir parar o
+    lote em vez de continuar rejeitando às cegas."""
+    monkeypatch.setattr(
+        revisao_ia.requests, "post", lambda *a, **k: _RespostaFalsa({}, status_code=429)
+    )
+    with pytest.raises(revisao_ia.CotaGeminiEsgotadaError):
+        revisao_ia.decidir_revisao({"cargo": "Médico Cardiologista"}, api_key="chave-teste")

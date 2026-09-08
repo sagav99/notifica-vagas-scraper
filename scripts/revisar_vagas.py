@@ -71,9 +71,21 @@ def main() -> None:
     try:
         vagas = db.listar_vagas_pendentes(conn)
         print(f"{len(vagas)} vaga(s) pendente(s) de revisão.")
-        for vaga in vagas:
+        for indice, vaga in enumerate(vagas):
             dados = montar_dados_para_revisao(vaga)
-            resultado = revisao_ia.decidir_revisao(dados)
+            try:
+                resultado = revisao_ia.decidir_revisao(dados)
+            except revisao_ia.CotaGeminiEsgotadaError:
+                # Achado em produção, 2026-09-08: sem parar aqui, cada vaga
+                # seguinte também levava 429 e virava "rejeitada" sem
+                # revisão real nenhuma (1566 vagas nesse dia, incluindo
+                # médico). Deixa esta e as restantes como 'pendente' pra
+                # próxima execução, quando a cota tiver resetado.
+                print(
+                    f"  Cota do Gemini esgotada — parando aqui. "
+                    f"{len(vagas) - indice} vaga(s) seguem pendentes pra próxima execução."
+                )
+                break
             db.aplicar_revisao(
                 conn, vaga_id=vaga["id"], decisao=resultado["decisao"], motivo=resultado["motivo"]
             )
