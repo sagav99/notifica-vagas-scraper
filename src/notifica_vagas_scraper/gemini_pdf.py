@@ -9,8 +9,9 @@ Modelo: Gemini 3.5 Flash-Lite por decisão explícita do usuário — cota da
 chave usada é 500 requisições/dia, 15 RPM, 250k TPM (bem mais apertada que
 o Flash normal). Troca pra Gemini 3.1 Flash-Lite depois de ~470 chamadas
 no dia (cota diária separada, ver `quota_gemini.py`). `_esperar_rate_limit()`
-garante >=4.5s entre chamadas nesse processo pra não estourar as 15 RPM
-quando o script processa vários concursos numa única execução.
+garante >=4.5s entre chamadas ao Gemini feitas por QUALQUER um dos 3
+módulos (gemini_pdf/gemini_texto/revisao_ia) no mesmo processo — estado
+compartilhado em `gemini_util.py`, ver docstring de lá.
 """
 
 from __future__ import annotations
@@ -18,7 +19,6 @@ from __future__ import annotations
 import base64
 import json
 import os
-import time
 
 import requests
 
@@ -26,18 +26,8 @@ from . import gemini_util, quota_gemini
 
 MODELO_PADRAO = quota_gemini.MODELO_PADRAO
 URL_API = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
-INTERVALO_MINIMO_ENTRE_CHAMADAS_S = 4.5  # 15 RPM = 1 a cada 4s; margem de segurança
 
-_ultima_chamada: float = 0.0
-
-
-def _esperar_rate_limit() -> None:
-    global _ultima_chamada
-    agora = time.monotonic()
-    espera = INTERVALO_MINIMO_ENTRE_CHAMADAS_S - (agora - _ultima_chamada)
-    if espera > 0:
-        time.sleep(espera)
-    _ultima_chamada = time.monotonic()
+_esperar_rate_limit = gemini_util.esperar_rate_limit
 
 PROMPT = """Você está lendo um edital de concurso público brasileiro em PDF.
 Extraia um objeto JSON com:

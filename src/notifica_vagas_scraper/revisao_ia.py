@@ -84,20 +84,10 @@ from . import gemini_util, quota_gemini
 
 MODELO_PADRAO = quota_gemini.MODELO_PADRAO
 URL_API = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
-INTERVALO_MINIMO_ENTRE_CHAMADAS_S = 4.5  # 15 RPM = 1 a cada 4s; margem de segurança
 TENTATIVAS_MAX = 3
 BACKOFF_INICIAL_S = 5.0
 
-_ultima_chamada: float = 0.0
-
-
-def _esperar_rate_limit() -> None:
-    global _ultima_chamada
-    agora = time.monotonic()
-    espera = INTERVALO_MINIMO_ENTRE_CHAMADAS_S - (agora - _ultima_chamada)
-    if espera > 0:
-        time.sleep(espera)
-    _ultima_chamada = time.monotonic()
+_esperar_rate_limit = gemini_util.esperar_rate_limit
 
 
 def _chamar_gemini(body: dict, *, chave: str, modelo: str) -> dict:

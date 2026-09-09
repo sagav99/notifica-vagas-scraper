@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 import os
-import time
 
 import requests
 
@@ -24,18 +23,8 @@ from . import gemini_util, quota_gemini
 
 MODELO_PADRAO = quota_gemini.MODELO_PADRAO
 URL_API = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
-INTERVALO_MINIMO_ENTRE_CHAMADAS_S = 4.5  # 15 RPM = 1 a cada 4s; margem de segurança
 
-_ultima_chamada: float = 0.0
-
-
-def _esperar_rate_limit() -> None:
-    global _ultima_chamada
-    agora = time.monotonic()
-    espera = INTERVALO_MINIMO_ENTRE_CHAMADAS_S - (agora - _ultima_chamada)
-    if espera > 0:
-        time.sleep(espera)
-    _ultima_chamada = time.monotonic()
+_esperar_rate_limit = gemini_util.esperar_rate_limit
 
 
 PROMPT_TEMPLATE = """Você está lendo o texto de uma publicação de prefeitura brasileira, que \
