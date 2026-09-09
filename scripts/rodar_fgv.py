@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 
-from notifica_vagas_scraper import db, gemini_pdf, ibge
+from notifica_vagas_scraper import db, gemini_pdf
 from notifica_vagas_scraper.fontes import fgv
 
 USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com/sagav99/notifica-vagas-scraper)"
@@ -53,7 +53,7 @@ def _parsear_data_iso(texto: str | None) -> date | None:
         return None
 
 
-def processar_concurso(conn, item: fgv.ItemConcurso, municipio: str, uf: str) -> int:
+def processar_concurso(conn, item: fgv.ItemConcurso, municipio: str, uf: str, codigo_ibge: int) -> int:
     resposta = requests.get(item.url, headers={"User-Agent": USER_AGENT}, timeout=20)
     resposta.raise_for_status()
 
@@ -68,11 +68,6 @@ def processar_concurso(conn, item: fgv.ItemConcurso, municipio: str, uf: str) ->
     extraido = gemini_pdf.extrair_vagas_de_pdf(pdf_resposta.content)
     if not extraido.get("vagas"):
         print(f"  aviso: Gemini não retornou vagas pra {pdf_url}")
-        return 0
-
-    codigo_ibge = ibge.buscar_codigo_ibge(municipio, uf)
-    if codigo_ibge is None:
-        print(f"  aviso: município '{municipio}/{uf}' não encontrado no IBGE, pulando")
         return 0
 
     db.upsert_municipio(conn, codigo_ibge=codigo_ibge, nome=municipio, uf=uf)
@@ -122,7 +117,9 @@ def processar_concurso(conn, item: fgv.ItemConcurso, municipio: str, uf: str) ->
 def main() -> None:
     conn = db.conectar()
     try:
-        municipios = db.listar_nomes_municipios(conn, ufs=["MG", "SP"])
+        municipios_completos = db.listar_municipios_com_codigo(conn, ufs=["MG", "SP"])
+        municipios = [(nome, uf) for _, nome, uf in municipios_completos]
+        codigo_por_nome_uf = {(nome, uf): codigo for codigo, nome, uf in municipios_completos}
         print(f"{len(municipios)} município(s) de MG/SP carregados pra match.")
 
         concursos = listar_todos_concursos()
@@ -134,12 +131,15 @@ def main() -> None:
             if match is None:
                 continue
             municipio, uf = match
+            codigo_ibge = codigo_por_nome_uf.get((municipio, uf))
+            if codigo_ibge is None:
+                continue
             print(f"Achado: '{item.titulo}' -> {municipio}/{uf} ({item.url})")
             try:
                 # savepoint por concurso: erro de banco num item não deixa a
                 # transação inteira do lote em estado abortado pros próximos.
                 with conn.transaction():
-                    total_geral += processar_concurso(conn, item, municipio, uf)
+                    total_geral += processar_concurso(conn, item, municipio, uf, codigo_ibge)
             except Exception as exc:  # nunca deixar 1 concurso derrubar o lote inteiro
                 print(f"  ERRO processando '{item.titulo}': {exc}")
 

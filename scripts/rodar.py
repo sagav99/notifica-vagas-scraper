@@ -31,7 +31,9 @@ def processar_materia(conn, materia) -> int:
         print(f"  aviso: nenhuma vaga extraída de {materia.url}")
         return 0
 
-    codigo_ibge = ibge.buscar_codigo_ibge(materia.municipio, materia.uf)
+    codigo_ibge = db.buscar_codigo_ibge_local(conn, materia.municipio, materia.uf) or ibge.buscar_codigo_ibge(
+        materia.municipio, materia.uf
+    )
     if codigo_ibge is None:
         print(f"  aviso: município '{materia.municipio}/{materia.uf}' não encontrado no IBGE, pulando")
         return 0

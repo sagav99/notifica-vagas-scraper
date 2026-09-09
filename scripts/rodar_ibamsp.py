@@ -61,7 +61,7 @@ def _montar_resumo(item: ibamsp.ItemListagem, vaga: ibamsp.VagaIbamSp) -> str:
 
 
 def processar_processo(conn, fonte_id: str, item: ibamsp.ItemListagem, municipio: str, uf: str) -> int:
-    codigo_ibge = ibge.buscar_codigo_ibge(municipio, uf)
+    codigo_ibge = db.buscar_codigo_ibge_local(conn, municipio, uf) or ibge.buscar_codigo_ibge(municipio, uf)
     if codigo_ibge is None:
         print(f"  aviso: município '{municipio}/{uf}' não encontrado no IBGE, pulando")
         return 0

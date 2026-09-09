@@ -49,6 +49,7 @@ def test_processar_concurso_nao_descarta_o_medico_psiquiatra_mesmo_sem_gemini(mo
         "get",
         _fake_get_pagina_detalhe(_ler_fixture("institutomais_detalhe_itapeva_10637_medico_psiquiatra.html")),
     )
+    monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", lambda nome, uf: 3522208)
 
     cargos_gravados = []
@@ -86,6 +87,7 @@ def test_processar_concurso_usa_salario_do_gemini_quando_cargo_bate(monkeypatch)
         "get",
         _fake_get_pagina_detalhe(_ler_fixture("institutomais_detalhe_itapeva_10637_medico_psiquiatra.html")),
     )
+    monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", lambda nome, uf: 3522208)
 
     vagas_gemini = {
@@ -139,6 +141,7 @@ def test_processar_concurso_santa_casa_nao_descarta_nenhuma_das_2_especialidades
             url_pagina="https://institutomais.org.br/Concursos/Detalhe/10643",
         ),
     )
+    monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", lambda nome, uf: 3549904)
     monkeypatch.setattr(script.gemini_pdf, "extrair_vagas_de_pdf", lambda pdf_bytes: {"vagas": []})
 
@@ -194,6 +197,7 @@ def test_processar_concurso_segue_link_pra_plataforma_nova_quando_sem_quadro_htm
         return _RespostaFalsa(content=b"pdf falso")
 
     monkeypatch.setattr(script.requests, "get", _fake_get)
+    monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", lambda nome, uf: 3523107)
     monkeypatch.setattr(
         script.gemini_pdf,
@@ -236,6 +240,7 @@ def test_processar_concurso_plataforma_nova_sem_gemini_nao_grava_nada(monkeypatc
         return _RespostaFalsa(content=b"pdf falso")
 
     monkeypatch.setattr(script.requests, "get", _fake_get)
+    monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", lambda nome, uf: 3523107)
     monkeypatch.setattr(
         script.gemini_pdf,
@@ -257,6 +262,7 @@ def test_processar_concurso_municipio_sem_codigo_ibge_pula_sem_erro(monkeypatch)
         "get",
         _fake_get_pagina_detalhe(_ler_fixture("institutomais_detalhe_itapeva_10637_medico_psiquiatra.html")),
     )
+    monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", lambda nome, uf: None)
     inserir_chamado = []
     monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", lambda *a, **k: inserir_chamado.append(1))

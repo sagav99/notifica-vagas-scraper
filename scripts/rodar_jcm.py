@@ -37,7 +37,9 @@ UFS_DO_PROJETO = {"MG", "SP"}
 
 
 def processar_processo(conn, fonte_id: str, item: jcm.ItemListagem) -> int:
-    codigo_ibge = ibge.buscar_codigo_ibge(item.municipio, item.uf)
+    codigo_ibge = db.buscar_codigo_ibge_local(conn, item.municipio, item.uf) or ibge.buscar_codigo_ibge(
+        item.municipio, item.uf
+    )
     if codigo_ibge is None:
         print(f"  aviso: município '{item.municipio}/{item.uf}' não encontrado no IBGE, pulando")
         return 0

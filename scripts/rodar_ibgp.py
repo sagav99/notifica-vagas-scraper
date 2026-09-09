@@ -55,21 +55,23 @@ FONTE_NOME = "IBGP"
 UFS_DO_PROJETO = ("MG", "SP")
 
 
-def _resolver_municipio_uf(item: ibgp.ItemListagem) -> tuple[str, str, int] | None:
+def _resolver_municipio_uf(conn, item: ibgp.ItemListagem) -> tuple[str, str, int] | None:
     """Devolve `(municipio, uf, codigo_ibge)` ou `None` se não achar em
     MG/SP nenhum candidato válido — ver docstring do módulo."""
     candidatos = ibgp.extrair_candidatos_municipio_uf(item.empresa_nome, item.nome)
     for municipio, uf in candidatos:
         if uf not in UFS_DO_PROJETO:
             continue
-        codigo_ibge = ibge.buscar_codigo_ibge(municipio, uf)
+        # local primeiro, API externa do IBGE só se genuinamente não achar
+        # (mesmo raciocínio de rodar_fundep.py).
+        codigo_ibge = db.buscar_codigo_ibge_local(conn, municipio, uf) or ibge.buscar_codigo_ibge(municipio, uf)
         if codigo_ibge is not None:
             return municipio, uf, codigo_ibge
     return None
 
 
 def processar_concurso(conn, fonte_id: str, item: ibgp.ItemListagem) -> int:
-    resolvido = _resolver_municipio_uf(item)
+    resolvido = _resolver_municipio_uf(conn, item)
     if resolvido is None:
         print(f"  aviso: município não identificado pra '{item.nome}' (nem em empresa.nome, nem no título), pulando")
         return 0

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import traceback
+import unicodedata
 from contextlib import contextmanager
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -54,6 +55,38 @@ def listar_municipios_com_codigo(
         else:
             cur.execute("select codigo_ibge, nome, uf from public.municipios")
         return [(row[0], row[1], row[2]) for row in cur.fetchall()]
+
+
+def _normalizar_nome_municipio(nome: str) -> str:
+    sem_acento = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode("ascii")
+    return sem_acento.strip().lower()
+
+
+_cache_local_codigo_por_uf: dict[str, list[tuple[int, str]]] = {}
+
+
+def buscar_codigo_ibge_local(conn: psycopg.Connection, nome: str, uf: str) -> int | None:
+    """codigo_ibge de um município já cadastrado em `public.municipios`,
+    por nome normalizado (sem acento/case) — evita bater na API externa
+    do IBGE por item processado. Achado real (2026-09-09): a partir do
+    runner do GitHub Actions, `servicodados.ibge.gov.br` passou a dar
+    timeout de forma persistente (não esporádica) em pelo menos 3 crons
+    diários seguidos (06-08/09), derrubando silenciosamente vaga já
+    extraída via Gemini (FGV/IMESO/IMAM/Ache Concursos todos chamavam a
+    API externa 1x por item, mesmo o município já estando no nosso
+    próprio cadastro) — mesma rede funciona normal de fora do Actions.
+    Cacheado em memória por UF dentro do processo, mesmo padrão de
+    `ibge.listar_municipios`."""
+    if uf not in _cache_local_codigo_por_uf:
+        with conn.cursor() as cur:
+            cur.execute("select codigo_ibge, nome from public.municipios where uf = %s", (uf,))
+            _cache_local_codigo_por_uf[uf] = [(row[0], row[1]) for row in cur.fetchall()]
+
+    alvo = _normalizar_nome_municipio(nome)
+    for codigo, nome_db in _cache_local_codigo_por_uf[uf]:
+        if _normalizar_nome_municipio(nome_db) == alvo:
+            return codigo
+    return None
 
 
 def listar_dominios_fontes_conhecidas(conn: psycopg.Connection) -> set[str]:

@@ -26,10 +26,11 @@ def test_resolver_municipio_uf_usa_municipio_da_listagem_quando_disponivel(monke
         chamadas.append((nome, uf))
         return 3147808 if (nome, uf) == ("Passos", "MG") else None
 
+    monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", _fake_buscar)
 
     item = _item(municipio="Passos")
-    resultado = script._resolver_municipio_uf(item, _edital("qualquer coisa"))
+    resultado = script._resolver_municipio_uf(None, item, _edital("qualquer coisa"))
 
     assert resultado == ("Passos", "MG", 3147808)
     assert chamadas[0] == ("Passos", "MG")  # tenta o município da listagem antes de qualquer sufixo
@@ -42,13 +43,14 @@ def test_resolver_municipio_uf_cai_pro_sufixo_do_titulo_do_edital_quando_listage
     def _fake_buscar(nome, uf):
         return 3170206 if (nome, uf) == ("Uberlândia", "MG") else None
 
+    monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", _fake_buscar)
 
     item = _item(municipio=None, titulo="Concurso Público DMAE - 01/2026")
     edital = _edital(
         "EDITAL CONSOLIDADO DO CONCURSO PÚBLICO Nº 01/2026 do Departamento Municipal de Água e Esgoto  DMAE Uberlândia"
     )
-    resultado = script._resolver_municipio_uf(item, edital)
+    resultado = script._resolver_municipio_uf(None, item, edital)
 
     assert resultado == ("Uberlândia", "MG", 3170206)
 
@@ -57,15 +59,17 @@ def test_resolver_municipio_uf_devolve_none_quando_nada_bate_ibge(monkeypatch):
     # sem risco de gravar município errado: se nenhum candidato (listagem
     # nem sufixos do edital) bate contra o IBGE em MG/SP, devolve None —
     # quem chama tem que pular o processo, não chutar.
+    monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", lambda nome, uf: None)
 
     item = _item(municipio=None, titulo="Concurso Público DMAE - 01/2026")
     edital = _edital("Vestibular qualquer sem município nenhum reconhecível")
-    assert script._resolver_municipio_uf(item, edital) is None
+    assert script._resolver_municipio_uf(None, item, edital) is None
 
 
 def test_resolver_municipio_uf_sem_edital_ainda_tenta_municipio_da_listagem(monkeypatch):
+    monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", lambda nome, uf: 123 if (nome, uf) == ("Passos", "MG") else None)
 
     item = _item(municipio="Passos")
-    assert script._resolver_municipio_uf(item, None) == ("Passos", "MG", 123)
+    assert script._resolver_municipio_uf(None, item, None) == ("Passos", "MG", 123)

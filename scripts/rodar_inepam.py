@@ -56,7 +56,9 @@ def processar_processo(conn, fonte_id: str, item: inepam.ItemListagem) -> int:
         print(f"  aviso: '{item.descricao}' sem documentos listados")
         return 0
 
-    codigo_ibge = ibge.buscar_codigo_ibge(item.municipio, item.uf)
+    codigo_ibge = db.buscar_codigo_ibge_local(conn, item.municipio, item.uf) or ibge.buscar_codigo_ibge(
+        item.municipio, item.uf
+    )
     if codigo_ibge is None:
         print(f"  aviso: município '{item.municipio}/{item.uf}' não encontrado no IBGE, pulando")
         return 0

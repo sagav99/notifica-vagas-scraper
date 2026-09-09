@@ -122,12 +122,17 @@ def main() -> None:
 
     print(f"{len(processaveis)} concurso(s) público(s) externo(s) na listagem da PBH (de {len(itens)} listados).")
 
-    codigo_ibge = ibge.buscar_codigo_ibge(pbh_ibfc.MUNICIPIO, pbh_ibfc.UF)
-    if codigo_ibge is None:
-        raise RuntimeError(f"{pbh_ibfc.MUNICIPIO}/{pbh_ibfc.UF} não encontrado no IBGE — não deveria acontecer.")
-
     conn = db.conectar()
     try:
+        # local primeiro (evita bater na API externa do IBGE, sujeita a
+        # timeout/bloqueio a partir do runner do GitHub Actions), API só
+        # se genuinamente não achar.
+        codigo_ibge = db.buscar_codigo_ibge_local(conn, pbh_ibfc.MUNICIPIO, pbh_ibfc.UF) or ibge.buscar_codigo_ibge(
+            pbh_ibfc.MUNICIPIO, pbh_ibfc.UF
+        )
+        if codigo_ibge is None:
+            raise RuntimeError(f"{pbh_ibfc.MUNICIPIO}/{pbh_ibfc.UF} não encontrado no IBGE — não deveria acontecer.")
+
         fonte_id = db.upsert_fonte(conn, nome=FONTE_NOME, url=pbh_ibfc.BASE_URL, tipo="oficial", uf=pbh_ibfc.UF)
         conn.commit()
 

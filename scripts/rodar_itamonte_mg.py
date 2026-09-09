@@ -75,7 +75,9 @@ def processar_item(conn, fonte_id: str, item: itamonte_mg.ItemListagem) -> int:
         print(f"  aviso: '{item.titulo}' sem tabela de funções reconhecida em nenhuma versão do PDF, pulando")
         return 0
 
-    codigo_ibge = ibge.buscar_codigo_ibge(itamonte_mg.MUNICIPIO, itamonte_mg.UF)
+    codigo_ibge = db.buscar_codigo_ibge_local(
+        conn, itamonte_mg.MUNICIPIO, itamonte_mg.UF
+    ) or ibge.buscar_codigo_ibge(itamonte_mg.MUNICIPIO, itamonte_mg.UF)
     if codigo_ibge is None:
         print(f"  aviso: município '{itamonte_mg.MUNICIPIO}/{itamonte_mg.UF}' não encontrado no IBGE, pulando")
         return 0

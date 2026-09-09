@@ -44,7 +44,11 @@ def processar_edital(conn, item: imeso.ItemListagem, fonte_id: str) -> int:
             print(f"  aviso: sem município/UF identificado em {item.url}, pulando cargo '{vaga.cargo}'")
             continue
 
-        codigo_ibge = ibge.buscar_codigo_ibge(vaga.municipio, vaga.uf)
+        codigo_ibge = db.buscar_codigo_ibge_local(conn, vaga.municipio, vaga.uf)
+        if codigo_ibge is None:
+            # município genuinamente novo pro nosso cadastro (raro) — só
+            # aqui vale bater na API externa do IBGE.
+            codigo_ibge = ibge.buscar_codigo_ibge(vaga.municipio, vaga.uf)
         if codigo_ibge is None:
             print(f"  aviso: município '{vaga.municipio}/{vaga.uf}' não encontrado no IBGE, pulando")
             continue

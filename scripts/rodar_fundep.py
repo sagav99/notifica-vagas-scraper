@@ -43,7 +43,9 @@ FONTE_NOME = "FUNDEP"
 UFS_DO_PROJETO = ("MG", "SP")
 
 
-def _resolver_municipio_uf(item: fundep.ItemListagem, edital: fundep.Documento | None) -> tuple[str, str, int] | None:
+def _resolver_municipio_uf(
+    conn, item: fundep.ItemListagem, edital: fundep.Documento | None
+) -> tuple[str, str, int] | None:
     """Devolve `(municipio, uf, codigo_ibge)` ou `None` se não achar em
     MG/SP nenhum candidato válido — ver docstring do módulo."""
     candidatos = [item.municipio] if item.municipio else []
@@ -52,7 +54,12 @@ def _resolver_municipio_uf(item: fundep.ItemListagem, edital: fundep.Documento |
 
     for candidato in candidatos:
         for uf in UFS_DO_PROJETO:
-            codigo_ibge = ibge.buscar_codigo_ibge(candidato, uf)
+            # local primeiro (nosso próprio cadastro já é derivado do IBGE
+            # de verdade, valida candidato igual) — API externa só se
+            # genuinamente não achar, evita bater rede por candidato/UF.
+            codigo_ibge = db.buscar_codigo_ibge_local(conn, candidato, uf) or ibge.buscar_codigo_ibge(
+                candidato, uf
+            )
             if codigo_ibge is not None:
                 return candidato, uf, codigo_ibge
     return None
@@ -67,7 +74,7 @@ def processar_processo(conn, fonte_id: str, item: fundep.ItemListagem) -> int:
         print(f"  aviso: '{item.tipo_processo} {item.numero_edital}' sem documentos listados")
         return 0
 
-    resolvido = _resolver_municipio_uf(item, edital)
+    resolvido = _resolver_municipio_uf(conn, item, edital)
     if resolvido is None:
         print(f"  aviso: município não identificado pra '{item.titulo}' (nem na listagem, nem no título do edital), pulando")
         return 0

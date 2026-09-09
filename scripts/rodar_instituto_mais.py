@@ -95,7 +95,7 @@ def processar_concurso(conn, fonte_id: str, item: instituto_mais.ItemListagem, m
         print(f"  '{item.titulo}' migrou pra plataforma nova ({link_novo}), seguindo o link...")
         return _processar_concurso_plataforma_nova(conn, fonte_id, item, municipio, uf, link_novo)
 
-    codigo_ibge = ibge.buscar_codigo_ibge(municipio, uf)
+    codigo_ibge = db.buscar_codigo_ibge_local(conn, municipio, uf) or ibge.buscar_codigo_ibge(municipio, uf)
     if codigo_ibge is None:
         print(f"  aviso: município '{municipio}/{uf}' não encontrado no IBGE, pulando")
         return 0
@@ -179,7 +179,7 @@ def _processar_concurso_plataforma_nova(conn, fonte_id: str, item: instituto_mai
         print(f"  aviso: '{item.titulo}' (plataforma nova) sem documento de edital identificado, pulando")
         return 0
 
-    codigo_ibge = ibge.buscar_codigo_ibge(municipio, uf)
+    codigo_ibge = db.buscar_codigo_ibge_local(conn, municipio, uf) or ibge.buscar_codigo_ibge(municipio, uf)
     if codigo_ibge is None:
         print(f"  aviso: município '{municipio}/{uf}' não encontrado no IBGE, pulando")
         return 0

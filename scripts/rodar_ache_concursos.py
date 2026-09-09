@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 
-from notifica_vagas_scraper import db, gemini_pdf, ibge
+from notifica_vagas_scraper import db, gemini_pdf
 from notifica_vagas_scraper.fontes import ache_concursos as ache
 from notifica_vagas_scraper.fontes import fgv
 
@@ -30,7 +30,7 @@ FONTE_NOME = "Ache Concursos"
 LISTAGENS = {"MG": "/concursos-minas-gerais", "SP": "/concursos-sao-paulo"}
 
 
-def processar_item(conn, item: ache.ItemListagem, municipio: str, uf: str) -> int:
+def processar_item(conn, item: ache.ItemListagem, municipio: str, uf: str, codigo_ibge: int) -> int:
     resposta = requests.get(item.url, headers={"User-Agent": USER_AGENT}, timeout=20)
     resposta.raise_for_status()
 
@@ -53,11 +53,6 @@ def processar_item(conn, item: ache.ItemListagem, municipio: str, uf: str) -> in
     extraido = gemini_pdf.extrair_vagas_de_pdf(pdf_resposta.content)
     if not extraido.get("vagas"):
         print(f"  aviso: Gemini não retornou vagas pra {pdf_url}")
-        return 0
-
-    codigo_ibge = ibge.buscar_codigo_ibge(municipio, uf)
-    if codigo_ibge is None:
-        print(f"  aviso: município '{municipio}/{uf}' não encontrado no IBGE, pulando")
         return 0
 
     db.upsert_municipio(conn, codigo_ibge=codigo_ibge, nome=municipio, uf=uf)
@@ -113,7 +108,9 @@ def processar_item(conn, item: ache.ItemListagem, municipio: str, uf: str) -> in
 def main() -> None:
     conn = db.conectar()
     try:
-        municipios = db.listar_nomes_municipios(conn, ufs=["MG", "SP"])
+        municipios_completos = db.listar_municipios_com_codigo(conn, ufs=["MG", "SP"])
+        municipios = [(nome, uf) for _, nome, uf in municipios_completos]
+        codigo_por_nome_uf = {(nome, uf): codigo for codigo, nome, uf in municipios_completos}
         print(f"{len(municipios)} município(s) de MG/SP carregados pra match.")
 
         hoje = date.today()
@@ -144,12 +141,15 @@ def main() -> None:
                 if match is None:
                     continue
                 municipio, municipio_uf = match
+                codigo_ibge = codigo_por_nome_uf.get((municipio, municipio_uf))
+                if codigo_ibge is None:
+                    continue
                 print(f"Achado: '{item.titulo}' -> {municipio}/{municipio_uf} ({item.url})")
                 try:
                     # savepoint por item: erro num item não deixa a transação
                     # inteira do lote em estado abortado pros próximos.
                     with conn.transaction():
-                        total_geral += processar_item(conn, item, municipio, municipio_uf)
+                        total_geral += processar_item(conn, item, municipio, municipio_uf, codigo_ibge)
                     conn.commit()
                 except Exception as exc:  # nunca deixar 1 item derrubar o lote inteiro
                     print(f"  ERRO processando '{item.titulo}': {exc}")

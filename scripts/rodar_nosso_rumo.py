@@ -73,7 +73,7 @@ def processar_certame(
         )
         return 0
 
-    codigo_ibge = ibge.buscar_codigo_ibge(municipio, uf)
+    codigo_ibge = db.buscar_codigo_ibge_local(conn, municipio, uf) or ibge.buscar_codigo_ibge(municipio, uf)
     if codigo_ibge is None:
         print(f"  aviso: município '{municipio}/{uf}' não encontrado no IBGE, pulando")
         return 0

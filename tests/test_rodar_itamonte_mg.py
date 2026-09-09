@@ -34,6 +34,7 @@ def test_processar_item_baixa_zip_e_nao_descarta_nenhum_medico(monkeypatch):
     # sem Gemini nenhum no caminho.
     conteudo_zip = _ler_bytes("ps_001_2026_pacote.zip")
     monkeypatch.setattr(script.requests, "get", lambda url, headers=None, timeout=None: _RespostaFalsa(content=conteudo_zip))
+    monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", lambda nome, uf: 3132305)
 
     cargos_gravados = []
@@ -68,6 +69,7 @@ def test_processar_item_pdf_direto_tambem_funciona(monkeypatch):
     # próprio conteúdo, sem exigir descompactação nenhuma.
     conteudo_pdf = _ler_bytes("ps_001_2026_edital_original.pdf")
     monkeypatch.setattr(script.requests, "get", lambda url, headers=None, timeout=None: _RespostaFalsa(content=conteudo_pdf))
+    monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", lambda nome, uf: 3132305)
 
     cargos_gravados = []
@@ -99,6 +101,7 @@ def test_processar_item_conteudo_desconhecido_pula_sem_erro(monkeypatch):
 def test_processar_item_municipio_sem_codigo_ibge_pula_sem_erro(monkeypatch):
     conteudo_zip = _ler_bytes("ps_001_2026_pacote.zip")
     monkeypatch.setattr(script.requests, "get", lambda url, headers=None, timeout=None: _RespostaFalsa(content=conteudo_zip))
+    monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", lambda nome, uf: None)
     inserir_chamado = []
     monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", lambda *a, **k: inserir_chamado.append(1))

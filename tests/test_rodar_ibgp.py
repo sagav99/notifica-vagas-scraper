@@ -23,10 +23,11 @@ def test_resolver_municipio_uf_usa_empresa_nome_quando_disponivel(monkeypatch):
         chamadas.append((nome, uf))
         return 3147105 if (nome, uf) == ("X", "MG") else None
 
+    monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", _fake_buscar)
 
     item = _item()
-    resultado = script._resolver_municipio_uf(item)
+    resultado = script._resolver_municipio_uf(None, item)
 
     assert resultado == ("X", "MG", 3147105)
     assert chamadas  # tentou pelo menos 1 candidato
@@ -38,22 +39,24 @@ def test_resolver_municipio_uf_caso_real_itabira_cai_pro_titulo_do_concurso(monk
     def _fake_buscar(nome, uf):
         return 3131307 if (nome, uf) == ("Itabira", "MG") else None
 
+    monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", _fake_buscar)
 
     item = _item(
         empresa_nome="INSTITUTO DE PREVIDÊNCIA DE ITABIRA - ITABIRAPREV",
         nome=" CONCURSO PÚBLICO DO INSTITUTO DE PREVIDÊNCIA DE ITABIRA/MG - ITABIRAPREV - EDITAL Nº 01/2026",
     )
-    resultado = script._resolver_municipio_uf(item)
+    resultado = script._resolver_municipio_uf(None, item)
 
     assert resultado == ("Itabira", "MG", 3131307)
 
 
 def test_resolver_municipio_uf_devolve_none_quando_nada_bate_ibge(monkeypatch):
+    monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", lambda nome, uf: None)
 
     item = _item(empresa_nome="SOBENFeE - SOCIEDADE BRASILEIRA DE ENFERMAGEM", nome="EXAME DE SUFICIÊNCIA 2026")
-    assert script._resolver_municipio_uf(item) is None
+    assert script._resolver_municipio_uf(None, item) is None
 
 
 def test_resolver_municipio_uf_ignora_uf_fora_do_projeto(monkeypatch):
@@ -68,5 +71,5 @@ def test_resolver_municipio_uf_ignora_uf_fora_do_projeto(monkeypatch):
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", _fake_buscar)
 
     item = _item(empresa_nome="MUNICÍPIO DE X/RJ", nome="CONCURSO PÚBLICO DO MUNICÍPIO DE X/RJ")
-    assert script._resolver_municipio_uf(item) is None
+    assert script._resolver_municipio_uf(None, item) is None
     assert chamadas == []

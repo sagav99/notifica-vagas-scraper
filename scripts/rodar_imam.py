@@ -38,7 +38,11 @@ def processar_processo(conn, fonte_id: str, item: imam.ItemListagem) -> int:
         print(f"  aviso: entidade '{item.entidade}' não é prefeitura/câmara, pulando")
         return 0
 
-    codigo_ibge = ibge.buscar_codigo_ibge(municipio_nome, "MG")
+    codigo_ibge = db.buscar_codigo_ibge_local(conn, municipio_nome, "MG")
+    if codigo_ibge is None:
+        # município genuinamente novo pro nosso cadastro (raro) — só
+        # aqui vale bater na API externa do IBGE.
+        codigo_ibge = ibge.buscar_codigo_ibge(municipio_nome, "MG")
     if codigo_ibge is None:
         print(f"  aviso: município '{municipio_nome}/MG' não encontrado no IBGE, pulando")
         return 0
