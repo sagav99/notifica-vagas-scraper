@@ -105,7 +105,7 @@ def test_dominio_coberto_com_vaga_nova_gera_alerta_de_cobertura(monkeypatch, cap
     monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
     monkeypatch.setattr(
         script.gemini_texto, "extrair_vagas_de_texto",
-        lambda titulo, texto, *, api_key: {
+        lambda titulo, texto, *, api_key, modelo=None: {
             "vagas": [{"cargo": "Médico Clínico Geral", "salario": 12000, "salario_tipo": "mensal"}],
         },
     )
@@ -136,7 +136,7 @@ def test_dominio_coberto_mas_vaga_ja_existente_nao_loga_alerta(monkeypatch, caps
     monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
     monkeypatch.setattr(
         script.gemini_texto, "extrair_vagas_de_texto",
-        lambda titulo, texto, *, api_key: {
+        lambda titulo, texto, *, api_key, modelo=None: {
             "vagas": [{"cargo": "Médico Clínico Geral", "salario": 12000, "salario_tipo": "mensal"}],
         },
     )
@@ -175,7 +175,7 @@ def test_dominio_novo_extrai_com_chave_gemini_dedicada_e_grava(monkeypatch):
     monkeypatch.setattr(
         script.gemini_texto,
         "extrair_vagas_de_texto",
-        lambda titulo, texto, *, api_key: chamadas.append(api_key) or {
+        lambda titulo, texto, *, api_key, modelo=None: chamadas.append((api_key, modelo)) or {
             "orgao": None, "numero_edital": "01/2026", "tipo_oportunidade": "concurso_efetivo",
             "data_publicacao": None, "inscricoes_inicio": None, "inscricoes_fim": None,
             "vagas": [{"cargo": "Médico Clínico Geral", "salario": 12000, "salario_tipo": "mensal"}],
@@ -187,7 +187,11 @@ def test_dominio_novo_extrai_com_chave_gemini_dedicada_e_grava(monkeypatch):
     resultado = script.processar_item(conn, _item(), "Paracatu", "MG", 3106200, set(), "chave-dedicada")
 
     assert resultado == (1, 1)
-    assert chamadas == ["chave-dedicada"]
+    # Modelo sempre forçado pro padrão (achado 2026-09-09): esta chave é
+    # separada da do pipeline principal e tem cota própria — não pode
+    # depender do contador global de `quota_gemini` (que reflete o consumo
+    # da OUTRA chave), senão herda um fallback desnecessário.
+    assert chamadas == [("chave-dedicada", script.gemini_texto.MODELO_PADRAO)]
     assert inserido["cargo"] == "Médico Clínico Geral"
     assert inserido["orgao"] == "Prefeitura Municipal de Paracatu/MG"
 
@@ -225,7 +229,7 @@ def test_item_que_ja_eh_pdf_extrai_direto_sem_buscar_html(monkeypatch):
     monkeypatch.setattr(
         script.gemini_pdf,
         "extrair_vagas_de_pdf",
-        lambda pdf_bytes, *, api_key: chamadas.append((pdf_bytes, api_key)) or {
+        lambda pdf_bytes, *, api_key, modelo=None: chamadas.append((pdf_bytes, api_key, modelo)) or {
             "orgao": "Prefeitura de Paracatu", "numero_edital": "02/2026", "tipo_oportunidade": "concurso_efetivo",
             "vagas": [{"cargo": "Médico ESF", "salario": 15000, "salario_tipo": "mensal"}],
         },
@@ -238,7 +242,7 @@ def test_item_que_ja_eh_pdf_extrai_direto_sem_buscar_html(monkeypatch):
     )
 
     assert resultado == (1, 1)
-    assert chamadas == [(b"%PDF-bytes", "chave-dedicada")]
+    assert chamadas == [(b"%PDF-bytes", "chave-dedicada", script.gemini_pdf.MODELO_PADRAO)]
     assert inserido["cargo"] == "Médico ESF"
     assert inserido["tipo_documento"] == "pdf"
     assert inserido["url_evidencia"] == "https://prefeitura.test/edital-02-2026.pdf"
@@ -255,7 +259,7 @@ def test_html_com_link_de_edital_segue_pro_pdf(monkeypatch):
     monkeypatch.setattr(script, "baixar_pdf", lambda url: b"%PDF-bytes" if url.endswith("edital-01-2026.pdf") else None)
     monkeypatch.setattr(
         script.gemini_pdf, "extrair_vagas_de_pdf",
-        lambda pdf_bytes, *, api_key: {
+        lambda pdf_bytes, *, api_key, modelo=None: {
             "vagas": [{"cargo": "Médico Plantonista", "salario": 8000, "salario_tipo": "plantao"}],
         },
     )
@@ -285,13 +289,13 @@ def test_falha_na_extracao_do_pdf_cai_pro_texto_da_pagina(monkeypatch):
     )
     monkeypatch.setattr(script, "baixar_pdf", lambda url: b"%PDF-bytes")
 
-    def fake_extrair_pdf(pdf_bytes, *, api_key):
+    def fake_extrair_pdf(pdf_bytes, *, api_key, modelo=None):
         raise script.gemini_pdf.ErroExtracaoGemini("PDF corrompido")
 
     monkeypatch.setattr(script.gemini_pdf, "extrair_vagas_de_pdf", fake_extrair_pdf)
     monkeypatch.setattr(
         script.gemini_texto, "extrair_vagas_de_texto",
-        lambda titulo, texto, *, api_key: {
+        lambda titulo, texto, *, api_key, modelo=None: {
             "vagas": [{"cargo": "Médico Clínico Geral", "salario": 10000, "salario_tipo": "mensal"}],
         },
     )
@@ -305,6 +309,44 @@ def test_falha_na_extracao_do_pdf_cai_pro_texto_da_pagina(monkeypatch):
     assert resultado == (1, 1)
     assert inserido["tipo_documento"] == "pagina_html"
     assert inserido["url_evidencia"] == "https://prefeitura.test/noticias/concurso"
+
+
+def test_429_na_extracao_do_pdf_cai_pro_texto_da_pagina(monkeypatch):
+    """Achado 2026-09-09 (verificação do Vigia/Serper em produção): 429
+    (cota/rate limit do Gemini) vem como `requests.HTTPError` puro de
+    `raise_for_status()`, não embrulhado em `ErroExtracaoGemini` — sem
+    tratar isso igual a uma falha normal de extração, o erro escapava do
+    `except` específico e derrubava a transação inteira do item (perdendo
+    até o registro do sinal de descoberta, não só a vaga)."""
+    conn = Mock()
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
+    monkeypatch.setattr(
+        script, "buscar_pagina_html",
+        lambda url: '<a href="/anexos/edital-01-2026.pdf">Edital de Abertura</a><p>texto de apoio na página</p>',
+    )
+    monkeypatch.setattr(script, "baixar_pdf", lambda url: b"%PDF-bytes")
+
+    def fake_extrair_pdf_429(pdf_bytes, *, api_key, modelo=None):
+        resposta = Mock(status_code=429)
+        raise requests.HTTPError("429 Client Error: Too Many Requests", response=resposta)
+
+    monkeypatch.setattr(script.gemini_pdf, "extrair_vagas_de_pdf", fake_extrair_pdf_429)
+    monkeypatch.setattr(
+        script.gemini_texto, "extrair_vagas_de_texto",
+        lambda titulo, texto, *, api_key, modelo=None: {
+            "vagas": [{"cargo": "Médico Clínico Geral", "salario": 10000, "salario_tipo": "mensal"}],
+        },
+    )
+    inserido = {}
+    monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", lambda conn, **kw: inserido.update(kw) or {"vaga_id": "v1", "evidencia_id": "e1"})
+
+    resultado = script.processar_item(
+        conn, _item(link="https://prefeitura.test/noticias/concurso"), "Paracatu", "MG", 3106200, set(), "chave-dedicada"
+    )
+
+    assert resultado == (1, 1)
+    assert inserido["tipo_documento"] == "pagina_html"
 
 
 def test_backfill_nao_envia_filtro_de_recencia(monkeypatch):

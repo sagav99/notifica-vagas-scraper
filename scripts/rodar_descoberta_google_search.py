@@ -209,17 +209,21 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
         pdf_bytes = baixar_pdf(url_pdf)
         if pdf_bytes:
             try:
-                extraido = gemini_pdf.extrair_vagas_de_pdf(pdf_bytes, api_key=gemini_api_key)
+                extraido = gemini_pdf.extrair_vagas_de_pdf(
+                    pdf_bytes, api_key=gemini_api_key, modelo=gemini_pdf.MODELO_PADRAO
+                )
                 tipo_documento = "pdf"
                 url_evidencia = url_pdf
-            except gemini_pdf.ErroExtracaoGemini as exc:
+            except (gemini_pdf.ErroExtracaoGemini, requests.HTTPError) as exc:
                 print(f"  aviso: falha na extração Gemini (PDF) de '{item.titulo[:60]}': {exc}", file=sys.stderr)
 
     if extraido is None:
         texto = (extrair_texto_de_html(html) if html else None) or item.resumo or item.titulo
         try:
-            extraido = gemini_texto.extrair_vagas_de_texto(item.titulo, texto, api_key=gemini_api_key)
-        except gemini_texto.ErroExtracaoGemini as exc:
+            extraido = gemini_texto.extrair_vagas_de_texto(
+                item.titulo, texto, api_key=gemini_api_key, modelo=gemini_texto.MODELO_PADRAO
+            )
+        except (gemini_texto.ErroExtracaoGemini, requests.HTTPError) as exc:
             print(f"  aviso: falha na extração Gemini de '{item.titulo[:60]}': {exc}", file=sys.stderr)
             return int(sinal_novo), 0
 
