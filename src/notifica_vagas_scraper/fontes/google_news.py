@@ -25,6 +25,13 @@ BASE_URL = "https://news.google.com/rss/search"
 #: CLAUDE.md) — mistura termo genérico, geografia (MG/SP) e especialidade,
 #: pra maximizar cobertura sem virar ruído (dedup por URL faz o resto,
 #: ver `db.registrar_sinal_descoberta`/`inserir_vaga_com_evidencia`).
+#: Maioria dos termos é deliberadamente genérica/generalista (decisão do
+#: usuário, 2026-09-09): vaga de médico sem especialidade exigida
+#: (generalista/clínico geral/ESF/plantonista) é o maior foco dentro da
+#: prioridade médico — não exclusivo, por isso mantém especialidade de
+#: maior volume real já visto em produção (pediatra/gineco-obstetra/
+#: psiquiatra/ortopedista), trocando as 2 mais estreitas
+#: (anestesiologista/cardiologista) por termos generalistas.
 QUERIES: tuple[str, ...] = (
     "concurso médico",
     "concurso médico MG",
@@ -35,12 +42,12 @@ QUERIES: tuple[str, ...] = (
     "processo seletivo médico prefeitura",
     "concurso público médico plantonista",
     "concurso médico clínico geral",
+    "concurso médico generalista",
+    "concurso médico PSF",
     "concurso médico pediatra",
     "concurso médico ginecologista obstetra",
     "concurso médico psiquiatra",
     "concurso médico ortopedista",
-    "concurso médico anestesiologista",
-    "concurso médico cardiologista",
     "vagas médico concurso prefeitura",
     "concurso secretaria de saúde médico",
     "PSS médico prefeitura",
