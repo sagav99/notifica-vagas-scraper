@@ -18,15 +18,15 @@ def test_buscar_itens_erro_isolado_nao_impede_demais_queries(monkeypatch):
             pass
 
         def json(self):
-            return {"items": [{"title": "Concurso médico em Paracatu", "link": "https://exemplo.test/1"}]}
+            return {"organic": [{"title": "Concurso médico em Paracatu", "link": "https://exemplo.test/1"}]}
 
-    def fake_get(url, *, params, headers, timeout):
-        if params["q"] == "erro":
+    def fake_post(url, *, json, headers, timeout):
+        if json["q"] == "erro":
             raise requests.RequestException("falha simulada")
         return Resposta()
 
-    monkeypatch.setattr(script.requests, "get", fake_get)
-    itens = script.buscar_itens(api_key="chave", engine_id="cx")
+    monkeypatch.setattr(script.requests, "post", fake_post)
+    itens = script.buscar_itens(api_key="chave")
 
     assert len(itens) == 1
     assert itens[0].link == "https://exemplo.test/1"
@@ -36,15 +36,15 @@ def test_buscar_itens_para_apos_tres_falhas_consecutivas_sem_vazar_chave(monkeyp
     monkeypatch.setattr(script.google_search, "QUERIES", ("a", "b", "c", "nao-deve-rodar"))
     chamadas = []
 
-    def fake_get(url, *, params, headers, timeout):
-        chamadas.append(params["q"])
-        resposta = Mock(status_code=403, url=f"{url}?key={params['key']}")
+    def fake_post(url, *, json, headers, timeout):
+        chamadas.append(json["q"])
+        resposta = Mock(status_code=403, url=url)
         erro = requests.HTTPError("403 Client Error", response=resposta)
         raise erro
 
-    monkeypatch.setattr(script.requests, "get", fake_get)
+    monkeypatch.setattr(script.requests, "post", fake_post)
 
-    assert script.buscar_itens(api_key="segredo-nao-vaza", engine_id="cx") == []
+    assert script.buscar_itens(api_key="segredo-nao-vaza") == []
     saida = capsys.readouterr().err
     assert chamadas == ["a", "b", "c"]
     assert "segredo-nao-vaza" not in saida
@@ -316,13 +316,13 @@ def test_backfill_nao_envia_filtro_de_recencia(monkeypatch):
             pass
 
         def json(self):
-            return {"items": []}
+            return {"organic": []}
 
-    def fake_get(url, *, params, headers, timeout):
-        parametros.append(params)
+    def fake_post(url, *, json, headers, timeout):
+        parametros.append(json)
         return Resposta()
 
-    monkeypatch.setattr(script.requests, "get", fake_get)
-    script.buscar_itens(api_key="chave", engine_id="cx", backfill=True)
+    monkeypatch.setattr(script.requests, "post", fake_post)
+    script.buscar_itens(api_key="chave", backfill=True)
 
-    assert "dateRestrict" not in parametros[0]
+    assert "tbs" not in parametros[0]

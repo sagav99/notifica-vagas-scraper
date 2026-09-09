@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Descoberta ampla via Google Custom Search API.
+"""Descoberta ampla via Serper (google.serper.dev) — resultado real do
+Google, sem precisar de Google Cloud Console/faturamento (trocado de
+Google Custom Search API em 2026-09-09, ver docstring de
+``notifica_vagas_scraper.fontes.google_search``).
 
 Uso normal: ``python scripts/rodar_descoberta_google_search.py``.
 Use ``--backfill`` na carga retroativa manual: ele afrouxa (ou remove) a
@@ -9,8 +12,7 @@ terminar. Combine com ``--janela {semana,mes,trimestre,tudo}`` (padrão
 "tudo") pra fazer o backfill em estágios de recência — decisão do usuário,
 2026-09-08: começar pelo que tem mais chance de ainda estar aberto (semana,
 depois mês) antes de ir pra janelas maiores, em vez de um "tudo de uma vez"
-só dominado por resultado antigo/já encerrado. Cada estágio cabe várias
-vezes dentro da cota diária gratuita — dá pra rodar todos no mesmo dia.
+só dominado por resultado antigo/já encerrado.
 """
 
 from __future__ import annotations
@@ -54,13 +56,13 @@ def _parsear_data_iso(texto: str | None) -> date | None:
         return None
 
 
-def buscar_itens(*, api_key: str, engine_id: str, backfill: bool = False, janela: str | None = None) -> list[google_search.ItemBusca]:
-    """Faz no máximo uma consulta por query, nunca excedendo a cota diária."""
-    queries = google_search.QUERIES[: google_search.COTA_DIARIA_GRATUITA]
+def buscar_itens(*, api_key: str, backfill: bool = False, janela: str | None = None) -> list[google_search.ItemBusca]:
+    """Faz no máximo uma consulta por query, nunca excedendo o limite por execução."""
+    queries = google_search.QUERIES[: google_search.QUERIES_POR_EXECUCAO]
     if len(google_search.QUERIES) > len(queries):
         print(
             f"aviso: {len(google_search.QUERIES)} queries configuradas; usando só {len(queries)} "
-            f"para respeitar a cota diária de {google_search.COTA_DIARIA_GRATUITA}.",
+            f"para esticar o saldo de créditos da Serper (ver QUERIES_POR_EXECUCAO).",
             file=sys.stderr,
         )
 
@@ -68,22 +70,18 @@ def buscar_itens(*, api_key: str, engine_id: str, backfill: bool = False, janela
     falhas_consecutivas = 0
     for query in queries:
         try:
-            resposta = requests.get(
+            resposta = requests.post(
                 google_search.BASE_URL,
-                params=google_search.montar_parametros(
-                    query, api_key=api_key, engine_id=engine_id, backfill=backfill, janela=janela
-                ),
-                headers={"User-Agent": USER_AGENT},
+                json=google_search.montar_parametros(query, backfill=backfill, janela=janela),
+                headers={"User-Agent": USER_AGENT, "X-API-KEY": api_key, "Content-Type": "application/json"},
                 timeout=20,
             )
             resposta.raise_for_status()
             dados = resposta.json()
         except (requests.RequestException, ValueError) as exc:
-            # ``str(HTTPError)`` inclui a URL inteira, inclusive o parâmetro
-            # ``key``. Nunca a escrevemos em log.
             status = getattr(getattr(exc, "response", None), "status_code", None)
             detalhe = f"HTTP {status}" if status else type(exc).__name__
-            print(f"  aviso: falha buscando Google Custom Search para '{query}': {detalhe}", file=sys.stderr)
+            print(f"  aviso: falha buscando na Serper para '{query}': {detalhe}", file=sys.stderr)
             falhas_consecutivas += 1
             if falhas_consecutivas >= MAX_FALHAS_CONSECUTIVAS_API:
                 print(
@@ -168,7 +166,7 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
     coberto = dominio in dominios_normalizados
     sinal_novo = db.registrar_sinal_descoberta(
         conn,
-        fonte_descoberta="google_custom_search",
+        fonte_descoberta="serper",
         municipio_id=codigo_ibge,
         titulo=item.titulo,
         url=item.link,
@@ -228,7 +226,7 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
     if not extraido.get("vagas"):
         return int(sinal_novo), 0
 
-    fonte_id = db.upsert_fonte(conn, nome=f"Google Custom Search ({uf})", url=google_search.BASE_URL,
+    fonte_id = db.upsert_fonte(conn, nome=f"Vigia Serper ({uf})", url=google_search.BASE_URL,
                                tipo="indice", uf=uf)
     orgao = extraido.get("orgao") or f"Prefeitura Municipal de {municipio}/{uf}"
     total = 0
@@ -236,7 +234,7 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
         cargo = vaga.get("cargo")
         if not cargo:
             continue
-        resumo = f"{item.titulo} (via Google Custom Search)"
+        resumo = f"{item.titulo} (via Serper)"
         if coberto:
             # Achado (c): domínio já tinha parser oficial, mas essa vaga
             # não veio dele — marca pra chamar atenção na revisão/painel
@@ -264,9 +262,9 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
 
 def escrever_relatorio_backfill(*, janela: str, itens: int, casados: int, sinais_novos: int, vagas: int) -> Path:
     RELATORIOS_DIR.mkdir(exist_ok=True)
-    caminho = RELATORIOS_DIR / f"backfill_google_custom_search_{janela}_{datetime.now(timezone.utc):%Y-%m-%d}.md"
+    caminho = RELATORIOS_DIR / f"backfill_serper_{janela}_{datetime.now(timezone.utc):%Y-%m-%d}.md"
     caminho.write_text(
-        f"# Backfill Google Custom Search API — janela: {janela}\n\n"
+        f"# Backfill Serper (descoberta ampla via Google) — janela: {janela}\n\n"
         f"Executado em {datetime.now(timezone.utc):%Y-%m-%d %H:%M UTC}.\n\n"
         f"- Resultados únicos: {itens}\n- Casados com municípios MG/SP: {casados}\n"
         f"- Sinais novos: {sinais_novos}\n- Vagas extraídas: {vagas}\n",
@@ -283,17 +281,15 @@ def main(argv: list[str] | None = None) -> None:
         help='só com --backfill: estágio de recência ("semana", "mes", "trimestre" ou "tudo", padrão "tudo")',
     )
     args = parser.parse_args(argv)
-    api_key = os.environ.get("GOOGLE_CUSTOM_SEARCH_API_KEY")
-    engine_id = os.environ.get("GOOGLE_CUSTOM_SEARCH_ENGINE_ID")
+    api_key = os.environ.get("SERPER_API_KEY")
     gemini_api_key = os.environ.get("GEMINI_API_KEY_DESCOBERTA_GOOGLE")
-    faltando = [nome for nome, valor in (("GOOGLE_CUSTOM_SEARCH_API_KEY", api_key),
-                                         ("GOOGLE_CUSTOM_SEARCH_ENGINE_ID", engine_id),
+    faltando = [nome for nome, valor in (("SERPER_API_KEY", api_key),
                                          ("GEMINI_API_KEY_DESCOBERTA_GOOGLE", gemini_api_key)) if not valor]
     if faltando:
         raise RuntimeError(f"Variáveis de ambiente obrigatórias não definidas: {', '.join(faltando)}")
 
-    itens = buscar_itens(api_key=api_key, engine_id=engine_id, backfill=args.backfill, janela=args.janela if args.backfill else None)
-    print(f"{len(itens)} resultado(s) único(s) da Google Custom Search API.")
+    itens = buscar_itens(api_key=api_key, backfill=args.backfill, janela=args.janela if args.backfill else None)
+    print(f"{len(itens)} resultado(s) único(s) da Serper.")
     conn = db.conectar()
     try:
         municipios_completos = db.listar_municipios_com_codigo(conn, ufs=UFS_DO_PROJETO)

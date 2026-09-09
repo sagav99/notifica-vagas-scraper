@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       google_search_backfill:
-        description: "Executa Google Custom Search em modo backfill retroativo (usar --janela pra escolher o estágio)"
+        description: "Executa descoberta ampla (Serper) em modo backfill retroativo (usar --janela pra escolher o estágio)"
         required: false
         default: false
         type: boolean
@@ -206,11 +206,10 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_descoberta_google_news.py
 
-      - name: Descoberta ampla (Google Custom Search — concurso médico)
+      - name: Descoberta ampla (Serper — concurso médico)
         if: always()
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GOOGLE_CUSTOM_SEARCH_API_KEY: ${{ secrets.GOOGLE_CUSTOM_SEARCH_API_KEY }}
-          GOOGLE_CUSTOM_SEARCH_ENGINE_ID: ${{ secrets.GOOGLE_CUSTOM_SEARCH_ENGINE_ID }}
+          SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
           GEMINI_API_KEY_DESCOBERTA_GOOGLE: ${{ secrets.GEMINI_API_KEY_DESCOBERTA_GOOGLE }}
         run: python scripts/rodar_descoberta_google_search.py ${{ inputs.google_search_backfill && format('--backfill --janela {0}', inputs.google_search_janela) || '' }}

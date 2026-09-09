@@ -1,9 +1,18 @@
-"""Cliente da Google Custom Search API para descoberta ampla de concursos.
+"""Cliente da Serper (google.serper.dev) para descoberta ampla de concursos.
 
 É o equivalente de busca web geral do ``google_news``: conserva as mesmas
-queries focadas em médico, mas consulta páginas indexadas em geral — inclusive
-editais que nunca foram notícia. A API cobra por consulta acima da cota diária
-gratuita; por isso o chamador sempre limita a quantidade antes de fazer rede.
+queries focadas em médico, mas consulta páginas indexadas em geral —
+inclusive editais que nunca foram notícia. Antes usava a Google Custom
+Search JSON API direto; trocado pra Serper em 2026-09-09 (decisão do
+usuário) depois de dias sem conseguir resolver bloqueio de faturamento na
+conta Google — Serper devolve resultado do Google de verdade (mesma
+cobertura/qualidade), sem precisar de Google Cloud Console/faturamento.
+
+Diferença de modelo de cota importante: a Google Custom Search API tinha
+cota diária grátis que renovava (100/dia pra sempre); o free tier da
+Serper é um saldo único de créditos que **não renova** (2.500 no
+cadastro) — por isso o chamador limita queries por execução pra esticar
+esse saldo por meses, não só por dia (ver ``QUERIES_POR_EXECUCAO``).
 """
 
 from __future__ import annotations
@@ -13,25 +22,29 @@ from datetime import datetime
 
 from .google_news import QUERIES
 
-BASE_URL = "https://www.googleapis.com/customsearch/v1"
-COTA_DIARIA_GRATUITA = 100
-JANELA_DIAS = 2
+BASE_URL = "https://google.serper.dev/search"
+
+#: saldo de créditos grátis do cadastro é fixo (2.500, sem renovação) —
+#: 20 queries por execução, 1x/dia, dura ~125 dias (~4 meses) antes de
+#: precisar de plano pago ou reavaliar (decisão do usuário, 2026-09-09).
+QUERIES_POR_EXECUCAO = 20
 
 #: Janelas de recência disponíveis pro backfill retroativo (decisão do
 #: usuário, 2026-09-08): em vez de só "tudo de uma vez" (sem filtro
 #: nenhum, resultado dominado por ruído antigo), o backfill roda em
 #: estágios — primeiro o que é mais provável ainda estar com inscrição
-#: aberta (semana/mês), só then indo pra janelas maiores. Cada estágio
-#: já cabe várias vezes dentro da cota diária gratuita (20 queries por
-#: rodada, cota de 100/dia — ver `COTA_DIARIA_GRATUITA`), então dá pra
-#: rodar todos os estágios no mesmo dia sem estourar. Sintaxe de
-#: `dateRestrict`: https://developers.google.com/custom-search/v1/reference/rest/v1/cse/list
+#: aberta (semana/mês), só então indo pra janelas maiores. Sintaxe do
+#: parâmetro ``tbs`` (mesmo filtro de data da busca normal do Google,
+#: documentado pela Serper): ``qdr:d<N>`` filtra pelos últimos N dias.
 JANELAS_BACKFILL: dict[str, str | None] = {
-    "semana": "d7",
-    "mes": "m1",
-    "trimestre": "m3",
+    "semana": "qdr:d7",
+    "mes": "qdr:d30",
+    "trimestre": "qdr:d90",
     "tudo": None,
 }
+
+#: cron normal (fora de backfill) restringe aos últimos 2 dias.
+JANELA_DIAS = 2
 
 
 @dataclass
@@ -43,63 +56,46 @@ class ItemBusca:
 
 
 def montar_parametros(
-    query: str, *, api_key: str, engine_id: str, backfill: bool = False, janela: str | None = None
+    query: str, *, backfill: bool = False, janela: str | None = None
 ) -> dict[str, str | int]:
-    """Parâmetros de uma única consulta à API.
+    """Corpo (JSON) de uma única consulta à Serper.
 
-    No cron normal (`backfill=False`), ``dateRestrict`` pede resultados dos
+    No cron normal (`backfill=False`), ``tbs`` pede resultados dos
     últimos dois dias. Com `backfill=True`, aceita `janela` (uma chave de
     `JANELAS_BACKFILL`: "semana"/"mes"/"trimestre"/"tudo") pra fazer o
     backfill em estágios de recência — `janela=None` (ou omitido) mantém o
     comportamento antigo de backfill sem filtro nenhum ("tudo").
     """
     parametros: dict[str, str | int] = {
-        "key": api_key,
-        "cx": engine_id,
         "q": query,
         "num": 10,
-        "hl": "pt-BR",
+        "hl": "pt",
         "gl": "br",
     }
     if not backfill:
-        parametros["dateRestrict"] = f"d{JANELA_DIAS}"
+        parametros["tbs"] = f"qdr:d{JANELA_DIAS}"
     elif janela is not None:
-        date_restrict = JANELAS_BACKFILL[janela]
-        if date_restrict is not None:
-            parametros["dateRestrict"] = date_restrict
+        tbs = JANELAS_BACKFILL[janela]
+        if tbs is not None:
+            parametros["tbs"] = tbs
     return parametros
 
 
-def _parsear_data(texto: object) -> datetime | None:
-    if not isinstance(texto, str) or not texto:
-        return None
-    try:
-        return datetime.fromisoformat(texto.replace("Z", "+00:00"))
-    except ValueError:
-        return None
-
-
-def _encontrar_data(item: dict) -> datetime | None:
-    metatags = item.get("pagemap", {}).get("metatags", [])
-    if not isinstance(metatags, list):
-        return None
-    for metatag in metatags:
-        if not isinstance(metatag, dict):
-            continue
-        for campo in ("article:published_time", "datePublished", "date", "publishdate"):
-            data = _parsear_data(metatag.get(campo))
-            if data is not None:
-                return data
-    return None
-
-
 def listar_itens(resposta: dict) -> list[ItemBusca]:
-    """Converte a resposta JSON da API em itens utilizáveis.
+    """Converte a resposta JSON da Serper em itens utilizáveis.
 
-    Uma resposta válida sem ``items`` é simplesmente uma busca sem resultado.
-    Campos opcionais ou itens incompletos são ignorados, sem interromper o lote.
+    Resultados orgânicos vêm em ``organic`` (não ``items``, como na antiga
+    Google Custom Search API). Uma resposta válida sem ``organic`` é
+    simplesmente uma busca sem resultado. Campos opcionais ou itens
+    incompletos são ignorados, sem interromper o lote.
+
+    ``publicado_em`` sempre fica `None`: a Serper devolve data em texto
+    livre e formato inconsistente (relativo tipo "6 days ago", absoluto
+    tipo "4 de out. de 2024", ou ausente) — sem valor estruturado
+    confiável pra parsear, e nenhuma lógica downstream depende desse campo
+    hoje (só informativo), então não vale arriscar parsing frágil.
     """
-    bruto = resposta.get("items", [])
+    bruto = resposta.get("organic", [])
     if not isinstance(bruto, list):
         return []
     itens: list[ItemBusca] = []
@@ -116,7 +112,7 @@ def listar_itens(resposta: dict) -> list[ItemBusca]:
                 titulo=titulo.strip(),
                 link=link.strip(),
                 resumo=resumo.strip() if isinstance(resumo, str) and resumo.strip() else None,
-                publicado_em=_encontrar_data(item),
+                publicado_em=None,
             )
         )
     return itens
