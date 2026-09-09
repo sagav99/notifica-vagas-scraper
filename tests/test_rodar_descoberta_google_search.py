@@ -368,3 +368,134 @@ def test_backfill_nao_envia_filtro_de_recencia(monkeypatch):
     script.buscar_itens(api_key="chave", backfill=True)
 
     assert "tbs" not in parametros[0]
+
+
+def test_pagina_do_pdf_gera_print_e_grava_url(monkeypatch):
+    """Achado 2026-09-09 (Arealva/SP, Diário Oficial de 821 páginas): com
+    credenciais do Supabase disponíveis e o Gemini indicando em que página
+    achou o cargo, renderiza + sobe o print dessa página e grava junto com
+    a evidência — não só o link cru pro PDF gigante."""
+    conn = Mock()
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
+    monkeypatch.setattr(script, "baixar_pdf", lambda url: b"%PDF-bytes")
+    monkeypatch.setattr(
+        script.gemini_pdf, "extrair_vagas_de_pdf",
+        lambda pdf_bytes, *, api_key, modelo=None: {
+            "vagas": [{"cargo": "Médico Psiquiatra", "pagina": 3, "salario": 9826.50, "salario_tipo": "mensal"}],
+        },
+    )
+    chamadas_render = []
+    monkeypatch.setattr(
+        script.evidencia_imagem, "renderizar_pagina_pdf",
+        lambda pdf_bytes, pagina: chamadas_render.append((pdf_bytes, pagina)) or b"png-bytes",
+    )
+    monkeypatch.setattr(
+        script.evidencia_imagem, "subir_print_pagina",
+        lambda imagem, *, caminho, supabase_url, service_role_key: f"https://exemplo.supabase.co/storage/v1/object/public/evidencias-pdf/{caminho}",
+    )
+    inserido = {}
+    monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", lambda conn, **kw: inserido.update(kw) or {"vaga_id": "v1", "evidencia_id": "e1"})
+
+    resultado = script.processar_item(
+        conn, _item(link="https://dosp.com.br/diario-oficial-arealva.pdf"), "Arealva", "SP", 3503208,
+        set(), "chave-dedicada", "https://exemplo.supabase.co", "chave-servico",
+    )
+
+    assert resultado == (1, 1)
+    assert chamadas_render == [(b"%PDF-bytes", 3)]
+    assert inserido["pagina_pdf"] == 3
+    assert inserido["url_print_pagina"].endswith("-pagina-3.png")
+
+
+def test_sem_credenciais_supabase_nao_gera_print_mas_grava_pagina(monkeypatch):
+    """Sem `NEXT_PUBLIC_SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` (não
+    configuradas no ambiente), a vaga continua sendo capturada normalmente
+    — só o atalho visual fica ausente."""
+    conn = Mock()
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
+    monkeypatch.setattr(script, "baixar_pdf", lambda url: b"%PDF-bytes")
+    monkeypatch.setattr(
+        script.gemini_pdf, "extrair_vagas_de_pdf",
+        lambda pdf_bytes, *, api_key, modelo=None: {
+            "vagas": [{"cargo": "Médico Psiquiatra", "pagina": 3, "salario": 9826.50, "salario_tipo": "mensal"}],
+        },
+    )
+
+    def fail_renderizar(*a, **k):
+        raise AssertionError("não deveria tentar renderizar sem credenciais do Supabase")
+
+    monkeypatch.setattr(script.evidencia_imagem, "renderizar_pagina_pdf", fail_renderizar)
+    inserido = {}
+    monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", lambda conn, **kw: inserido.update(kw) or {"vaga_id": "v1", "evidencia_id": "e1"})
+
+    resultado = script.processar_item(
+        conn, _item(link="https://prefeitura.test/edital.pdf"), "Paracatu", "MG", 3106200, set(), "chave-dedicada"
+    )
+
+    assert resultado == (1, 1)
+    assert inserido["pagina_pdf"] == 3
+    assert inserido["url_print_pagina"] is None
+
+
+def test_duas_vagas_na_mesma_pagina_so_gera_print_uma_vez(monkeypatch):
+    conn = Mock()
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
+    monkeypatch.setattr(script, "baixar_pdf", lambda url: b"%PDF-bytes")
+    monkeypatch.setattr(
+        script.gemini_pdf, "extrair_vagas_de_pdf",
+        lambda pdf_bytes, *, api_key, modelo=None: {
+            "vagas": [
+                {"cargo": "Médico Clínico Geral", "pagina": 5, "salario": 10000, "salario_tipo": "mensal"},
+                {"cargo": "Médico Pediatra", "pagina": 5, "salario": 11000, "salario_tipo": "mensal"},
+            ],
+        },
+    )
+    chamadas_render = []
+    monkeypatch.setattr(
+        script.evidencia_imagem, "renderizar_pagina_pdf",
+        lambda pdf_bytes, pagina: chamadas_render.append(pagina) or b"png-bytes",
+    )
+    monkeypatch.setattr(
+        script.evidencia_imagem, "subir_print_pagina",
+        lambda imagem, *, caminho, supabase_url, service_role_key: "https://exemplo.supabase.co/x.png",
+    )
+    monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", lambda conn, **kw: {"vaga_id": "v1", "evidencia_id": "e1"})
+
+    resultado = script.processar_item(
+        conn, _item(link="https://prefeitura.test/edital.pdf"), "Paracatu", "MG", 3106200,
+        set(), "chave-dedicada", "https://exemplo.supabase.co", "chave-servico",
+    )
+
+    assert resultado == (1, 2)
+    assert chamadas_render == [5]
+
+
+def test_falha_ao_renderizar_pagina_nao_impede_vaga_de_ser_gravada(monkeypatch):
+    conn = Mock()
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
+    monkeypatch.setattr(script, "baixar_pdf", lambda url: b"%PDF-bytes")
+    monkeypatch.setattr(
+        script.gemini_pdf, "extrair_vagas_de_pdf",
+        lambda pdf_bytes, *, api_key, modelo=None: {
+            "vagas": [{"cargo": "Médico Psiquiatra", "pagina": 3, "salario": 9826.50, "salario_tipo": "mensal"}],
+        },
+    )
+
+    def falha_renderizar(pdf_bytes, pagina):
+        raise script.evidencia_imagem.ErroImagemEvidencia("PDF corrompido")
+
+    monkeypatch.setattr(script.evidencia_imagem, "renderizar_pagina_pdf", falha_renderizar)
+    inserido = {}
+    monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", lambda conn, **kw: inserido.update(kw) or {"vaga_id": "v1", "evidencia_id": "e1"})
+
+    resultado = script.processar_item(
+        conn, _item(link="https://prefeitura.test/edital.pdf"), "Paracatu", "MG", 3106200,
+        set(), "chave-dedicada", "https://exemplo.supabase.co", "chave-servico",
+    )
+
+    assert resultado == (1, 1)
+    assert inserido["url_print_pagina"] is None

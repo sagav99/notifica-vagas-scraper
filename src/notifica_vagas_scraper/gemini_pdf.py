@@ -55,6 +55,9 @@ Extraia um objeto JSON com:
     específicas)
 - vagas: lista de vagas, cada uma com:
   - cargo (string)
+  - pagina (int, o número da página do PDF — primeira página é 1 — onde
+    está a linha/tabela com esse cargo; null só se genuinamente não der
+    pra identificar em qual página aparece)
   - vagas_qtd (int ou null)
   - salario (number, o valor numérico em reais, sem "R$", ou null — se a
     remuneração for por hora/aula ou outra unidade que não dá pra
@@ -77,7 +80,7 @@ def extrair_vagas_de_pdf(
 ) -> dict:
     """Retorna {"numero_edital", "orgao", "data_publicacao",
     "inscricoes_inicio", "inscricoes_fim", "tipo_oportunidade",
-    "vagas": [{"cargo", "vagas_qtd", "salario", "salario_tipo",
+    "vagas": [{"cargo", "pagina", "vagas_qtd", "salario", "salario_tipo",
     "requisitos", "carga_horaria"}, ...]} — ver PROMPT.
 
     `modelo=None` (padrão) resolve dinamicamente via `quota_gemini`: usa

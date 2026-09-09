@@ -32,7 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 import requests
 from bs4 import BeautifulSoup
 
-from notifica_vagas_scraper import db, gemini_pdf, gemini_texto
+from notifica_vagas_scraper import db, evidencia_imagem, gemini_pdf, gemini_texto
 from notifica_vagas_scraper.fontes import fgv, google_search
 
 USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com/sagav99/notifica-vagas-scraper)"
@@ -158,8 +158,25 @@ def normalizar_dominio(url: str) -> str:
     return dominio.removeprefix("www.")
 
 
+def _gerar_print_pagina(pdf_bytes: bytes, pagina: int, url_documento: str,
+                        supabase_url: str, service_role_key: str) -> str | None:
+    """Renderiza + sobe o print de 1 página; ``None`` em qualquer falha —
+    não é motivo pra descartar a vaga em si, só fica sem o atalho visual
+    (o link original pro PDF continua sendo gravado normalmente)."""
+    try:
+        imagem = evidencia_imagem.renderizar_pagina_pdf(pdf_bytes, pagina)
+        caminho = f"{_slug(url_documento)}-pagina-{pagina}.png"
+        return evidencia_imagem.subir_print_pagina(
+            imagem, caminho=caminho, supabase_url=supabase_url, service_role_key=service_role_key
+        )
+    except (evidencia_imagem.ErroImagemEvidencia, requests.RequestException) as exc:
+        print(f"  aviso: falha gerando print da página {pagina} de '{url_documento[:60]}': {exc}", file=sys.stderr)
+        return None
+
+
 def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str, codigo_ibge: int,
-                   dominios_conhecidos: set[str], gemini_api_key: str) -> tuple[int, int]:
+                   dominios_conhecidos: set[str], gemini_api_key: str,
+                   supabase_url: str | None = None, service_role_key: str | None = None) -> tuple[int, int]:
     """Registra sempre o sinal e devolve ``(sinais_novos, vagas_extraidas)``."""
     dominio = normalizar_dominio(item.link)
     dominios_normalizados = {normalizar_dominio(f"//{host}") for host in dominios_conhecidos}
@@ -205,6 +222,7 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
     extraido = None
     tipo_documento = "pagina_html"
     url_evidencia = item.link
+    pdf_bytes = None
     if url_pdf:
         pdf_bytes = baixar_pdf(url_pdf)
         if pdf_bytes:
@@ -233,6 +251,10 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
     fonte_id = db.upsert_fonte(conn, nome=f"Vigia Serper ({uf})", url=google_search.BASE_URL,
                                tipo="indice", uf=uf)
     orgao = extraido.get("orgao") or f"Prefeitura Municipal de {municipio}/{uf}"
+    # Cache por página: um PDF com N cargos gera N chamadas a este função,
+    # mas cargos costumam se repetir na mesma página (mesma tabela) — sem
+    # isso, renderizaria/subiria a imagem idêntica várias vezes à toa.
+    prints_por_pagina: dict[int, str | None] = {}
     total = 0
     for vaga in extraido["vagas"]:
         cargo = vaga.get("cargo")
@@ -244,6 +266,16 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
             # não veio dele — marca pra chamar atenção na revisão/painel
             # admin, em vez de só logar num job que ninguém acompanha.
             resumo = f"[ALERTA cobertura: {dominio} tem fonte oficial, mas não achou isto] {resumo}"
+
+        pagina = vaga.get("pagina") if tipo_documento == "pdf" else None
+        url_print_pagina = None
+        if pagina is not None and pdf_bytes and supabase_url and service_role_key:
+            if pagina not in prints_por_pagina:
+                prints_por_pagina[pagina] = _gerar_print_pagina(
+                    pdf_bytes, pagina, item.link, supabase_url, service_role_key
+                )
+            url_print_pagina = prints_por_pagina[pagina]
+
         resultado = db.inserir_vaga_com_evidencia(
             conn, fonte_id=fonte_id, municipio_id=codigo_ibge,
             identificador_externo=f"{_slug(item.link)}-{_slug(cargo)}", orgao=orgao, cargo=cargo,
@@ -254,6 +286,7 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
             inscricoes_fim=_parsear_data_iso(extraido.get("inscricoes_fim")), status="aberta",
             resumo=resumo, url_evidencia=url_evidencia,
             tipo_documento=tipo_documento, texto_extraido=None,
+            pagina_pdf=pagina, url_print_pagina=url_print_pagina,
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         if coberto and resultado["vaga_criada"]:
@@ -291,6 +324,13 @@ def main(argv: list[str] | None = None) -> None:
                                          ("GEMINI_API_KEY_DESCOBERTA_GOOGLE", gemini_api_key)) if not valor]
     if faltando:
         raise RuntimeError(f"Variáveis de ambiente obrigatórias não definidas: {', '.join(faltando)}")
+    # Opcionais: sem elas, só o print de página fica desativado (vaga em
+    # si continua sendo capturada normalmente via o link original do PDF).
+    supabase_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
+    service_role_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    if not (supabase_url and service_role_key):
+        print("aviso: NEXT_PUBLIC_SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não definidas; "
+              "print de página do PDF desativado nesta execução.", file=sys.stderr)
 
     itens = buscar_itens(api_key=api_key, backfill=args.backfill, janela=args.janela if args.backfill else None)
     print(f"{len(itens)} resultado(s) único(s) da Serper.")
@@ -310,7 +350,8 @@ def main(argv: list[str] | None = None) -> None:
             try:
                 with conn.transaction():
                     novos, extraidas = processar_item(conn, item, match[0], match[1], codigo_ibge,
-                                                       dominios_conhecidos, gemini_api_key)
+                                                       dominios_conhecidos, gemini_api_key,
+                                                       supabase_url, service_role_key)
                 conn.commit()
                 sinais_novos += novos
                 vagas += extraidas

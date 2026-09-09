@@ -221,6 +221,8 @@ def inserir_vaga_com_evidencia(
     url_evidencia: str,
     tipo_documento: str,
     texto_extraido: str | None,
+    pagina_pdf: int | None = None,
+    url_print_pagina: str | None = None,
 ) -> dict[str, Any]:
     """Cria (ou reaproveita) a vaga canônica e sempre grava a evidência.
 
@@ -287,8 +289,10 @@ def inserir_vaga_com_evidencia(
         cur.execute(
             """
             insert into public.vaga_evidencias
-                (vaga_id, fonte_id, identificador_externo, url, tipo_documento, texto_extraido, verificado_por_ia)
-            values (%(vaga_id)s, %(fonte_id)s, %(identificador_externo)s, %(url)s, %(tipo_documento)s, %(texto_extraido)s, false)
+                (vaga_id, fonte_id, identificador_externo, url, tipo_documento, texto_extraido,
+                 verificado_por_ia, pagina_pdf, url_print_pagina)
+            values (%(vaga_id)s, %(fonte_id)s, %(identificador_externo)s, %(url)s, %(tipo_documento)s,
+                    %(texto_extraido)s, false, %(pagina_pdf)s, %(url_print_pagina)s)
             on conflict (fonte_id, identificador_externo) do nothing
             returning id
             """,
@@ -299,6 +303,8 @@ def inserir_vaga_com_evidencia(
                 "url": url_evidencia,
                 "tipo_documento": tipo_documento,
                 "texto_extraido": texto_extraido,
+                "pagina_pdf": pagina_pdf,
+                "url_print_pagina": url_print_pagina,
             },
         )
         evidencia_row = cur.fetchone()
