@@ -45,6 +45,7 @@ def test_montar_dados_inclui_checagem():
         "orgao": "Prefeitura",
         "cargo": "Médico",
         "salario": None,
+        "salario_tipo": None,
         "numero_edital": "01/2026",
         "data_publicacao": date(2026, 1, 1),
         "inscricoes_inicio": date(2026, 1, 28),
@@ -57,12 +58,36 @@ def test_montar_dados_inclui_checagem():
     assert dados["checagem_cronologica_pre_computada"].startswith("Válido")
 
 
+def test_montar_dados_inclui_salario_tipo():
+    # Bug real de produção (2026-09-10): salario_tipo="plantao" nunca ia
+    # pro payload de revisão, então o Gemini via só o valor numérico
+    # (ex: 125.20) sem saber que era remuneração por plantão/hora, não
+    # mensal — rejeitava vaga médica real como "salário implausível".
+    vaga = {
+        "municipio_nome": "Embu das Artes",
+        "municipio_uf": "SP",
+        "orgao": "Prefeitura",
+        "cargo": "Médico Nefrologista",
+        "salario": 125.20,
+        "salario_tipo": "plantao",
+        "numero_edital": "001/2026",
+        "data_publicacao": None,
+        "inscricoes_inicio": None,
+        "inscricoes_fim": None,
+        "status": "aberta",
+        "resumo": "resumo",
+        "evidencias": [],
+    }
+    dados = revisar_vagas.montar_dados_para_revisao(vaga)
+    assert dados["salario_tipo"] == "plantao"
+
+
 def _vaga_minima(cargo: str) -> dict:
     return {
         "id": cargo, "municipio_nome": "Cidade", "municipio_uf": "MG", "orgao": "Prefeitura",
-        "cargo": cargo, "salario": None, "numero_edital": None, "data_publicacao": None,
-        "inscricoes_inicio": None, "inscricoes_fim": None, "status": "aberta", "resumo": None,
-        "evidencias": [],
+        "cargo": cargo, "salario": None, "salario_tipo": None, "numero_edital": None,
+        "data_publicacao": None, "inscricoes_inicio": None, "inscricoes_fim": None,
+        "status": "aberta", "resumo": None, "evidencias": [],
     }
 
 

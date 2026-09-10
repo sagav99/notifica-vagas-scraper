@@ -47,6 +47,7 @@ def montar_dados_para_revisao(vaga: dict) -> dict:
         "orgao": vaga["orgao"],
         "cargo": vaga["cargo"],
         "salario": float(vaga["salario"]) if vaga["salario"] is not None else None,
+        "salario_tipo": vaga["salario_tipo"],
         "numero_edital": vaga["numero_edital"],
         "data_publicacao": vaga["data_publicacao"],
         "inscricoes_inicio": vaga["inscricoes_inicio"],

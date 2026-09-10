@@ -319,7 +319,7 @@ def listar_vagas_pendentes(conn: psycopg.Connection) -> list[dict[str, Any]]:
     with conn.cursor() as cur:
         cur.execute(
             """
-            select v.id, v.orgao, v.cargo, v.salario, v.numero_edital,
+            select v.id, v.orgao, v.cargo, v.salario, v.salario_tipo, v.numero_edital,
                    v.data_publicacao, v.inscricoes_inicio, v.inscricoes_fim,
                    v.status, v.resumo, m.nome, m.uf
             from public.vagas v
@@ -329,7 +329,7 @@ def listar_vagas_pendentes(conn: psycopg.Connection) -> list[dict[str, Any]]:
             """
         )
         colunas = [
-            "id", "orgao", "cargo", "salario", "numero_edital", "data_publicacao",
+            "id", "orgao", "cargo", "salario", "salario_tipo", "numero_edital", "data_publicacao",
             "inscricoes_inicio", "inscricoes_fim", "status", "resumo",
             "municipio_nome", "municipio_uf",
         ]

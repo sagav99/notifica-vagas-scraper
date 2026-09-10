@@ -60,6 +60,22 @@ isso. Corrigido informando a data de hoje explicitamente no prompt
 via `datetime.date.today()`), com instrução explícita pra não usar a
 própria noção de "atual" do modelo.
 
+Sexto achado (2026-09-10, achado pelo usuário conferindo o PDF real de
+Embu das Artes/SP — INEPAM): vaga real de Médico Nefrologista/Médico do
+Trabalho, extraída corretamente do PDF com `salario=125.20` e
+`salario_tipo="plantao"` (valor por hora-plantão, não mensal — visível
+no próprio PDF), foi rejeitada com motivo "salário implausível para
+médico". Causa raiz: `salario_tipo` nunca ia pro payload de revisão
+(`montar_dados_para_revisao`/`db.listar_vagas_pendentes` simplesmente
+não selecionavam essa coluna), então o Gemini via só `salario=125.20`
+sem contexto de unidade e julgava como se fosse salário mensal. Mesmas
+~10 vagas médicas de Embu das Artes só ficaram visíveis porque o Vigia
+(cross-check via Serper) capturou o mesmo edital por outro caminho e
+aprovou — sem essa rede de segurança, teriam ficado 100% invisíveis
+mesmo sendo dado real e fácil de conferir no PDF. Corrigido: `salario_tipo`
+agora vai pro payload e o prompt explica que "plantao" é valor por
+hora/plantão, não mensal.
+
 Terceira decisão possível, "incompleta" (decisão do usuário, 2026-09-01,
 migration 012 do repo principal): vaga real (cargo/orgao identificam a
 oportunidade) mas com incerteza genuína que merece revisão humana antes
@@ -139,14 +155,23 @@ antes de começar), ou cargo sem nenhuma relação plausível com concurso \
 público (indício de erro de extração). Não afirme ter consultado a fonte \
 original — você não tem esse acesso.
 
-Quatro padrões legítimos e comuns em fonte oficial brasileira que NÃO são \
+Cinco padrões legítimos e comuns em fonte oficial brasileira que NÃO são \
 inconsistência, não rejeite só por causa deles: (1) `data_publicacao` \
 posterior ao início das inscrições — é normal quando o documento é uma \
 retificação publicada depois que as inscrições já abriram (corrige um \
 detalhe do edital original, não reabre nem invalida o prazo já em curso); \
 (2) `salario` nulo quando a remuneração é por hora/aula ou outra unidade \
 que não converte num valor mensal fixo sem informação adicional — nulo \
-aqui é a extração correta, não uma falha; (3) `inscricoes_inicio`, \
+aqui é a extração correta, não uma falha; (3) `salario_tipo` = "plantao" \
+significa que `salario` é uma remuneração POR PLANTÃO/HORA, não mensal — \
+bug real encontrado em produção (2026-09-10): vaga real de Médico \
+Nefrologista/Médico do Trabalho com `salario=125.20` e \
+`salario_tipo="plantao"` foi rejeitada por "salário implausível para \
+médico", mas R$125,20 é um valor de plantão médico perfeitamente normal \
+(compare com uma faixa ampla de R$40 a R$400+ por hora/plantão conforme \
+especialidade e região, não com salário mensal); quando `salario_tipo` \
+for "plantao", NUNCA julgue o valor pela régua de um salário mensal — \
+avalie plausibilidade como valor de hora/plantão; (4) `inscricoes_inicio`, \
 `inscricoes_fim` e/ou `numero_edital` nulos quando `status` já é \
 "aberta" — mesmo os três ao mesmo tempo NÃO são motivo de rejeição \
 sozinhos: `município` + `cargo` + `orgao` já identificam a oportunidade \
@@ -156,7 +181,7 @@ isso já fica explícito na tela), e o resumo publicado pela prefeitura \
 às vezes não inclui o cronograma completo. Só rejeite por dado \
 incompleto se `cargo` OU `orgao` também estiverem ausentes/vagos demais \
 pra identificar a oportunidade — não pela ausência de edital/datas \
-isolada; (4) `texto_extraido` nulo/ausente dentro de `evidencias` — \
+isolada; (5) `texto_extraido` nulo/ausente dentro de `evidencias` — \
 nenhuma fonte grava o texto original bruto hoje (limitação conhecida do \
 sistema inteiro, não é peculiaridade desta vaga específica), avalie só \
 os campos estruturados como já instruído acima, isso não é sinal de \
@@ -174,7 +199,7 @@ identificam a vaga não é, sozinha, motivo de rejeição.
 Existe uma terceira decisão, "incompleta", pra quando `cargo` e `orgao` \
 identificam a vaga (não é um erro de extração, não é pra rejeitar) mas \
 tem alguma incerteza real que vale a pena um humano conferir antes de \
-publicar — diferente dos padrões (1)-(4) acima, que JÁ são aceitáveis \
+publicar — diferente dos padrões (1)-(5) acima, que JÁ são aceitáveis \
 sozinhos e devem ser aprovados normalmente. Exemplos legítimos de \
 "incompleta": cargo real mas genérico demais pra ser útil sem mais \
 contexto (ex: "Estagiário" ou "Professor" sem área/nível, quando o \
@@ -182,7 +207,7 @@ resto do texto não esclarece); valor de salário presente mas \
 destoante o bastante do resto do cargo pra gerar dúvida sem ser \
 claramente implausível (não chega a ser "rejeite de verdade" acima, mas \
 não é uma leitura confiante). Não use "incompleta" como forma mais \
-suave de rejeitar o que já vira aprovada pelos padrões (1)-(4), nem como \
+suave de rejeitar o que já vira aprovada pelos padrões (1)-(5), nem como \
 substituto de "rejeitada" nos casos claros de erro — é uma categoria \
 estreita pra dúvida real, não uma saída fácil.
 
