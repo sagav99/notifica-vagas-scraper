@@ -28,9 +28,19 @@ from __future__ import annotations
 import json
 import re
 import time
+from datetime import date
+from typing import Any
 
 _CERCA_MARKDOWN = re.compile(r"^```(?:json)?\s*|\s*```$")
 _ESCAPE_INVALIDO = re.compile(r'\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})')
+
+#: só casa carga horária semanal simples ("40h", "20 horas", "40h
+#: semanais") — rejeita de propósito escala tipo "12x36"/"24x72" e texto
+#: composto ("20h, com plantões aos sábados"), onde converter pra
+#: valor-hora exigiria adivinhar a jornada real (ver `calcular_valor_hora`).
+_RE_CARGA_HORARIA_SEMANAL = re.compile(
+    r"^\s*(\d{1,3})\s*h(?:oras)?(?:\s*semanais?)?\s*$", re.IGNORECASE
+)
 
 INTERVALO_MINIMO_ENTRE_CHAMADAS_S = 4.5  # 15 RPM = 1 a cada 4s; margem de segurança
 
@@ -58,3 +68,58 @@ def parsear_json_resposta(texto: str) -> dict:
     limpo = _CERCA_MARKDOWN.sub("", texto.strip())
     sanitizado = _ESCAPE_INVALIDO.sub(r"\\\\", limpo)
     return json.loads(sanitizado)
+
+
+def parsear_data_iso(texto: str | None) -> date | None:
+    """`"AAAA-MM-DD"` -> `date`, `None` se ausente ou mal formado — mesmo
+    parse já duplicado em vários `rodar_*.py` (`_parsear_data_iso` local),
+    reaproveitado aqui só pelo campo novo `data_prova` pra não criar mais
+    uma cópia; os outros usos existentes não foram tocados (fora de
+    escopo desta mudança)."""
+    if not texto:
+        return None
+    try:
+        return date.fromisoformat(texto)
+    except ValueError:
+        return None
+
+
+def calcular_valor_hora(
+    salario: float | None, salario_tipo: str | None, carga_horaria: str | None
+) -> float | None:
+    """Valor-hora só quando dá pra calcular sem ambiguidade: salário
+    mensal fixo + carga horária semanal simples (`_RE_CARGA_HORARIA_SEMANAL`).
+    `None` em qualquer outro caso (plantão, carga composta/escala, dado
+    ausente) — nunca inventa (mesma regra do prompt do Gemini, ver
+    `docs/analise_produto_2026-09-10.md` seção A)."""
+    if salario is None or salario_tipo != "mensal" or not carga_horaria:
+        return None
+    match = _RE_CARGA_HORARIA_SEMANAL.match(carga_horaria)
+    if not match:
+        return None
+    horas_semanais = int(match.group(1))
+    if horas_semanais <= 0:
+        return None
+    horas_mensais = horas_semanais * 52 / 12
+    return round(float(salario) / horas_mensais, 2)
+
+
+def campos_estruturados_extras(extraido: dict[str, Any], vaga: dict[str, Any]) -> dict[str, Any]:
+    """Monta os kwargs novos de `db.inserir_vaga_com_evidencia` (migration
+    018) a partir do dict `extraido` (nível de edital, de
+    `gemini_pdf.extrair_vagas_de_pdf`/`gemini_texto.extrair_vagas_de_texto`)
+    e do dict `vaga` (nível de cargo, dentro de `extraido["vagas"]`) —
+    reaproveitado por todo chamador desses dois módulos, pra não duplicar
+    o mapeamento de campo em cada `rodar_*.py`. `valor_hora` é calculado
+    aqui, não pedido ao Gemini (ver `calcular_valor_hora`)."""
+    carga_horaria = vaga.get("carga_horaria")
+    salario = vaga.get("salario")
+    salario_tipo = vaga.get("salario_tipo")
+    return {
+        "numero_vagas": vaga.get("vagas_qtd"),
+        "taxa_inscricao": extraido.get("taxa_inscricao"),
+        "carga_horaria": carga_horaria,
+        "valor_hora": calcular_valor_hora(salario, salario_tipo, carga_horaria),
+        "data_prova": parsear_data_iso(extraido.get("data_prova")),
+        "requisitos": vaga.get("requisitos"),
+    }

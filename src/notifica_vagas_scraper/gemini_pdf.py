@@ -39,6 +39,15 @@ Extraia um objeto JSON com:
   original; null se não encontrar nenhuma data de publicação/retificação)
 - inscricoes_inicio (data "AAAA-MM-DD" de início das inscrições, ou null)
 - inscricoes_fim (data "AAAA-MM-DD" de fim das inscrições, ou null)
+- taxa_inscricao (number, valor numérico em reais da taxa de inscrição,
+  sem "R$", ou null se não informada ou se houver isenção total sem valor
+  base — se houver valores diferentes por cargo/nível de escolaridade, use
+  o valor mais comum ou o do cargo de nível superior; não invente um
+  número)
+- data_prova (data "AAAA-MM-DD" da prova objetiva/escrita principal do
+  concurso, ou null se não informada ou se ainda "a definir" — se houver
+  provas em datas diferentes por cargo, use a data da prova objetiva
+  comum a todos, se existir, senão null)
 - tipo_oportunidade (classifique o processo como um destes valores fixos,
   baseado no que o edital diz sobre o vínculo — use null só se genuinamente
   não der pra determinar):
@@ -79,9 +88,10 @@ def extrair_vagas_de_pdf(
     pdf_bytes: bytes, *, api_key: str | None = None, modelo: str | None = None
 ) -> dict:
     """Retorna {"numero_edital", "orgao", "data_publicacao",
-    "inscricoes_inicio", "inscricoes_fim", "tipo_oportunidade",
-    "vagas": [{"cargo", "pagina", "vagas_qtd", "salario", "salario_tipo",
-    "requisitos", "carga_horaria"}, ...]} — ver PROMPT.
+    "inscricoes_inicio", "inscricoes_fim", "taxa_inscricao", "data_prova",
+    "tipo_oportunidade", "vagas": [{"cargo", "pagina", "vagas_qtd",
+    "salario", "salario_tipo", "requisitos", "carga_horaria"}, ...]} —
+    ver PROMPT.
 
     `modelo=None` (padrão) resolve dinamicamente via `quota_gemini`: usa
     gemini-3.5-flash-lite até ~470 chamadas no dia (entre todos os

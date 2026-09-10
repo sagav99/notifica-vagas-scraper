@@ -38,7 +38,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 
-from notifica_vagas_scraper import db, gemini_pdf, ibge
+from notifica_vagas_scraper import db, gemini_pdf, gemini_util, ibge
 from notifica_vagas_scraper.fontes import fgv
 from notifica_vagas_scraper.fontes import instituto_mais
 
@@ -134,6 +134,17 @@ def processar_concurso(conn, fonte_id: str, item: instituto_mais.ItemListagem, m
         vaga_com_requisitos = instituto_mais.VagaQuadro(
             codigo=vaga.codigo, cargo=vaga.cargo, vagas=vaga.vagas, requisitos=requisitos
         )
+        # `vaga.vagas` (Quadro de Vagas em HTML, fonte de verdade dos
+        # cargos aqui) é mais confiável que o `vagas_qtd` do Gemini, então
+        # sobrepõe `numero_vagas` do helper genérico em vez de usá-lo puro.
+        carga_horaria = vaga_gemini.get("carga_horaria") if vaga_gemini else None
+        campos_extras = {
+            **gemini_util.campos_estruturados_extras(extraido, vaga_gemini or {}),
+            "numero_vagas": vaga.vagas,
+            "carga_horaria": carga_horaria,
+            "requisitos": requisitos,
+            "valor_hora": gemini_util.calcular_valor_hora(salario, salario_tipo, carga_horaria),
+        }
 
         resultado = db.inserir_vaga_com_evidencia(
             conn,
@@ -154,6 +165,7 @@ def processar_concurso(conn, fonte_id: str, item: instituto_mais.ItemListagem, m
             url_evidencia=url_evidencia,
             tipo_documento=tipo_documento,
             texto_extraido=None,
+            **campos_extras,
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         salario_str = f"R$ {salario:.2f}" if salario else "salário não identificado"
@@ -221,6 +233,7 @@ def _processar_concurso_plataforma_nova(conn, fonte_id: str, item: instituto_mai
             url_evidencia=edital.url_pdf,
             tipo_documento="pdf",
             texto_extraido=None,
+            **gemini_util.campos_estruturados_extras(extraido, vaga),
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         salario_str = f"R$ {salario:.2f}" if salario else "salário não identificado"

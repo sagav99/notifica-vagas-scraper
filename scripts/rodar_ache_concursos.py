@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 
-from notifica_vagas_scraper import db, gemini_pdf
+from notifica_vagas_scraper import db, gemini_pdf, gemini_util
 from notifica_vagas_scraper.fontes import ache_concursos as ache
 from notifica_vagas_scraper.fontes import fgv
 
@@ -97,6 +97,7 @@ def processar_item(conn, item: ache.ItemListagem, municipio: str, uf: str, codig
             url_evidencia=pdf_url,
             tipo_documento="pdf",
             texto_extraido=None,
+            **gemini_util.campos_estruturados_extras(extraido, vaga),
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         print(f"    {cargo}: vaga_id={resultado['vaga_id']} ({novo})")

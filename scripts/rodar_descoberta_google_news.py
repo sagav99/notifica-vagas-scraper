@@ -47,7 +47,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 import requests
 from bs4 import BeautifulSoup
 
-from notifica_vagas_scraper import db, gemini_texto
+from notifica_vagas_scraper import db, gemini_texto, gemini_util
 from notifica_vagas_scraper.fontes import fgv, google_news
 
 USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com/sagav99/notifica-vagas-scraper)"
@@ -196,6 +196,7 @@ def processar_item(
             url_evidencia=url_final,
             tipo_documento="pagina_html",
             texto_extraido=None,
+            **gemini_util.campos_estruturados_extras(extraido, vaga),
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         print(f"    {cargo}: vaga_id={resultado['vaga_id']} ({novo})")

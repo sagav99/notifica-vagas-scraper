@@ -19,7 +19,7 @@ from datetime import date
 
 import requests
 
-from notifica_vagas_scraper import db, gemini_pdf
+from notifica_vagas_scraper import db, gemini_pdf, gemini_util
 
 
 def processar_pdf_e_gravar_vagas(
@@ -81,6 +81,7 @@ def processar_pdf_e_gravar_vagas(
             url_evidencia=url_pdf,
             tipo_documento="pdf",
             texto_extraido=None,
+            **gemini_util.campos_estruturados_extras(extraido, vaga),
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         print(f"    {cargo}: vaga_id={resultado['vaga_id']} ({novo})")

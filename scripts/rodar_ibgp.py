@@ -43,7 +43,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 
-from notifica_vagas_scraper import db, gemini_pdf, ibge
+from notifica_vagas_scraper import db, gemini_pdf, gemini_util, ibge
 from notifica_vagas_scraper.fontes import ibgp
 
 USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com/sagav99/notifica-vagas-scraper)"
@@ -138,6 +138,16 @@ def processar_concurso(conn, fonte_id: str, item: ibgp.ItemListagem) -> int:
             url_evidencia=url_pdf,
             tipo_documento="pdf",
             texto_extraido=None,
+            # `parear_salario_por_codigo` só devolve o salário casado por
+            # código (ver comentário acima) — sem o dict completo do
+            # Gemini por cargo, carga_horaria/requisitos/valor_hora ficam
+            # null aqui (não dá pra casar com confiança sem o pareamento
+            # já existente). `numero_vagas` vem de `cargo.total_vagas`
+            # (estruturado, mais confiável que o Gemini) e
+            # taxa_inscricao/data_prova são de nível de edital.
+            numero_vagas=cargo.total_vagas,
+            taxa_inscricao=extraido.get("taxa_inscricao"),
+            data_prova=gemini_util.parsear_data_iso(extraido.get("data_prova")),
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         salario_str = f"R$ {salario:.2f}" if salario else "salário não identificado"

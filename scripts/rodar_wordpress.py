@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 
-from notifica_vagas_scraper import db, gemini_pdf
+from notifica_vagas_scraper import db, gemini_pdf, gemini_util
 from notifica_vagas_scraper.fontes import wordpress_editais as wp
 
 USER_AGENT = wp.USER_AGENT
@@ -71,6 +71,7 @@ def processar_post(conn, fonte_id: str, municipio: wp.MunicipioWordpress, post: 
             url_evidencia=url_pdf,
             tipo_documento="pdf",
             texto_extraido=None,
+            **gemini_util.campos_estruturados_extras(extraido, vaga),
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         print(f"    {cargo}: vaga_id={resultado['vaga_id']} ({novo})")

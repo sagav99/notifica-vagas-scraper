@@ -43,6 +43,12 @@ Extraia um objeto JSON com:
 - data_publicacao (data "AAAA-MM-DD" de publicação/abertura, ou null)
 - inscricoes_inicio (data "AAAA-MM-DD" de início das inscrições, ou null)
 - inscricoes_fim (data "AAAA-MM-DD" de fim das inscrições, ou null)
+- taxa_inscricao (number, valor numérico em reais da taxa de inscrição, \
+sem "R$", ou null se não informada/houver isenção total sem valor base — \
+se houver valores diferentes por cargo/nível, use o mais comum ou o de \
+nível superior; não invente um número)
+- data_prova (data "AAAA-MM-DD" da prova objetiva/escrita principal, ou \
+null se não informada ou "a definir")
 - tipo_oportunidade (classifique o processo como um destes valores fixos, \
 baseado no que o texto diz sobre o vínculo — use null só se genuinamente não \
 der pra determinar):
@@ -80,9 +86,10 @@ def extrair_vagas_de_texto(
     titulo: str, texto: str, *, api_key: str | None = None, modelo: str | None = None
 ) -> dict:
     """Retorna {"numero_edital", "orgao", "data_publicacao",
-    "inscricoes_inicio", "inscricoes_fim", "tipo_oportunidade",
-    "vagas": [{"cargo", "vagas_qtd", "salario", "salario_tipo",
-    "requisitos", "carga_horaria"}, ...]} — ver PROMPT_TEMPLATE.
+    "inscricoes_inicio", "inscricoes_fim", "taxa_inscricao", "data_prova",
+    "tipo_oportunidade", "vagas": [{"cargo", "vagas_qtd", "salario",
+    "salario_tipo", "requisitos", "carga_horaria"}, ...]} — ver
+    PROMPT_TEMPLATE.
 
     `modelo=None` (padrão) resolve dinamicamente via `quota_gemini`: ver
     docstring de `gemini_pdf.extrair_vagas_de_pdf`."""

@@ -223,6 +223,12 @@ def inserir_vaga_com_evidencia(
     texto_extraido: str | None,
     pagina_pdf: int | None = None,
     url_print_pagina: str | None = None,
+    numero_vagas: int | None = None,
+    taxa_inscricao: Decimal | float | None = None,
+    carga_horaria: str | None = None,
+    valor_hora: Decimal | float | None = None,
+    data_prova: date | None = None,
+    requisitos: str | None = None,
 ) -> dict[str, Any]:
     """Cria (ou reaproveita) a vaga canônica e sempre grava a evidência.
 
@@ -233,6 +239,13 @@ def inserir_vaga_com_evidencia(
     costuma listar vários cargos distintos (ex: ACS + ACE no mesmo
     Processo Seletivo nº 001/2026), e sem `cargo` na chave o segundo cargo
     era incorretamente absorvido pela vaga do primeiro. Ver TAREFAS.md.
+
+    `numero_vagas`/`taxa_inscricao`/`carga_horaria`/`valor_hora`/
+    `data_prova`/`requisitos` (migration 018, 2026-09-10) só são gravados
+    na CRIAÇÃO da vaga, igual todo outro campo aqui — se a vaga já existir
+    (dedup), passar esses campos de novo não atualiza a linha existente
+    (mesma limitação que já valia pra salario/status antes desta mudança,
+    não é regressão nova).
     """
     with conn.cursor() as cur:
         vaga_id = None
@@ -262,10 +275,13 @@ def inserir_vaga_com_evidencia(
                 """
                 insert into public.vagas
                     (municipio_id, orgao, cargo, salario, salario_tipo, tipo_oportunidade,
-                     numero_edital, data_publicacao, inscricoes_inicio, inscricoes_fim, status, resumo)
+                     numero_edital, data_publicacao, inscricoes_inicio, inscricoes_fim, status, resumo,
+                     numero_vagas, taxa_inscricao, carga_horaria, valor_hora, data_prova, requisitos)
                 values (%(municipio_id)s, %(orgao)s, %(cargo)s, %(salario)s, %(salario_tipo)s,
                         %(tipo_oportunidade)s, %(numero_edital)s, %(data_publicacao)s,
-                        %(inscricoes_inicio)s, %(inscricoes_fim)s, %(status)s, %(resumo)s)
+                        %(inscricoes_inicio)s, %(inscricoes_fim)s, %(status)s, %(resumo)s,
+                        %(numero_vagas)s, %(taxa_inscricao)s, %(carga_horaria)s, %(valor_hora)s,
+                        %(data_prova)s, %(requisitos)s)
                 returning id
                 """,
                 {
@@ -281,6 +297,12 @@ def inserir_vaga_com_evidencia(
                     "inscricoes_fim": inscricoes_fim,
                     "status": status,
                     "resumo": resumo,
+                    "numero_vagas": numero_vagas,
+                    "taxa_inscricao": taxa_inscricao,
+                    "carga_horaria": carga_horaria,
+                    "valor_hora": valor_hora,
+                    "data_prova": data_prova,
+                    "requisitos": requisitos,
                 },
             )
             vaga_id = cur.fetchone()[0]

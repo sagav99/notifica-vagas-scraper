@@ -36,7 +36,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 
-from notifica_vagas_scraper import db, gemini_texto
+from notifica_vagas_scraper import db, gemini_texto, gemini_util
 from notifica_vagas_scraper.fontes import instar
 
 USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com/sagav99/notifica-vagas-scraper)"
@@ -272,6 +272,7 @@ def processar_municipio(conn, municipio: instar.MunicipioInstar, fonte_id: str, 
                 url_evidencia=url_evidencia,
                 tipo_documento="pagina_html",
                 texto_extraido=None,
+                **gemini_util.campos_estruturados_extras(extraido, vaga),
             )
             novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
             print(f"  {cargo}: vaga_id={resultado['vaga_id']} ({novo})")
@@ -337,6 +338,7 @@ def processar_item_layer2(
             url_evidencia=item.url,
             tipo_documento="pagina_html",
             texto_extraido=None,
+            **gemini_util.campos_estruturados_extras(extraido, vaga),
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         print(f"  {cargo}: vaga_id={resultado['vaga_id']} ({novo}) [2ª camada]")

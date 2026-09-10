@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 
-from notifica_vagas_scraper import db, gemini_pdf, ibge
+from notifica_vagas_scraper import db, gemini_pdf, gemini_util, ibge
 from notifica_vagas_scraper.fontes import pbh_ibfc
 
 USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com/sagav99/notifica-vagas-scraper)"
@@ -100,6 +100,7 @@ def processar_processo(conn, fonte_id: str, codigo_ibge: int, item: pbh_ibfc.Ite
             url_evidencia=edital.url_pdf,
             tipo_documento="pdf",
             texto_extraido=None,
+            **gemini_util.campos_estruturados_extras(extraido, vaga),
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         salario_str = f"R$ {vaga['salario']:.2f}" if vaga.get("salario") else "salário não identificado"
