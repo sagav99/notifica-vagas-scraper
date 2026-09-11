@@ -219,6 +219,17 @@ trate como inconsistência de datas se ele disser "INVÁLIDO" — se disser \
 "Válido" ou "Sem data", a ordem cronológica das inscrições NÃO é motivo \
 de rejeição.
 
+{bloco_contexto_irmas}Se a seção "Contexto de vagas irmãs do mesmo edital" acima estiver \
+presente, ela descreve como outras vagas do MESMO documento (mesma \
+fonte, município e número de edital) já foram decididas — é sinal \
+forte, não ordem cega: se o padrão de dado da vaga atual é equivalente \
+ao das vagas já aprovadas (mesmo tipo de campo ausente, mesma faixa de \
+salário, mesmo padrão de resumo), siga o consenso das irmãs em vez de \
+tratar isso como inconsistência isolada. Só continue divergindo do \
+consenso se a vaga atual tiver um problema REAL e específico que as \
+outras não têm (cargo genuinamente diferente, dado concretamente \
+quebrado).
+
 Dados extraídos:
 {dados_json}
 
@@ -247,8 +258,14 @@ class CotaGeminiEsgotadaError(Exception):
     do produto de nunca deixar passar vaga médica batido."""
 
 
+def _montar_bloco_contexto_irmas(contexto_irmas: str | None) -> str:
+    if not contexto_irmas:
+        return ""
+    return f"\nContexto de vagas irmãs do mesmo edital:\n{contexto_irmas}\n"
+
+
 def decidir_revisao(
-    dados: dict, *, api_key: str | None = None, modelo: str | None = None
+    dados: dict, *, api_key: str | None = None, modelo: str | None = None, contexto_irmas: str | None = None
 ) -> dict:
     """dados: campos estruturados da vaga (ver
     scripts/revisar_vagas.py:montar_dados_para_revisao).
@@ -260,6 +277,14 @@ def decidir_revisao(
 
     `modelo=None` (padrão) resolve dinamicamente via `quota_gemini`: ver
     docstring de `gemini_pdf.extrair_vagas_de_pdf`.
+
+    `contexto_irmas`: texto opcional descrevendo o consenso de outras
+    vagas do MESMO edital (mesma fonte+município+número), usado só pela
+    2ª passada de `scripts/verificar_consistencia_revisao.py` (achado da
+    auditoria de revisão, 2026-09-11: 1 chamada por vaga, sem esse
+    contexto, produz decisão diferente pra dado de entrada idêntico). A
+    1ª passada normal (`scripts/revisar_vagas.py`) nunca passa isso —
+    fica vazio, prompt igual a antes.
     """
     chave = api_key or os.environ.get("GEMINI_API_KEY")
     if not chave:
@@ -278,6 +303,7 @@ def decidir_revisao(
                         "text": PROMPT_TEMPLATE.format(
                             data_referencia=hoje.isoformat(),
                             ano_referencia=hoje.year,
+                            bloco_contexto_irmas=_montar_bloco_contexto_irmas(contexto_irmas),
                             dados_json=json.dumps(dados, ensure_ascii=False, default=str),
                         )
                     }

@@ -38,3 +38,16 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/revisar_vagas.py
+
+      # 2ª passada (decisão do usuário, 2026-09-11, achado da auditoria de
+      # revisão): reavalia vaga cuja decisão diverge da maioria de irmãs do
+      # mesmo edital, com o consenso delas como contexto extra — corrige o
+      # não-determinismo da 1ª passada sem reprocessar tudo em lote. `if:
+      # always()` pra rodar mesmo se o passo acima tiver parado cedo por
+      # cota esgotada (mesmo padrão já usado no resto do projeto).
+      - name: Verificar consistência da revisão entre vagas irmãs
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/verificar_consistencia_revisao.py

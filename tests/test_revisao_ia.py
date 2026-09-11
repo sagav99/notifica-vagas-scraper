@@ -173,6 +173,45 @@ def test_prompt_inclui_data_de_hoje_como_referencia(monkeypatch):
     assert str(hoje.year) in capturado["prompt"]
 
 
+def test_contexto_irmas_none_nao_aparece_no_prompt(monkeypatch):
+    texto = '{"decisao": "aprovada", "motivo": "ok"}'
+    capturado = {}
+
+    def _post(url, params, json, timeout):
+        capturado["prompt"] = json["contents"][0]["parts"][0]["text"]
+        return _RespostaFalsa(_payload_com_texto(texto))
+
+    monkeypatch.setattr(revisao_ia.requests, "post", _post)
+    revisao_ia.decidir_revisao({"cargo": "Enfermeiro"}, api_key="chave-teste")
+
+    # o bloco DINÂMICO (com o cabeçalho seguido de ":") só aparece quando
+    # `contexto_irmas` é passado — o prompt estático já menciona a seção
+    # entre aspas ao explicar o que fazer SE ela aparecer, então checar só
+    # a frase seria falso positivo.
+    assert "Contexto de vagas irmãs do mesmo edital:\n" not in capturado["prompt"]
+
+
+def test_contexto_irmas_configurado_entra_no_prompt(monkeypatch):
+    # 2ª passada de verificação (achado da auditoria de revisão,
+    # 2026-09-11) — o consenso das vagas irmãs precisa chegar ao Gemini.
+    texto = '{"decisao": "aprovada", "motivo": "ok"}'
+    capturado = {}
+
+    def _post(url, params, json, timeout):
+        capturado["prompt"] = json["contents"][0]["parts"][0]["text"]
+        return _RespostaFalsa(_payload_com_texto(texto))
+
+    monkeypatch.setattr(revisao_ia.requests, "post", _post)
+    revisao_ia.decidir_revisao(
+        {"cargo": "Médico Dermatologista"},
+        api_key="chave-teste",
+        contexto_irmas="15 vagas irmãs já aprovadas, mesmo padrão de dado.",
+    )
+
+    assert "Contexto de vagas irmãs" in capturado["prompt"]
+    assert "15 vagas irmãs já aprovadas" in capturado["prompt"]
+
+
 def test_erro_4xx_nao_tenta_de_novo(monkeypatch):
     chamadas = {"n": 0}
 

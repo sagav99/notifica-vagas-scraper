@@ -392,6 +392,62 @@ def listar_vagas_pendentes(conn: psycopg.Connection) -> list[dict[str, Any]]:
     return vagas
 
 
+def listar_vagas_revisadas_para_consistencia(conn: psycopg.Connection) -> list[dict[str, Any]]:
+    """Vagas já revisadas (aprovada/rejeitada/incompleta), com os mesmos
+    campos que `listar_vagas_pendentes` usa pra montar o payload de
+    revisão, mais `fonte_id`/`municipio_id` — usado por
+    `scripts/verificar_consistencia_revisao.py` pra agrupar "vagas irmãs"
+    do mesmo edital real (mesma fonte + mesmo município + mesmo
+    `numero_edital`) e achar decisão que diverge da maioria (achado da
+    auditoria de revisão, 2026-09-11: a revisão não é determinística —
+    mesmo dado de entrada, decisão diferente chamada a chamada). Só
+    considera a PRIMEIRA evidência de cada vaga pra `fonte_id` — uma vaga
+    tem no máximo 1 fonte na prática (achado confirmado em
+    `aplicar_revisao`, que já marca toda evidência da vaga junto)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            select v.id, v.orgao, v.cargo, v.salario, v.salario_tipo, v.numero_edital,
+                   v.data_publicacao, v.inscricoes_inicio, v.inscricoes_fim,
+                   v.status, v.resumo, v.revisao_status, v.municipio_id, m.nome, m.uf,
+                   (
+                     select ve.fonte_id from public.vaga_evidencias ve
+                     where ve.vaga_id = v.id
+                     order by ve.detectada_em asc
+                     limit 1
+                   ) as fonte_id
+            from public.vagas v
+            join public.municipios m on m.codigo_ibge = v.municipio_id
+            where v.revisao_status in ('aprovada', 'rejeitada', 'incompleta')
+              and v.numero_edital is not null
+            order by v.municipio_id, v.numero_edital
+            """
+        )
+        colunas = [
+            "id", "orgao", "cargo", "salario", "salario_tipo", "numero_edital", "data_publicacao",
+            "inscricoes_inicio", "inscricoes_fim", "status", "resumo", "revisao_status",
+            "municipio_id", "municipio_nome", "municipio_uf", "fonte_id",
+        ]
+        vagas = [dict(zip(colunas, row)) for row in cur.fetchall()]
+
+    with conn.cursor() as cur:
+        for vaga in vagas:
+            cur.execute(
+                """
+                select ve.url, ve.tipo_documento, ve.texto_extraido, f.nome
+                from public.vaga_evidencias ve
+                join public.fontes f on f.id = ve.fonte_id
+                where ve.vaga_id = %(vaga_id)s
+                """,
+                {"vaga_id": vaga["id"]},
+            )
+            vaga["evidencias"] = [
+                {"url": row[0], "tipo_documento": row[1], "texto_extraido": row[2], "fonte": row[3]}
+                for row in cur.fetchall()
+            ]
+    return vagas
+
+
 def aplicar_revisao(conn: psycopg.Connection, *, vaga_id: str, decisao: str, motivo: str) -> None:
     """Grava o resultado da revisão automática via Gemini: revisao_status,
     revisao_motivo, revisado_em; revisado_por fica NULL (sem humano — ver
