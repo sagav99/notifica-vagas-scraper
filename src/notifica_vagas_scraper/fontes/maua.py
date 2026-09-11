@@ -50,10 +50,12 @@ Achados:
   uniformidade) — se um edital futuro tiver valor de hora DIFERENTE por
   especialidade, a função devolve `None` em vez de arriscar aplicar o
   valor errado a algum cargo (quem chama decide o que fazer com `None`,
-  ver `rodar_maua.py`). Gravado com `salario_tipo="plantao"`: não existe
-  "por hora" no enum de `vagas.salario_tipo` (só 'mensal'/'plantao' —
-  migration 013 do repo principal), e "plantao" é a opção mais próxima de
-  "remuneração não-mensal-fixa" que o schema aceita hoje.
+  ver `rodar_maua.py`). Gravado com `salario_tipo="hora"` (migration 022
+  do repo principal, decisão do usuário 2026-09-11) — antes dessa
+  migration não existia "por hora" no enum (só 'mensal'/'plantao',
+  migration 013), então as 10 vagas do Edital 57/2026 foram gravadas
+  como "plantao" por aproximação e corrigidas manualmente depois que o
+  enum ganhou o valor certo.
 """
 
 from __future__ import annotations

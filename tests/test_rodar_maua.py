@@ -105,9 +105,8 @@ def test_processar_edital_aplica_valor_hora_uniforme_quando_gemini_deixa_salario
     script.processar_edital(conn=None, fonte_id="fonte-x", codigo_ibge=3529401, edital=_edital_vigente())
 
     # todo cargo recebeu o valor-hora uniforme (130.0) com salario_tipo
-    # "plantao" — único valor do enum do schema pra remuneração não-mensal
-    # (migration 013 do repo principal, ver docstring de fontes/maua.py).
-    assert all(salario == 130.0 and tipo == "plantao" for salario, tipo in salarios_gravados)
+    # "hora" (migration 022 do repo principal, ver docstring de fontes/maua.py).
+    assert all(salario == 130.0 and tipo == "hora" for salario, tipo in salarios_gravados)
 
 
 def test_processar_edital_sem_valor_hora_identificavel_grava_salario_null(monkeypatch):

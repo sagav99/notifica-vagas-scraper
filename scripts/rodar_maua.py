@@ -90,8 +90,11 @@ def processar_edital(conn, fonte_id: str, codigo_ibge: int, edital: maua.EditalV
             # remuneração "R$ .../hora" não é capturada pelo prompt
             # compartilhado de gemini_pdf (só monta número pra mensal/
             # plantão fixo) — ver docstring de fontes/maua.py.
+            # `salario_tipo='hora'` existe desde a migration 022 do repo
+            # principal (decisão do usuário, 2026-09-11) — antes disso era
+            # aproximado como "plantao" por falta de opção melhor.
             salario = valor_hora
-            salario_tipo = "plantao"
+            salario_tipo = "hora"
 
         resultado = db.inserir_vaga_com_evidencia(
             conn,

@@ -56,6 +56,21 @@ def _normalizar(texto: str) -> str:
     return unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii").lower()
 
 
+# Palavra imediatamente antes do nome batido que indica nome próprio de
+# instituição (banca, órgão), não referência geográfica — ver docstring de
+# `encontrar_municipio` pro achado real que motivou isso (Fundação Carlos
+# Chagas × Carlos Chagas/MG).
+_PALAVRAS_INSTITUICAO = {
+    "fundacao",
+    "instituto",
+    "associacao",
+    "consorcio",
+    "faculdade",
+    "universidade",
+    "cooperativa",
+}
+
+
 def encontrar_municipio(titulo: str, municipios: list[tuple[str, str]]) -> tuple[str, str] | None:
     """Casa o título do concurso contra uma lista de (nome, uf) de município.
 
@@ -86,12 +101,25 @@ def encontrar_municipio(titulo: str, municipios: list[tuple[str, str]]) -> tuple
     "nome + ' da'/'do' + mais palavra" sugere que o lugar de verdade é mais
     longo do que o município cadastrado.
 
+    Rejeita também quando o nome batido é precedido imediatamente por uma
+    palavra que indica nome próprio de INSTITUIÇÃO, não lugar geográfico
+    (ex: "Fundação", "Instituto") — achado real rodando o Vigia/Serper
+    contra produção (2026-09-11, TAREFAS.md): banca organizadora "Fundação
+    Carlos Chagas" (Barueri/SP) casou com o município "Carlos Chagas/MG"
+    só por coincidência de nome, 49 vagas gravadas com município errado
+    (21 médicas). A revisão administrativa rejeitou corretamente por
+    inconsistência geográfica, mas o dado real ficou perdido até
+    reprocessar manualmente — vale barrar na origem quando o padrão é
+    reconhecível. Mesma classe do achado anterior "Jaboatão dos
+    Guararapes" casando com "Guararapes/SP" (2026-09-09).
+
     Limitação aceita e não resolvida aqui: nome comum que também é
-    município (ex: "Registro/SP" batendo em "cartório de Registro") não
-    tem heurística de texto que resolva de forma confiável — fica pra
-    revisão administrativa (`vagas.revisao_status`) filtrar antes de virar
-    visível pro usuário, que é o mesmo mecanismo que já protege contra
-    qualquer engano de fonte automática.
+    município (ex: "Registro/SP" batendo em "cartório de Registro"), sem
+    palavra de instituição na frente, não tem heurística de texto que
+    resolva de forma confiável — fica pra revisão administrativa
+    (`vagas.revisao_status`) filtrar antes de virar visível pro usuário,
+    que é o mesmo mecanismo que já protege contra qualquer engano de
+    fonte automática.
     """
     texto = _normalizar(titulo)
     melhor: tuple[str, str] | None = None
@@ -105,6 +133,8 @@ def encontrar_municipio(titulo: str, municipios: list[tuple[str, str]]) -> tuple
         prefixo = texto[:posicao]
         ultima_palavra = prefixo.split()[-1] if prefixo.split() else ""
         if "estado" in prefixo and ultima_palavra in {"do", "da", "dos", "das", "de"}:
+            continue
+        if ultima_palavra in _PALAVRAS_INSTITUICAO:
             continue
         sufixo = texto[posicao + len(nome_norm) :]
         if re.match(r"^\s+d[oa]s?\s+\w", sufixo):

@@ -73,3 +73,21 @@ def test_encontrar_municipio_sem_match_retorna_none():
     municipios = [("Governador Valadares", "MG")]
     match = fgv.encontrar_municipio("Concurso Público para o Tribunal de Justiça de Pernambuco", municipios)
     assert match is None
+
+
+def test_encontrar_municipio_rejeita_nome_de_instituicao_organizadora():
+    # achado real do Vigia/Serper em produção (2026-09-11, TAREFAS.md):
+    # banca "Fundação Carlos Chagas" (Barueri/SP) casou por engano com o
+    # município "Carlos Chagas/MG" — 49 vagas gravadas com município errado.
+    municipios = [("Carlos Chagas", "MG")]
+    titulo = "Prefeitura de Barueri abre concurso via Fundação Carlos Chagas"
+    assert fgv.encontrar_municipio(titulo, municipios) is None
+
+
+def test_encontrar_municipio_ainda_casa_titulo_legitimo_com_banca_no_meio():
+    # a guarda não pode virar falso negativo generalizado: título real de
+    # concurso legítimo, com nome de banca em outra parte do texto, sem
+    # relação direta com o nome do município casado, continua batendo.
+    municipios = [("Governador Valadares", "MG")]
+    titulo = "Instituto AOCP organiza concurso da Prefeitura de Governador Valadares"
+    assert fgv.encontrar_municipio(titulo, municipios) == ("Governador Valadares", "MG")
