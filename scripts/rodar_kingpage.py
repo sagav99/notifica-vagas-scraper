@@ -129,7 +129,19 @@ def main() -> None:
                 itens = coletar_itens(municipio)
             except requests.exceptions.RequestException as exc:
                 print(f"  ERRO listando processos de {municipio.nome}/{municipio.uf}: {exc}")
+                db.registrar_cobertura_municipio(
+                    conn, fonte="kingpage", municipio_id=municipio.codigo_ibge, status="erro", detalhe=str(exc)[:200]
+                )
+                conn.commit()
                 continue
+
+            db.registrar_cobertura_municipio(
+                conn,
+                fonte="kingpage",
+                municipio_id=municipio.codigo_ibge,
+                status="coberto" if itens else "sem_dados",
+            )
+            conn.commit()
 
             print(f"  {len(itens)} processo(s) encontrado(s).")
             for item in itens:

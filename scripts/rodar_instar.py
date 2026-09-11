@@ -371,18 +371,37 @@ def main() -> None:
         trabalho: list[tuple[instar.MunicipioInstar, list[dict], list[instar.ItemPortal]]] = []
         for municipio in municipios:
             itens_layer1: list[dict] = []
+            falha_layer1 = False
             try:
                 payload = buscar_json_concursos(municipio.url_prefeitura, datetime.now().year)
-                if payload is not None:
+                if payload is None:
+                    falha_layer1 = True
+                else:
                     itens_layer1 = instar.listar_itens_abertos(payload)
             except Exception as exc:
                 print(f"  aviso: falha buscando dados abertos de {municipio.nome}/{municipio.uf}: {exc}")
+                falha_layer1 = True
 
             try:
                 itens_layer2 = buscar_itens_layer2(municipio.url_prefeitura, itens_layer1)
             except Exception as exc:
                 print(f"  aviso: falha na 2ª camada de {municipio.nome}/{municipio.uf}: {exc}")
                 itens_layer2 = []
+
+            # Grava cobertura pra TODO município checado, não só os com
+            # processo aberto (migration 024, decisão do usuário
+            # 2026-09-11) — é exatamente a granularidade que faltava pra
+            # detectar o achado real de Confins/Sapucaí-Mirim (endpoint de
+            # dados abertos vazio) antes de alguém notar manualmente.
+            if itens_layer1 or itens_layer2:
+                status_cobertura = "coberto"
+            elif falha_layer1:
+                status_cobertura = "erro"
+            else:
+                status_cobertura = "sem_dados"
+            db.registrar_cobertura_municipio(
+                conn, fonte="instar", municipio_id=municipio.codigo_ibge, status=status_cobertura
+            )
 
             if itens_layer1 or itens_layer2:
                 trabalho.append((municipio, itens_layer1, itens_layer2))

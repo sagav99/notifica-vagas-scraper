@@ -114,7 +114,19 @@ def main() -> None:
                 processos = actcon.listar_processos_seletivos(municipio.url_prefeitura)
             except requests.exceptions.RequestException as exc:
                 print(f"  ERRO listando processos de {municipio.nome}/{municipio.uf}: {exc}")
+                db.registrar_cobertura_municipio(
+                    conn, fonte="actcon", municipio_id=municipio.codigo_ibge, status="erro", detalhe=str(exc)[:200]
+                )
+                conn.commit()
                 continue
+
+            db.registrar_cobertura_municipio(
+                conn,
+                fonte="actcon",
+                municipio_id=municipio.codigo_ibge,
+                status="coberto" if processos else "sem_dados",
+            )
+            conn.commit()
 
             for processo in processos:
                 print(f"  {processo.titulo} ({processo.situacao})")

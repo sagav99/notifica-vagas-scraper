@@ -115,6 +115,18 @@ def main() -> None:
                     except Exception as exc:  # nunca deixar 1 post derrubar o lote inteiro
                         print(f"    ERRO processando '{post.titulo}': {exc}")
 
+            # `buscar_posts` engole erro de rede e devolve [] (mesmo se o
+            # endpoint estiver fora do ar) — sem sinal pra distinguir de
+            # "genuinamente sem post", por isso só 'coberto'/'sem_dados'
+            # aqui, sem status 'erro' (migration 024).
+            db.registrar_cobertura_municipio(
+                conn,
+                fonte="wordpress",
+                municipio_id=municipio.codigo_ibge,
+                status="coberto" if posts_vistos else "sem_dados",
+            )
+            conn.commit()
+
         print(f"\nOk. {total_geral} vaga(s) processada(s).")
     except Exception:
         conn.rollback()

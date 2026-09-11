@@ -218,6 +218,33 @@ def upsert_fonte(
         return str(cur.fetchone()[0])
 
 
+def registrar_cobertura_municipio(
+    conn: psycopg.Connection, *, fonte: str, municipio_id: int, status: str, detalhe: str | None = None
+) -> None:
+    """Grava/atualiza a linha de cobertura de 1 município numa fonte —
+    migration 024, decisão do usuário 2026-09-11: banco vira fonte da
+    verdade do roster (`municipios_instar.csv` etc. viram só cache local),
+    destravando a view de cobertura do painel `/admin` (Next.js não lê
+    arquivo do repo scraper em runtime na Vercel). `status`: 'coberto' (achou
+    processo/edital nesta rodada), 'sem_dados' (endpoint respondeu, mas
+    vazio) ou 'erro' (falha de rede/parsing, não dá pra saber se tem dado).
+    Chamar 1x por município a cada rodada do script correspondente — a
+    própria coluna `atualizado_em` funciona como "última checagem", sem
+    precisar de tabela de execução separada pra isso."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            insert into public.cobertura_municipios (fonte, municipio_id, status, detalhe, atualizado_em)
+            values (%(fonte)s, %(municipio_id)s, %(status)s, %(detalhe)s, now())
+            on conflict (fonte, municipio_id) do update set
+                status = excluded.status,
+                detalhe = excluded.detalhe,
+                atualizado_em = excluded.atualizado_em
+            """,
+            {"fonte": fonte, "municipio_id": municipio_id, "status": status, "detalhe": detalhe},
+        )
+
+
 def inserir_vaga_com_evidencia(
     conn: psycopg.Connection,
     *,
