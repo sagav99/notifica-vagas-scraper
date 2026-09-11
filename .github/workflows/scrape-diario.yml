@@ -193,6 +193,13 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/rodar_ibamsp.py
 
+      - name: Rodar coleta (Mauá/SP — Processo Seletivo Saúde)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/rodar_maua.py
+
       - name: Descoberta ampla (PCI Concursos — radar, não coleta)
         if: always()
         env:
