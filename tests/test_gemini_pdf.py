@@ -71,3 +71,20 @@ def test_json_invalido_levanta_erro(monkeypatch):
     )
     with pytest.raises(gemini_pdf.ErroExtracaoGemini):
         gemini_pdf.extrair_vagas_de_pdf(b"pdf falso", api_key="chave-teste")
+
+
+# --- localizar_pagina_cargo (backfill de print de evidência antiga) ---
+
+
+def test_localizar_pagina_cargo_encontrado(monkeypatch):
+    monkeypatch.setattr(
+        gemini_pdf.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto('{"pagina": 7}'))
+    )
+    assert gemini_pdf.localizar_pagina_cargo(b"pdf falso", "Médico Pediatra", api_key="chave-teste") == 7
+
+
+def test_localizar_pagina_cargo_nao_encontrado(monkeypatch):
+    monkeypatch.setattr(
+        gemini_pdf.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto('{"pagina": null}'))
+    )
+    assert gemini_pdf.localizar_pagina_cargo(b"pdf falso", "Médico Pediatra", api_key="chave-teste") is None

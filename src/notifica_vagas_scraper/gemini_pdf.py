@@ -137,3 +137,59 @@ def extrair_vagas_de_pdf(
         return gemini_util.parsear_json_resposta(texto)
     except json.JSONDecodeError as exc:
         raise ErroExtracaoGemini(f"JSON inválido do Gemini: {texto[:500]}") from exc
+
+
+PROMPT_LOCALIZAR_PAGINA = """Este PDF é um edital de concurso público brasileiro. Em que \
+página está o cargo "{cargo}" (a linha/tabela que lista esse cargo especificamente, com \
+vagas/salário/requisitos dele)? Primeira página é 1. Responda APENAS um objeto JSON \
+{{"pagina": <número inteiro> ou null se não encontrar}}, sem markdown, sem texto adicional."""
+
+
+def localizar_pagina_cargo(
+    pdf_bytes: bytes, cargo: str, *, api_key: str | None = None, modelo: str | None = None
+) -> int | None:
+    """Pergunta só a página onde um cargo específico aparece — prompt bem
+    mais barato que `extrair_vagas_de_pdf` (não pede pra reler o edital
+    inteiro cargo a cargo), usado só pelo backfill de print de evidência
+    antiga (`scripts/backfill_print_evidencias.py`) quando a busca de
+    texto sem IA (`pdfplumber`, sem custo) não acha o cargo numa página
+    única — decisão do usuário 2026-09-10: gastar pouca cota de Gemini
+    nisso, capada por execução (ver `LIMITE_IA` no script)."""
+    chave = api_key or os.environ.get("GEMINI_API_KEY")
+    if not chave:
+        raise ErroExtracaoGemini("GEMINI_API_KEY não definida.")
+    modelo = modelo or quota_gemini.proximo_modelo()
+
+    body = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": PROMPT_LOCALIZAR_PAGINA.format(cargo=cargo)},
+                    {"inline_data": {"mime_type": "application/pdf", "data": base64.b64encode(pdf_bytes).decode()}},
+                ]
+            }
+        ],
+        "generationConfig": {"temperature": 0},
+    }
+
+    _esperar_rate_limit()
+    resposta = requests.post(
+        URL_API.format(modelo=modelo), params={"key": chave}, json=body, timeout=90
+    )
+    if modelo == quota_gemini.MODELO_PADRAO:
+        quota_gemini.registrar_chamada()
+    resposta.raise_for_status()
+    dados = resposta.json()
+
+    try:
+        texto = dados["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError) as exc:
+        raise ErroExtracaoGemini(f"Resposta inesperada do Gemini: {dados}") from exc
+
+    try:
+        resultado = gemini_util.parsear_json_resposta(texto)
+    except json.JSONDecodeError as exc:
+        raise ErroExtracaoGemini(f"JSON inválido do Gemini: {texto[:500]}") from exc
+
+    pagina = resultado.get("pagina")
+    return int(pagina) if isinstance(pagina, (int, float)) else None

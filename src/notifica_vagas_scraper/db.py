@@ -399,6 +399,50 @@ def aplicar_revisao(conn: psycopg.Connection, *, vaga_id: str, decisao: str, mot
         )
 
 
+def listar_evidencias_pdf_sem_print(conn: psycopg.Connection, *, limite: int) -> list[dict[str, Any]]:
+    """Evidência tipo `pdf` sem `pagina_pdf`/`url_print_pagina` gravados —
+    backlog anterior a 2026-09-09 (campo `pagina` só passou a existir no
+    prompt do Gemini nessa data, ver `evidencia_imagem.py`). Ordenado pela
+    vaga mais recente primeiro (`vagas.detectada_em desc`), decisão do
+    usuário 2026-09-10: priorizar vaga atual sobre backlog antigo.
+    Usado por `scripts/backfill_print_evidencias.py`."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            select ve.id, ve.vaga_id, ve.url, v.cargo
+            from public.vaga_evidencias ve
+            join public.vagas v on v.id = ve.vaga_id
+            where ve.tipo_documento = 'pdf'
+              and ve.pagina_pdf is null
+              and ve.url_print_pagina is null
+              and ve.url is not null
+            order by v.detectada_em desc
+            limit %(limite)s
+            """,
+            {"limite": limite},
+        )
+        colunas = ["id", "vaga_id", "url", "cargo"]
+        return [dict(zip(colunas, row)) for row in cur.fetchall()]
+
+
+def atualizar_print_evidencia(
+    conn: psycopg.Connection, *, evidencia_id: str, pagina_pdf: int, url_print_pagina: str
+) -> None:
+    """Preenche `pagina_pdf`/`url_print_pagina` numa evidência já
+    existente (backfill) — único ponto do código que faz `update` nesses
+    2 campos; toda gravação nova continua passando por
+    `inserir_vaga_com_evidencia`."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            update public.vaga_evidencias
+            set pagina_pdf = %(pagina_pdf)s, url_print_pagina = %(url_print_pagina)s
+            where id = %(evidencia_id)s
+            """,
+            {"evidencia_id": evidencia_id, "pagina_pdf": pagina_pdf, "url_print_pagina": url_print_pagina},
+        )
+
+
 def _gravar_execucao(
     script: str, *, iniciado_em: datetime, status: str, detalhe: str | None
 ) -> None:
