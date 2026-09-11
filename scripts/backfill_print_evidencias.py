@@ -107,14 +107,16 @@ def main() -> None:
         for evidencia, pdf_bytes in pendentes_ia:
             try:
                 pagina = gemini_pdf.localizar_pagina_cargo(pdf_bytes, evidencia["cargo"])
-            except (gemini_pdf.ErroExtracaoGemini, requests.HTTPError) as exc:
-                # 429/5xx vem como HTTPError puro de raise_for_status(), não
-                # embrulhado em ErroExtracaoGemini (mesmo achado já corrigido
-                # em rodar_descoberta_google_search.py) — achado real em
-                # produção (2026-09-11): 503 no meio do lote de 20 matava o
-                # processo inteiro, perdendo até o resto sem IA já resolvido
-                # nesta execução (só commitado por item, ver
-                # `_gerar_e_gravar_print`).
+            except (gemini_pdf.ErroExtracaoGemini, requests.RequestException) as exc:
+                # 429/5xx (HTTPError) e timeout de rede (ReadTimeout, os 2
+                # achados reais em produção 2026-09-11) vêm puros de
+                # requests, não embrulhados em ErroExtracaoGemini (mesmo
+                # padrão já corrigido em rodar_descoberta_google_search.py)
+                # — qualquer um matava o processo inteiro no meio do lote,
+                # perdendo até o resto sem IA já resolvido nesta execução
+                # (só commitado por item, ver `_gerar_e_gravar_print`).
+                # `RequestException` é a classe-mãe de HTTPError/Timeout/
+                # ConnectionError — captura a família inteira de uma vez.
                 print(f"  aviso: falha no Gemini pra '{evidencia['cargo']!r}': {exc}")
                 continue
             if pagina is None:
