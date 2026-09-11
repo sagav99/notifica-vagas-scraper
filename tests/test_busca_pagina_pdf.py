@@ -31,3 +31,9 @@ def test_pagina_sem_texto_extraivel_ignorada():
 
 def test_cargo_vazio_devolve_none():
     assert busca_pagina_pdf.localizar_pagina_por_texto(["qualquer texto"], "") is None
+
+
+def test_pdf_corrompido_devolve_none_em_vez_de_lancar():
+    # Achado real em produção (2026-09-11): 1 PDF sem /Root object matava
+    # o processo inteiro no meio do lote de 200 do backfill de print.
+    assert busca_pagina_pdf.localizar_pagina_pdf_sem_ia(b"isto nao e um PDF de verdade", "Medico Pediatra") is None
