@@ -107,7 +107,14 @@ def main() -> None:
         for evidencia, pdf_bytes in pendentes_ia:
             try:
                 pagina = gemini_pdf.localizar_pagina_cargo(pdf_bytes, evidencia["cargo"])
-            except gemini_pdf.ErroExtracaoGemini as exc:
+            except (gemini_pdf.ErroExtracaoGemini, requests.HTTPError) as exc:
+                # 429/5xx vem como HTTPError puro de raise_for_status(), não
+                # embrulhado em ErroExtracaoGemini (mesmo achado já corrigido
+                # em rodar_descoberta_google_search.py) — achado real em
+                # produção (2026-09-11): 503 no meio do lote de 20 matava o
+                # processo inteiro, perdendo até o resto sem IA já resolvido
+                # nesta execução (só commitado por item, ver
+                # `_gerar_e_gravar_print`).
                 print(f"  aviso: falha no Gemini pra '{evidencia['cargo']!r}': {exc}")
                 continue
             if pagina is None:
