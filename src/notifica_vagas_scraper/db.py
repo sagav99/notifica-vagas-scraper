@@ -102,6 +102,23 @@ def listar_dominios_fontes_conhecidas(conn: psycopg.Connection) -> set[str]:
         return {urlparse(row[0]).netloc.lower() for row in cur.fetchall() if row[0]}
 
 
+def listar_identificadores_processados(conn: psycopg.Connection, fonte_id: str) -> set[str]:
+    """Todo `identificador_externo` já gravado em `vaga_evidencias` pra uma
+    fonte — usado por fonte com listagem CUMULATIVA de histórico completo
+    (ex: `fontes/pmjm_mg.py`, que expõe 1000+ processos desde 2011 numa
+    página só, sem filtro nativo de "só o vigente") pra decidir quais itens
+    pular ANTES de baixar PDF/chamar Gemini de novo, em vez de confiar só
+    no `on conflict do nothing` de `inserir_vaga_com_evidencia` (que evita
+    duplicar linha no banco, mas não evita o custo de rede/IA de
+    reprocessar um item antigo a cada cron)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "select identificador_externo from public.vaga_evidencias where fonte_id = %(fonte_id)s",
+            {"fonte_id": fonte_id},
+        )
+        return {row[0] for row in cur.fetchall()}
+
+
 def registrar_sinal_descoberta(
     conn: psycopg.Connection,
     *,
