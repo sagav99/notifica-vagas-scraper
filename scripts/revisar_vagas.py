@@ -18,6 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from notifica_vagas_scraper import db, revisao_ia
+from notifica_vagas_scraper.classificar_medico import eh_cargo_medico
 
 
 def checar_cronologia_inscricoes(vaga: dict) -> str:
@@ -73,6 +74,21 @@ def main() -> None:
         vagas = db.listar_vagas_pendentes(conn)
         print(f"{len(vagas)} vaga(s) pendente(s) de revisão.")
         for indice, vaga in enumerate(vagas):
+            if not eh_cargo_medico(vaga["cargo"]):
+                # Escopo virou só médico (rebrand Med Vagas, decisão do
+                # usuário 2026-09-12) — cargo de outra profissão rejeita
+                # determinístico, sem gastar chamada de Gemini nele.
+                resultado = {
+                    "decisao": "rejeitada",
+                    "motivo": f"[filtro médico] cargo não classificado como médico: {vaga['cargo']!r}.",
+                }
+                db.aplicar_revisao(
+                    conn, vaga_id=vaga["id"], decisao=resultado["decisao"], motivo=resultado["motivo"]
+                )
+                conn.commit()
+                local = f"{vaga['municipio_nome']}/{vaga['municipio_uf']}"
+                print(f"  {vaga['cargo']} ({local}): {resultado['decisao']} — {resultado['motivo']}")
+                continue
             dados = montar_dados_para_revisao(vaga)
             try:
                 resultado = revisao_ia.decidir_revisao(dados)

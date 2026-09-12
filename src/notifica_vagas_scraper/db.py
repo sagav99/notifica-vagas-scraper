@@ -430,7 +430,16 @@ def listar_vagas_revisadas_para_consistencia(conn: psycopg.Connection) -> list[d
     mesmo dado de entrada, decisão diferente chamada a chamada). Só
     considera a PRIMEIRA evidência de cada vaga pra `fonte_id` — uma vaga
     tem no máximo 1 fonte na prática (achado confirmado em
-    `aplicar_revisao`, que já marca toda evidência da vaga junto)."""
+    `aplicar_revisao`, que já marca toda evidência da vaga junto).
+
+    Exclui vaga rejeitada pelo filtro determinístico de médico
+    (`revisao_motivo` começando com `[filtro médico]`, ver
+    `scripts/revisar_vagas.py`/`classificar_medico.py`, 2026-09-12): sem
+    isso, um edital com vários cargos não-médico (maioria, sempre
+    rejeitada por profissão) e 1 médico aprovado marcaria o médico como
+    "divergente da maioria" e arriscaria reverter a aprovação real — essa
+    2ª passada existe pra corrigir inconsistência do Gemini, não faz
+    sentido pra decisão que nunca passou por ele."""
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -447,6 +456,7 @@ def listar_vagas_revisadas_para_consistencia(conn: psycopg.Connection) -> list[d
             join public.municipios m on m.codigo_ibge = v.municipio_id
             where v.revisao_status in ('aprovada', 'rejeitada', 'incompleta')
               and v.numero_edital is not null
+              and left(coalesce(v.revisao_motivo, ''), 15) != '[filtro médico]'
             order by v.municipio_id, v.numero_edital
             """
         )
