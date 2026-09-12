@@ -63,7 +63,13 @@ def test_calcular_valor_hora_none_quando_ambiguo_ou_ausente():
 
 
 def test_campos_estruturados_extras_mapeia_e_calcula():
-    extraido = {"taxa_inscricao": 80.0, "data_prova": "2026-11-15"}
+    extraido = {
+        "taxa_inscricao": 80.0,
+        "data_prova": "2026-11-15",
+        "banca_organizadora": "IBFC",
+        "tem_prova": True,
+        "exige_curriculo": False,
+    }
     vaga = {
         "vagas_qtd": 3,
         "salario": 5000,
@@ -79,6 +85,9 @@ def test_campos_estruturados_extras_mapeia_e_calcula():
         "valor_hora": pytest.approx(28.85, abs=0.01),
         "data_prova": date(2026, 11, 15),
         "requisitos": "Ensino superior completo",
+        "banca_organizadora": "IBFC",
+        "tem_prova": True,
+        "exige_curriculo": False,
     }
 
 
@@ -91,4 +100,7 @@ def test_campos_estruturados_extras_tudo_ausente_vira_none():
         "valor_hora": None,
         "data_prova": None,
         "requisitos": None,
+        "banca_organizadora": None,
+        "tem_prova": None,
+        "exige_curriculo": None,
     }

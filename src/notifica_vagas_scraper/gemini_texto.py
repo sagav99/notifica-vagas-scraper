@@ -63,6 +63,16 @@ empregatício
 com só ALGUMAS vagas de plantão, use "concurso_efetivo"/"processo_seletivo_\
 temporario" conforme o caso e marque salario_tipo="plantao" nas vagas \
 específicas)
+- banca_organizadora (string com o nome da banca/instituto que organiza o \
+processo, ex: "Instar" — ou a string literal "própria" se o texto deixar claro \
+que é a própria prefeitura/órgão conduzindo, sem banca terceirizada; null se \
+não der pra determinar)
+- tem_prova (true se exige prova objetiva/escrita como etapa da seleção, false \
+se a seleção é só por análise de currículo/títulos sem prova, null se não der \
+pra determinar)
+- exige_curriculo (true se exige envio/análise de currículo ou títulos como \
+etapa da seleção — mesmo que também tenha prova — false se não menciona essa \
+etapa, null se não der pra determinar)
 - vagas: lista de vagas REAIS de preenchimento de cargo (vazia se o texto não for \
 sobre isso), cada uma com:
   - cargo (string)
@@ -87,7 +97,8 @@ def extrair_vagas_de_texto(
 ) -> dict:
     """Retorna {"numero_edital", "orgao", "data_publicacao",
     "inscricoes_inicio", "inscricoes_fim", "taxa_inscricao", "data_prova",
-    "tipo_oportunidade", "vagas": [{"cargo", "vagas_qtd", "salario",
+    "tipo_oportunidade", "banca_organizadora", "tem_prova",
+    "exige_curriculo", "vagas": [{"cargo", "vagas_qtd", "salario",
     "salario_tipo", "requisitos", "carga_horaria"}, ...]} — ver
     PROMPT_TEMPLATE.
 

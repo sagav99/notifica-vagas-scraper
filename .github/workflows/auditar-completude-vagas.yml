@@ -1,0 +1,51 @@
+name: Auditar completude de vagas médicas (Gemini, automático)
+
+# Objetivo do usuário (2026-09-12): vaga médica já aprovada às vezes fica
+# incompleta (falta número de vagas, banca, taxa de inscrição, se tem
+# prova...), obrigando quem usa o site a abrir o edital original — e às
+# vezes o link salvo nem abre a página certa. Esta rotina relê o link já
+# salvo (Gemini) pra completar o que faltar e, se o link estiver
+# quebrado, tenta achar um substituto via busca — nunca troca/apaga a
+# evidência original.
+#
+# Horário isolado (15h UTC): não coincide com scrape-diario.yml (06h),
+# revisar-vagas.yml (08h) nem backfill-print-evidencias.yml (09h30) — ver
+# CLAUDE.md do repo principal, "nunca disparar mais de 1 workflow
+# Gemini-pesado ao mesmo tempo".
+
+on:
+  schedule:
+    - cron: "0 15 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  auditar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install -e ".[dev]"
+
+      - name: Rodar testes
+        run: pytest
+
+      - name: Auditar completude de vagas médicas
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
+        run: python scripts/auditar_completude_vagas.py
+
+      - name: Publicar relatório como artefato
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auditoria-completude-${{ github.run_id }}
+          path: relatorios/auditoria_completude_*.md
+          retention-days: 90

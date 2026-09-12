@@ -105,6 +105,7 @@ def processar_certame(
             url_evidencia=url_cargos,
             tipo_documento="pagina_html",
             texto_extraido=None,
+            banca_organizadora="Instituto Nosso Rumo",
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         salario_str = f"R$ {cargo.salario:.2f}" if cargo.salario is not None else "salário não identificado"

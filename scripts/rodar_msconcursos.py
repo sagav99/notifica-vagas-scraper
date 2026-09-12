@@ -134,6 +134,7 @@ def processar_concurso(conn, item: msconcursos.ItemListagem) -> int:
             url_evidencia=item.url,
             tipo_documento="pagina_html",
             texto_extraido=None,
+            banca_organizadora="MSConcursos",
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         print(f"    {vaga.cargo}: vaga_id={resultado['vaga_id']} ({novo})")

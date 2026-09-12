@@ -74,6 +74,7 @@ def processar_edital(conn, item: imeso.ItemListagem, fonte_id: str) -> int:
             url_evidencia=vaga.url,
             tipo_documento="pagina_html",
             texto_extraido=None,
+            banca_organizadora="IMESO",
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         print(f"  {vaga.cargo}: vaga_id={resultado['vaga_id']} ({novo})")

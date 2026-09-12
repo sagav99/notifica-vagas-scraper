@@ -108,6 +108,7 @@ def processar_item(conn, fonte_id: str, item: itamonte_mg.ItemListagem) -> int:
             url_evidencia=item.url,
             tipo_documento="pdf",
             texto_extraido=None,
+            banca_organizadora="própria",
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         salario_str = f"R$ {funcao.salario:.2f}" if funcao.salario else "salário não identificado"

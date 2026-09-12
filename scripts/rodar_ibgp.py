@@ -148,6 +148,11 @@ def processar_concurso(conn, fonte_id: str, item: ibgp.ItemListagem) -> int:
             numero_vagas=cargo.total_vagas,
             taxa_inscricao=extraido.get("taxa_inscricao"),
             data_prova=gemini_util.parsear_data_iso(extraido.get("data_prova")),
+            # IBGP é banca fixa desta fonte — usa o valor do Gemini se vier,
+            # senão a constante conhecida (nunca fica null à toa).
+            banca_organizadora=extraido.get("banca_organizadora") or "IBGP",
+            tem_prova=extraido.get("tem_prova"),
+            exige_curriculo=extraido.get("exige_curriculo"),
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         salario_str = f"R$ {salario:.2f}" if salario else "salário não identificado"

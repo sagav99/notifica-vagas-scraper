@@ -273,6 +273,9 @@ def inserir_vaga_com_evidencia(
     valor_hora: Decimal | float | None = None,
     data_prova: date | None = None,
     requisitos: str | None = None,
+    banca_organizadora: str | None = None,
+    tem_prova: bool | None = None,
+    exige_curriculo: bool | None = None,
 ) -> dict[str, Any]:
     """Cria (ou reaproveita) a vaga canônica e sempre grava a evidência.
 
@@ -285,11 +288,14 @@ def inserir_vaga_com_evidencia(
     era incorretamente absorvido pela vaga do primeiro. Ver TAREFAS.md.
 
     `numero_vagas`/`taxa_inscricao`/`carga_horaria`/`valor_hora`/
-    `data_prova`/`requisitos` (migration 018, 2026-09-10) só são gravados
-    na CRIAÇÃO da vaga, igual todo outro campo aqui — se a vaga já existir
-    (dedup), passar esses campos de novo não atualiza a linha existente
-    (mesma limitação que já valia pra salario/status antes desta mudança,
-    não é regressão nova).
+    `data_prova`/`requisitos` (migration 018, 2026-09-10) e
+    `banca_organizadora`/`tem_prova`/`exige_curriculo` (migration 028,
+    2026-09-12) só são gravados na CRIAÇÃO da vaga, igual todo outro campo
+    aqui — se a vaga já existir (dedup), passar esses campos de novo não
+    atualiza a linha existente (mesma limitação que já valia pra
+    salario/status antes desta mudança, não é regressão nova). Vaga já
+    existente com campo faltante é reprocessada por
+    `scripts/auditar_completude_vagas.py`, não por aqui.
     """
     with conn.cursor() as cur:
         vaga_id = None
@@ -320,12 +326,14 @@ def inserir_vaga_com_evidencia(
                 insert into public.vagas
                     (municipio_id, orgao, cargo, salario, salario_tipo, tipo_oportunidade,
                      numero_edital, data_publicacao, inscricoes_inicio, inscricoes_fim, status, resumo,
-                     numero_vagas, taxa_inscricao, carga_horaria, valor_hora, data_prova, requisitos)
+                     numero_vagas, taxa_inscricao, carga_horaria, valor_hora, data_prova, requisitos,
+                     banca_organizadora, tem_prova, exige_curriculo)
                 values (%(municipio_id)s, %(orgao)s, %(cargo)s, %(salario)s, %(salario_tipo)s,
                         %(tipo_oportunidade)s, %(numero_edital)s, %(data_publicacao)s,
                         %(inscricoes_inicio)s, %(inscricoes_fim)s, %(status)s, %(resumo)s,
                         %(numero_vagas)s, %(taxa_inscricao)s, %(carga_horaria)s, %(valor_hora)s,
-                        %(data_prova)s, %(requisitos)s)
+                        %(data_prova)s, %(requisitos)s, %(banca_organizadora)s, %(tem_prova)s,
+                        %(exige_curriculo)s)
                 returning id
                 """,
                 {
@@ -347,6 +355,9 @@ def inserir_vaga_com_evidencia(
                     "valor_hora": valor_hora,
                     "data_prova": data_prova,
                     "requisitos": requisitos,
+                    "banca_organizadora": banca_organizadora,
+                    "tem_prova": tem_prova,
+                    "exige_curriculo": exige_curriculo,
                 },
             )
             vaga_id = cur.fetchone()[0]
@@ -551,6 +562,125 @@ def atualizar_print_evidencia(
             """,
             {"evidencia_id": evidencia_id, "pagina_pdf": pagina_pdf, "url_print_pagina": url_print_pagina},
         )
+
+
+#: Campos estruturados do edital (migrations 018/027/028 no repo
+#: principal) que `scripts/auditar_completude_vagas.py` tenta preencher
+#: numa vaga médica já aprovada mas incompleta — usado tanto pra achar
+#: candidata (`listar_vagas_medicas_incompletas`) quanto como allowlist de
+#: `atualizar_campos_vaga` (nunca aceita coluna fora desta lista, pra não
+#: virar um update genérico arbitrário).
+CAMPOS_COMPLETUDE = (
+    "numero_vagas", "taxa_inscricao", "carga_horaria", "valor_hora",
+    "data_prova", "requisitos", "banca_organizadora", "tem_prova",
+    "exige_curriculo", "salario", "salario_tipo", "inscricoes_inicio", "inscricoes_fim",
+)
+
+
+def listar_vagas_medicas_incompletas(
+    conn: psycopg.Connection, *, minimo_campos_faltando: int = 3, limite: int
+) -> list[dict[str, Any]]:
+    """Vaga médica já aprovada e visível ao usuário (mesma regra de
+    `vagas_pagina` no repo principal: `revisao_status = 'aprovada'` +
+    `categoria_saude = 'medico'`) com pelo menos `minimo_campos_faltando`
+    dos campos de `CAMPOS_COMPLETUDE` nulos — candidata a reprocessamento
+    por `scripts/auditar_completude_vagas.py` (objetivo do usuário,
+    2026-09-12: vaga aprovada com informação incompleta obriga quem usa o
+    site a abrir o edital original pra descobrir o básico). Só considera
+    a PRIMEIRA evidência de cada vaga pra reler o link — mesma limitação
+    documentada em `listar_vagas_revisadas_para_consistencia` (1 fonte por
+    vaga na prática)."""
+    campos_nulos_sql = " + ".join(f"(v.{campo} is null)::int" for campo in CAMPOS_COMPLETUDE)
+    with conn.cursor() as cur:
+        cur.execute(
+            f"""
+            select v.id, v.cargo, v.orgao, v.numero_edital, v.municipio_id, m.nome, m.uf,
+                   v.numero_vagas, v.taxa_inscricao, v.carga_horaria, v.valor_hora,
+                   v.data_prova, v.requisitos, v.banca_organizadora, v.tem_prova,
+                   v.exige_curriculo, v.salario, v.salario_tipo, v.inscricoes_inicio, v.inscricoes_fim,
+                   ev.id as evidencia_id, ev.fonte_id, ev.url, ev.tipo_documento
+            from public.vagas v
+            join public.municipios m on m.codigo_ibge = v.municipio_id
+            join lateral (
+                select ve.id, ve.fonte_id, ve.url, ve.tipo_documento
+                from public.vaga_evidencias ve
+                where ve.vaga_id = v.id
+                order by ve.detectada_em asc
+                limit 1
+            ) ev on true
+            where v.revisao_status = 'aprovada'
+              and v.categoria_saude = 'medico'
+              and ({campos_nulos_sql}) >= %(minimo)s
+            order by v.detectada_em desc
+            limit %(limite)s
+            """,
+            {"minimo": minimo_campos_faltando, "limite": limite},
+        )
+        colunas = [coluna.name for coluna in cur.description]
+        return [dict(zip(colunas, row)) for row in cur.fetchall()]
+
+
+def atualizar_campos_vaga(conn: psycopg.Connection, *, vaga_id: str, campos: dict[str, Any]) -> None:
+    """Preenche só os campos passados em `campos` (subconjunto de
+    `CAMPOS_COMPLETUDE`) — usado por `scripts/auditar_completude_vagas.py`
+    pra completar dado que faltava numa vaga já aprovada. Quem decide o
+    que entra em `campos` é o chamador: só o que estava `null` e foi
+    encontrado de novo — esta função nunca sobrescreve um campo que já
+    tinha valor porque nunca recebe esse campo no dicionário pra começo
+    de conversa. `campos` vazio é no-op (evita gerar `update` sem
+    `set`)."""
+    campos_invalidos = set(campos) - set(CAMPOS_COMPLETUDE)
+    if campos_invalidos:
+        raise ValueError(f"Campo não permitido em atualizar_campos_vaga: {sorted(campos_invalidos)}")
+    if not campos:
+        return
+    atribuicoes = ", ".join(f"{coluna} = %({coluna})s" for coluna in campos)
+    with conn.cursor() as cur:
+        cur.execute(
+            f"update public.vagas set {atribuicoes} where id = %(vaga_id)s",
+            {**campos, "vaga_id": vaga_id},
+        )
+
+
+def registrar_evidencia_adicional(
+    conn: psycopg.Connection,
+    *,
+    vaga_id: str,
+    fonte_id: str,
+    identificador_externo: str,
+    url: str,
+    tipo_documento: str,
+) -> str | None:
+    """Adiciona uma evidência EXTRA a uma vaga já existente — nunca troca
+    nem apaga a evidência original, só soma (`vaga_evidencias.vaga_id` já
+    é 1:N por design). Usado quando
+    `scripts/auditar_completude_vagas.py` acha um link mais atual/correto
+    pro mesmo edital via busca, porque o link original está quebrado ou
+    não abre a página certa (achado que motivou esta rotina, 2026-09-12).
+    `verificado_por_ia=false`: achar um link não é o mesmo que confirmar
+    que o conteúdo bate — fica pendente de conferência, mesmo tratamento
+    que toda evidência nova recebe no resto do pipeline. Devolve `None`
+    (sem erro) se o mesmo `(fonte_id, identificador_externo)` já existir
+    (dedup igual a `inserir_vaga_com_evidencia`)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            insert into public.vaga_evidencias
+                (vaga_id, fonte_id, identificador_externo, url, tipo_documento, verificado_por_ia)
+            values (%(vaga_id)s, %(fonte_id)s, %(identificador_externo)s, %(url)s, %(tipo_documento)s, false)
+            on conflict (fonte_id, identificador_externo) do nothing
+            returning id
+            """,
+            {
+                "vaga_id": vaga_id,
+                "fonte_id": fonte_id,
+                "identificador_externo": identificador_externo,
+                "url": url,
+                "tipo_documento": tipo_documento,
+            },
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
 
 
 def _gravar_execucao(

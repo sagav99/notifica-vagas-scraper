@@ -111,7 +111,12 @@ def campos_estruturados_extras(extraido: dict[str, Any], vaga: dict[str, Any]) -
     e do dict `vaga` (nível de cargo, dentro de `extraido["vagas"]`) —
     reaproveitado por todo chamador desses dois módulos, pra não duplicar
     o mapeamento de campo em cada `rodar_*.py`. `valor_hora` é calculado
-    aqui, não pedido ao Gemini (ver `calcular_valor_hora`)."""
+    aqui, não pedido ao Gemini (ver `calcular_valor_hora`).
+
+    `banca_organizadora`/`tem_prova`/`exige_curriculo` (migration 028,
+    2026-09-12) vêm do nível de edital (`extraido`), igual
+    `taxa_inscricao`/`data_prova` — mesmo processo seletivo, mesma banca e
+    mesma forma de seleção pra todos os cargos dele."""
     carga_horaria = vaga.get("carga_horaria")
     salario = vaga.get("salario")
     salario_tipo = vaga.get("salario_tipo")
@@ -122,4 +127,7 @@ def campos_estruturados_extras(extraido: dict[str, Any], vaga: dict[str, Any]) -
         "valor_hora": calcular_valor_hora(salario, salario_tipo, carga_horaria),
         "data_prova": parsear_data_iso(extraido.get("data_prova")),
         "requisitos": vaga.get("requisitos"),
+        "banca_organizadora": extraido.get("banca_organizadora"),
+        "tem_prova": extraido.get("tem_prova"),
+        "exige_curriculo": extraido.get("exige_curriculo"),
     }

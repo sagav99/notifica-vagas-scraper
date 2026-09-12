@@ -62,6 +62,17 @@ Extraia um objeto JSON com:
     se for um concurso normal com só ALGUMAS vagas de plantão, use
     "concurso_efetivo" e marque salario_tipo="plantao" nas vagas
     específicas)
+- banca_organizadora (string com o nome da banca/instituto que organiza o
+  processo seletivo, ex: "IBFC", "FGV Conhecimento" — ou a string literal
+  "própria" se o edital deixar claro que é a própria prefeitura/órgão
+  conduzindo, sem banca terceirizada; null só se genuinamente não der pra
+  determinar)
+- tem_prova (true se o edital exige prova objetiva/escrita como etapa da
+  seleção, false se a seleção é só por análise de currículo/títulos sem
+  nenhuma prova, null se não der pra determinar)
+- exige_curriculo (true se o edital exige envio/análise de currículo ou
+  títulos como etapa da seleção — mesmo que também tenha prova — false se
+  não menciona essa etapa, null se não der pra determinar)
 - vagas: lista de vagas, cada uma com:
   - cargo (string)
   - pagina (int, o número da página do PDF — primeira página é 1 — onde
@@ -89,7 +100,8 @@ def extrair_vagas_de_pdf(
 ) -> dict:
     """Retorna {"numero_edital", "orgao", "data_publicacao",
     "inscricoes_inicio", "inscricoes_fim", "taxa_inscricao", "data_prova",
-    "tipo_oportunidade", "vagas": [{"cargo", "pagina", "vagas_qtd",
+    "tipo_oportunidade", "banca_organizadora", "tem_prova",
+    "exige_curriculo", "vagas": [{"cargo", "pagina", "vagas_qtd",
     "salario", "salario_tipo", "requisitos", "carga_horaria"}, ...]} —
     ver PROMPT.
 
