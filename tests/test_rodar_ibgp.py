@@ -51,6 +51,27 @@ def test_resolver_municipio_uf_caso_real_itabira_cai_pro_titulo_do_concurso(monk
     assert resultado == ("Itabira", "MG", 3131307)
 
 
+def test_resolver_municipio_uf_caso_real_hob_cai_pro_fallback_de_entidade_autonoma(monkeypatch):
+    # achado real 2026-09-12: nem empresa.nome nem o título do concurso do
+    # Hospital Metropolitano Odilon Behrens têm "/UF" — extrair_candidatos_
+    # municipio_uf não acha nada, então _resolver_municipio_uf precisa
+    # cair pro mapa manual `ibgp.candidatos_entidade_autonoma`.
+    def _fake_buscar(nome, uf):
+        return 3106200 if (nome, uf) == ("Belo Horizonte", "MG") else None
+
+    monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
+    monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", _fake_buscar)
+
+    item = _item(
+        concurso_id=708,
+        empresa_nome="HOSPITAL METROPOLITANO ODILON BHERENS",
+        nome="CONCURSO PÚBLICO DO HOSPITAL METROPOLITANO ODILON BEHRENS - EDITAL Nº 01/2026",
+    )
+    resultado = script._resolver_municipio_uf(None, item)
+
+    assert resultado == ("Belo Horizonte", "MG", 3106200)
+
+
 def test_resolver_municipio_uf_devolve_none_quando_nada_bate_ibge(monkeypatch):
     monkeypatch.setattr(script.db, "buscar_codigo_ibge_local", lambda conn, nome, uf: None)
     monkeypatch.setattr(script.ibge, "buscar_codigo_ibge", lambda nome, uf: None)

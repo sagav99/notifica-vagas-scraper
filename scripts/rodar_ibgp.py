@@ -24,6 +24,14 @@ candidato contra o IBGE de verdade (única parte com rede desta função —
 por isso mora aqui, não em `fontes/ibgp.py`). Se nada bater em MG/SP, o
 concurso é pulado com aviso — sem risco de gravar município errado.
 
+**Entidade autônoma sem "/UF" em lugar nenhum** (achado real
+2026-09-12: HOSPITAL METROPOLITANO ODILON BEHRENS, vinculado a Belo
+Horizonte/MG, mas sem "/UF" nem em `empresa.nome` nem no título do
+concurso) faz `extrair_candidatos_municipio_uf` não achar candidato
+nenhum — `_resolver_municipio_uf` cai então pro mapa manual
+`ibgp.candidatos_entidade_autonoma` só nesse caso (nunca muda o
+resultado dos concursos que já resolvem via `/UF`).
+
 Se o concurso ainda não tem o Anexo I de vencimento publicado
 (`escolher_edital_vencimento` devolve `None`), o concurso inteiro é
 pulado com aviso: sem PDF não há `url_evidencia` (campo obrigatório em
@@ -59,6 +67,12 @@ def _resolver_municipio_uf(conn, item: ibgp.ItemListagem) -> tuple[str, str, int
     """Devolve `(municipio, uf, codigo_ibge)` ou `None` se não achar em
     MG/SP nenhum candidato válido — ver docstring do módulo."""
     candidatos = ibgp.extrair_candidatos_municipio_uf(item.empresa_nome, item.nome)
+    if not candidatos:
+        # fallback só quando o padrão "/UF" normal não achou nada — caso
+        # de entidade autônoma (hospital/autarquia/fundação vinculada a
+        # município) sem "/UF" em lugar nenhum do texto, ver docstring de
+        # `ibgp.candidatos_entidade_autonoma` (achado real: HOB/BH).
+        candidatos = ibgp.candidatos_entidade_autonoma(item.empresa_nome, item.nome)
     for municipio, uf in candidatos:
         if uf not in UFS_DO_PROJETO:
             continue

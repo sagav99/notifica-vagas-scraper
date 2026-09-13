@@ -273,6 +273,44 @@ def extrair_candidatos_municipio_uf(*textos: str, max_palavras: int = 4) -> list
     return candidatos
 
 
+#: Entidade autônoma (hospital/autarquia/fundação vinculada a um
+#: município) sem "/UF" em lugar NENHUM — nem `empresa.nome` nem `nome`
+#: do concurso — então `extrair_candidatos_municipio_uf` não acha
+#: candidato nenhum via o padrão `/UF`. Achado real 2026-09-12: Edital
+#: IBGP nº 01/2026 do HOSPITAL METROPOLITANO ODILON BEHRENS (HOB,
+#: Belo Horizonte/MG) foi pulado inteiro por causa disso (230 vagas, 30
+#: cargos médicos). Mapa manual, mantido pequeno de propósito — só
+#: entra aqui entidade confirmada, nunca palpite. Chave: trecho
+#: reconhecível (sem acento, maiúsculo, espaços colapsados) presente em
+#: `empresa.nome` OU no título do concurso; valor: `(município, UF)`.
+_ENTIDADES_AUTONOMAS_SEM_UF: dict[str, tuple[str, str]] = {
+    # prefixo comum às 2 grafias reais vistas ("BHERENS" em
+    # `empresa.nome`, sic — erro de digitação da própria IBGP/HOB — e
+    # "BEHRENS", correto, no título do concurso).
+    "HOSPITAL METROPOLITANO ODILON B": ("Belo Horizonte", "MG"),
+}
+
+
+def candidatos_entidade_autonoma(*textos: str) -> list[tuple[str, str]]:
+    """Fallback pra entidade autônoma sem "/UF" em lugar nenhum do texto
+    — ver `_ENTIDADES_AUTONOMAS_SEM_UF`. Só deve ser chamado quando
+    `extrair_candidatos_municipio_uf` não achou candidato nenhum (quem
+    chama decide a ordem, ver `rodar_ibgp._resolver_municipio_uf`) —
+    não muda o comportamento dos casos que já resolvem via `/UF`.
+
+    Função PURA (sem rede, sem IBGE), mesmo contrato de
+    `extrair_candidatos_municipio_uf`."""
+    candidatos: list[tuple[str, str]] = []
+    for texto in textos:
+        if not texto:
+            continue
+        texto_normalizado = _normalizar_nome_cargo(texto)
+        for chave, municipio_uf in _ENTIDADES_AUTONOMAS_SEM_UF.items():
+            if chave in texto_normalizado and municipio_uf not in candidatos:
+                candidatos.append(municipio_uf)
+    return candidatos
+
+
 def _normalizar_nome_cargo(nome: str) -> str:
     sem_acento = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode("ascii")
     return re.sub(r"\s+", " ", sem_acento).strip().upper()

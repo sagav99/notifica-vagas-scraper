@@ -51,6 +51,39 @@ def test_listar_cargos_nao_descarta_nenhum_dos_69_cargos_reais_de_paracatu():
     assert cirurgia_geral.total_vagas == 8
 
 
+def test_listar_cargos_nao_descarta_nenhuma_das_30_especialidades_medicas_do_hob():
+    # edital mais denso em cargo médico disponível nas fixtures (Hospital
+    # Metropolitano Odilon Behrens, BH/MG) — prioridade #1 do produto:
+    # nenhuma especialidade pode sumir, mesmo entidade autônoma sem "/UF".
+    dados = _ler_json("rest_concurso_cargos_708_hob.json")
+    cargos = ibgp.listar_cargos(dados)
+    assert len(cargos) == 54
+
+    medicos = {c.nome for c in cargos if c.nome.startswith("MÉDICO")}
+    assert len(medicos) == 30
+    assert "MÉDICO B - ANESTESIOLOGISTA" in medicos
+    assert "MÉDICO B - CLÍNICO GERAL" in medicos
+    assert "MÉDICO B - EMERGENCISTA" in medicos
+    assert "MÉDICO B - INTENSIVISTA" in medicos
+    assert "MÉDICO B - NEUROCIRURGIÃO" in medicos
+    assert "MÉDICO B - NEUROLOGISTA" in medicos
+
+    anestesiologista = next(c for c in cargos if c.nome == "MÉDICO B - ANESTESIOLOGISTA")
+    assert anestesiologista.codigo == "605"
+    assert anestesiologista.total_vagas == 44
+
+    clinico_geral = next(c for c in cargos if c.nome == "MÉDICO B - CLÍNICO GERAL")
+    assert clinico_geral.total_vagas == 46
+
+
+def test_escolher_edital_vencimento_acha_o_anexo_i_do_hob():
+    documentos = ibgp.listar_editais(_ler_json("rest_concurso_editais_708_hob.json"))
+    edital = ibgp.escolher_edital_vencimento(documentos)
+    assert edital is not None
+    assert "ANEXO I" in edital.nome.upper()
+    assert "VENCIMENTO" in edital.nome.upper()
+
+
 def test_listar_editais_traz_os_9_documentos_reais():
     documentos = ibgp.listar_editais(_ler_json("rest_concurso_editais_670_paracatu.json"))
     assert len(documentos) == 9
@@ -135,6 +168,44 @@ def test_extrair_candidatos_municipio_uf_nao_confunde_numero_de_edital_com_uf():
 
 def test_extrair_candidatos_municipio_uf_sem_padrao_devolve_lista_vazia():
     assert ibgp.extrair_candidatos_municipio_uf("SOBENFeE - SOCIEDADE BRASILEIRA DE ENFERMAGEM") == []
+
+
+def test_extrair_candidatos_municipio_uf_nao_acha_nada_pro_caso_hob_sem_barra_uf():
+    # achado real 2026-09-12: nem empresa.nome nem o título do concurso
+    # do HOB têm "/UF" — é exatamente o caso que motiva
+    # `candidatos_entidade_autonoma` como fallback (ver testes abaixo).
+    assert (
+        ibgp.extrair_candidatos_municipio_uf(
+            "HOSPITAL METROPOLITANO ODILON BHERENS",
+            "CONCURSO PÚBLICO DO HOSPITAL METROPOLITANO ODILON BEHRENS - EDITAL Nº 01/2026",
+        )
+        == []
+    )
+
+
+def test_candidatos_entidade_autonoma_acha_hob_pela_empresa_nome_com_erro_de_digitacao():
+    # empresa.nome real tem erro de digitação ("BHERENS", não "BEHRENS")
+    # — o prefixo do mapa cobre as 2 grafias.
+    candidatos = ibgp.candidatos_entidade_autonoma("HOSPITAL METROPOLITANO ODILON BHERENS")
+    assert ("Belo Horizonte", "MG") in candidatos
+
+
+def test_candidatos_entidade_autonoma_acha_hob_pelo_titulo_do_concurso_com_grafia_correta():
+    candidatos = ibgp.candidatos_entidade_autonoma(
+        "CONCURSO PÚBLICO DO HOSPITAL METROPOLITANO ODILON BEHRENS - EDITAL Nº 01/2026"
+    )
+    assert ("Belo Horizonte", "MG") in candidatos
+
+
+def test_candidatos_entidade_autonoma_nao_confunde_concurso_normal_com_uf_no_padrao():
+    # concurso comum (Paracatu, resolve via /UF normal) não deve bater
+    # em nenhuma entrada do mapa fallback.
+    assert ibgp.candidatos_entidade_autonoma("MUNICÍPIO DE PARACATU/MG") == []
+
+
+def test_candidatos_entidade_autonoma_sem_texto_devolve_lista_vazia():
+    assert ibgp.candidatos_entidade_autonoma("") == []
+    assert ibgp.candidatos_entidade_autonoma() == []
 
 
 def test_parear_salario_por_codigo_casa_todos_os_medicos_por_codigo():
