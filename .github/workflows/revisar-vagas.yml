@@ -13,7 +13,7 @@ name: Revisar vagas pendentes (Gemini, automático)
 
 on:
   schedule:
-    - cron: "0 8 * * *" # ~2h depois do início da coleta diária (06h UTC)
+    - cron: "0 23 * * *" # ~2h depois do início da coleta diária (21h UTC = 18h Brasília, 2026-09-12)
   workflow_dispatch: {}
 
 jobs:

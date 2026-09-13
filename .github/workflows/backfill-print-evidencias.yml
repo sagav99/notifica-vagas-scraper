@@ -14,7 +14,7 @@ name: Backfill de print de evidência antiga (Gemini, limitado)
 
 on:
   schedule:
-    - cron: "30 9 * * *" # depois da coleta (06h UTC) e da revisão (08h UTC)
+    - cron: "30 0 * * *" # depois da coleta (21h UTC) e da revisão (23h UTC) — 18h Brasília, 2026-09-12
   workflow_dispatch: {}
 
 jobs:

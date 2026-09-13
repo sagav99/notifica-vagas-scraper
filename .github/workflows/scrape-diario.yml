@@ -14,7 +14,9 @@ name: Coleta de vagas (diário — todas menos Instar)
 
 on:
   schedule:
-    - cron: "0 6 * * *"
+    # 18h horário de Brasília (UTC-3, sem horário de verão) = 21h UTC —
+    # decisão do usuário, 2026-09-12 (antes rodava 06h UTC/03h Brasília).
+    - cron: "0 21 * * *"
   workflow_dispatch:
     inputs:
       google_search_backfill:

@@ -14,11 +14,12 @@ name: Coleta de vagas (Instar — a cada 3 dias)
 
 on:
   schedule:
-    # A cada 3 dias, 06:00 UTC. Cron não tem "a cada N dias" de verdade —
-    # isso é "todo dia-do-mês múltiplo de 3", então o intervalo pode
-    # encurtar na virada do mês (ex: dia 31 -> dia 1). Aceitável pro
+    # A cada 3 dias, 21:00 UTC = 18h Brasília (decisão do usuário,
+    # 2026-09-12; antes 06:00 UTC). Cron não tem "a cada N dias" de
+    # verdade — isso é "todo dia-do-mês múltiplo de 3", então o intervalo
+    # pode encurtar na virada do mês (ex: dia 31 -> dia 1). Aceitável pra
     # cadência-alvo do projeto (ver CLAUDE.md).
-    - cron: "0 6 */3 * *"
+    - cron: "0 21 */3 * *"
   workflow_dispatch: {}
 
 jobs:
