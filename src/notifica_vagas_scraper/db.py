@@ -9,6 +9,7 @@ necessário aqui, só psycopg.
 from __future__ import annotations
 
 import os
+import re
 import traceback
 import unicodedata
 from contextlib import contextmanager
@@ -60,6 +61,26 @@ def listar_municipios_com_codigo(
 def _normalizar_nome_municipio(nome: str) -> str:
     sem_acento = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode("ascii")
     return sem_acento.strip().lower()
+
+
+def _normalizar_texto_dedup(texto: str | None) -> str:
+    """Mesmo tratamento de `_normalizar_nome_municipio` (sem acento,
+    case-insensitive) + colapso de espaços (incl. os que cercam `/`) —
+    usado pra comparar `orgao`/`cargo` na dedup de
+    `inserir_vaga_com_evidencia`. Achado real (2026-09-12): duas fontes
+    diferentes pra uma mesma vaga (Vigia Serper via notícia do PCI x parser
+    oficial via PDF do edital) escreveram "Santa Bárbara" vs "Santa
+    Barbara" e "Ginecologista/Obstetra" vs "Ginecologista / Obstetra" — com
+    comparação de string exata isso virou 2 linhas de `vagas` pra mesma
+    vaga real, uma delas (a que ficou visível no site) sem salário porque
+    essa fonte não achou o valor no texto. Sem o `re.sub` ao redor de `/`,
+    colapsar só espaço múltiplo não bastava: "ginecologista/obstetra" e
+    "ginecologista / obstetra" continuavam diferentes."""
+    if not texto:
+        return ""
+    sem_acento = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii")
+    sem_espaco_na_barra = re.sub(r"\s*/\s*", "/", sem_acento)
+    return " ".join(sem_espaco_na_barra.strip().lower().split())
 
 
 _cache_local_codigo_por_uf: dict[str, list[tuple[int, str]]] = {}
@@ -279,23 +300,32 @@ def inserir_vaga_com_evidencia(
 ) -> dict[str, Any]:
     """Cria (ou reaproveita) a vaga canônica e sempre grava a evidência.
 
-    Dedup: só reaproveita vaga existente em match exato de
-    (municipio_id, orgao, cargo, numero_edital). A migration 002 documentou
-    a regra sem `cargo` ("município+órgão+número de edital") pensando em
-    evidências de fontes diferentes pra uma MESMA vaga — mas um edital real
-    costuma listar vários cargos distintos (ex: ACS + ACE no mesmo
-    Processo Seletivo nº 001/2026), e sem `cargo` na chave o segundo cargo
-    era incorretamente absorvido pela vaga do primeiro. Ver TAREFAS.md.
+    Dedup: reaproveita vaga existente em match de
+    (municipio_id, orgao, cargo, numero_edital) — `orgao`/`cargo` comparados
+    via `_normalizar_texto_dedup` (sem acento/case, espaço colapsado), não
+    string exata. A migration 002 documentou a regra sem `cargo`
+    ("município+órgão+número de edital") pensando em evidências de fontes
+    diferentes pra uma MESMA vaga — mas um edital real costuma listar vários
+    cargos distintos (ex: ACS + ACE no mesmo Processo Seletivo nº 001/2026),
+    e sem `cargo` na chave o segundo cargo era incorretamente absorvido pela
+    vaga do primeiro. Ver TAREFAS.md.
+
+    A comparação exata (`orgao = %(orgao)s`) foi trocada por normalizada
+    depois de um achado real (2026-09-12): a mesma vaga de Santa Bárbara/MG
+    virou 2 linhas porque uma fonte escreveu "Santa Bárbara" e outra "Santa
+    Barbara" (idem "Ginecologista/Obstetra" x "Ginecologista / Obstetra") —
+    o site acabou mostrando a linha incompleta (sem salário) enquanto a
+    completa existia do lado, sem nunca ser vista.
 
     `numero_vagas`/`taxa_inscricao`/`carga_horaria`/`valor_hora`/
     `data_prova`/`requisitos` (migration 018, 2026-09-10) e
     `banca_organizadora`/`tem_prova`/`exige_curriculo` (migration 028,
-    2026-09-12) só são gravados na CRIAÇÃO da vaga, igual todo outro campo
-    aqui — se a vaga já existir (dedup), passar esses campos de novo não
-    atualiza a linha existente (mesma limitação que já valia pra
-    salario/status antes desta mudança, não é regressão nova). Vaga já
-    existente com campo faltante é reprocessada por
-    `scripts/auditar_completude_vagas.py`, não por aqui.
+    2026-09-12), junto com `salario`/`salario_tipo`/`tipo_oportunidade`/
+    datas, são preenchidos por `coalesce` quando a vaga já existe (dedup) —
+    uma extração melhor chegando depois de outra fonte agora completa o que
+    estava faltando em vez de nunca tocar a linha. Nunca sobrescreve um
+    valor já preenchido (mesmo que a fonte nova discorde), só preenche o
+    que está `null`.
     """
     with conn.cursor() as cur:
         vaga_id = None
@@ -303,22 +333,21 @@ def inserir_vaga_com_evidencia(
         if numero_edital:
             cur.execute(
                 """
-                select id from public.vagas
+                select id, orgao, cargo from public.vagas
                 where municipio_id = %(municipio_id)s
-                  and orgao = %(orgao)s
-                  and cargo = %(cargo)s
                   and numero_edital = %(numero_edital)s
                 """,
-                {
-                    "municipio_id": municipio_id,
-                    "orgao": orgao,
-                    "cargo": cargo,
-                    "numero_edital": numero_edital,
-                },
+                {"municipio_id": municipio_id, "numero_edital": numero_edital},
             )
-            row = cur.fetchone()
-            if row:
-                vaga_id = row[0]
+            alvo_orgao = _normalizar_texto_dedup(orgao)
+            alvo_cargo = _normalizar_texto_dedup(cargo)
+            for row_id, row_orgao, row_cargo in cur.fetchall():
+                if (
+                    _normalizar_texto_dedup(row_orgao) == alvo_orgao
+                    and _normalizar_texto_dedup(row_cargo) == alvo_cargo
+                ):
+                    vaga_id = row_id
+                    break
 
         if vaga_id is None:
             cur.execute(
@@ -362,6 +391,48 @@ def inserir_vaga_com_evidencia(
             )
             vaga_id = cur.fetchone()[0]
             vaga_criada = True
+        else:
+            # Vaga já existe (dedup) — só PREENCHE o que está `null`, nunca
+            # sobrescreve um valor já gravado por outra fonte.
+            cur.execute(
+                """
+                update public.vagas set
+                    salario = coalesce(salario, %(salario)s),
+                    salario_tipo = coalesce(salario_tipo, %(salario_tipo)s),
+                    tipo_oportunidade = coalesce(tipo_oportunidade, %(tipo_oportunidade)s),
+                    data_publicacao = coalesce(data_publicacao, %(data_publicacao)s),
+                    inscricoes_inicio = coalesce(inscricoes_inicio, %(inscricoes_inicio)s),
+                    inscricoes_fim = coalesce(inscricoes_fim, %(inscricoes_fim)s),
+                    numero_vagas = coalesce(numero_vagas, %(numero_vagas)s),
+                    taxa_inscricao = coalesce(taxa_inscricao, %(taxa_inscricao)s),
+                    carga_horaria = coalesce(carga_horaria, %(carga_horaria)s),
+                    valor_hora = coalesce(valor_hora, %(valor_hora)s),
+                    data_prova = coalesce(data_prova, %(data_prova)s),
+                    requisitos = coalesce(requisitos, %(requisitos)s),
+                    banca_organizadora = coalesce(banca_organizadora, %(banca_organizadora)s),
+                    tem_prova = coalesce(tem_prova, %(tem_prova)s),
+                    exige_curriculo = coalesce(exige_curriculo, %(exige_curriculo)s)
+                where id = %(vaga_id)s
+                """,
+                {
+                    "vaga_id": vaga_id,
+                    "salario": salario,
+                    "salario_tipo": salario_tipo,
+                    "tipo_oportunidade": tipo_oportunidade,
+                    "data_publicacao": data_publicacao,
+                    "inscricoes_inicio": inscricoes_inicio,
+                    "inscricoes_fim": inscricoes_fim,
+                    "numero_vagas": numero_vagas,
+                    "taxa_inscricao": taxa_inscricao,
+                    "carga_horaria": carga_horaria,
+                    "valor_hora": valor_hora,
+                    "data_prova": data_prova,
+                    "requisitos": requisitos,
+                    "banca_organizadora": banca_organizadora,
+                    "tem_prova": tem_prova,
+                    "exige_curriculo": exige_curriculo,
+                },
+            )
 
         cur.execute(
             """
