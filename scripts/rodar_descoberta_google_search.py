@@ -32,7 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 import requests
 from bs4 import BeautifulSoup
 
-from notifica_vagas_scraper import db, evidencia_imagem, gemini_pdf, gemini_texto, gemini_util
+from notifica_vagas_scraper import db, deteccao_bloqueio, evidencia_imagem, gemini_pdf, gemini_texto, gemini_util
 from notifica_vagas_scraper.fontes import fgv, google_search
 
 USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com/sagav99/notifica-vagas-scraper)"
@@ -99,8 +99,18 @@ def buscar_itens(*, api_key: str, backfill: bool = False, janela: str | None = N
 
 
 def buscar_pagina_html(url: str) -> str | None:
+    """`None` em falha de rede genuína (timeout, DNS, 404...). Levanta
+    `deteccao_bloqueio.FetchSuspeitoError` quando a resposta bate uma
+    assinatura conhecida de bloqueio anti-bot — quem chama decide como
+    registrar isso (ver `processar_item`)."""
     try:
         resposta = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=20)
+    except requests.RequestException:
+        return None
+    motivo = deteccao_bloqueio.detectar_bloqueio_html(status_code=resposta.status_code, corpo=resposta.text)
+    if motivo:
+        raise deteccao_bloqueio.FetchSuspeitoError(motivo)
+    try:
         resposta.raise_for_status()
     except requests.RequestException:
         return None
@@ -139,8 +149,19 @@ def encontrar_pdf_edital(html: str, url_base: str) -> str | None:
 
 
 def baixar_pdf(url: str) -> bytes | None:
+    """Mesmo contrato de `buscar_pagina_html`: `None` em falha de rede,
+    `FetchSuspeitoError` quando o conteúdo baixado não é um PDF válido
+    (WAF interceptando o download costuma devolver HTML de desafio com
+    HTTP 200 — sem checar a assinatura ``%PDF-``, isso seguiria pro
+    Gemini como se fosse o edital de verdade)."""
     try:
         resposta = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=60)
+    except requests.RequestException:
+        return None
+    motivo = deteccao_bloqueio.detectar_bloqueio_pdf(status_code=resposta.status_code, conteudo=resposta.content)
+    if motivo:
+        raise deteccao_bloqueio.FetchSuspeitoError(motivo)
+    try:
         resposta.raise_for_status()
     except requests.RequestException:
         return None
@@ -214,8 +235,13 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
     # PDF ou a extração dele falha.
     url_pdf = item.link if urlparse(item.link).path.lower().endswith(".pdf") else None
     html = None
+    motivo_bloqueio: str | None = None
     if url_pdf is None:
-        html = buscar_pagina_html(item.link)
+        try:
+            html = buscar_pagina_html(item.link)
+        except deteccao_bloqueio.FetchSuspeitoError as exc:
+            motivo_bloqueio = f"página: {exc.motivo}"
+            print(f"  aviso: bloqueio detectado buscando '{item.link[:70]}': {exc.motivo}", file=sys.stderr)
         if html:
             url_pdf = encontrar_pdf_edital(html, item.link)
 
@@ -224,7 +250,11 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
     url_evidencia = item.link
     pdf_bytes = None
     if url_pdf:
-        pdf_bytes = baixar_pdf(url_pdf)
+        try:
+            pdf_bytes = baixar_pdf(url_pdf)
+        except deteccao_bloqueio.FetchSuspeitoError as exc:
+            motivo_bloqueio = motivo_bloqueio or f"PDF: {exc.motivo}"
+            print(f"  aviso: bloqueio detectado baixando PDF '{url_pdf[:70]}': {exc.motivo}", file=sys.stderr)
         if pdf_bytes:
             try:
                 extraido = gemini_pdf.extrair_vagas_de_pdf(
@@ -234,6 +264,14 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
                 url_evidencia = url_pdf
             except (gemini_pdf.ErroExtracaoGemini, requests.HTTPError) as exc:
                 print(f"  aviso: falha na extração Gemini (PDF) de '{item.titulo[:60]}': {exc}", file=sys.stderr)
+
+    if motivo_bloqueio:
+        # Marca o sinal como degradado ANTES de seguir pra extração — a
+        # vaga que sair daqui (se sair) pode estar incompleta não porque a
+        # fonte não tinha o dado, mas porque não conseguimos ler o
+        # documento de verdade. Vira fila pra resolução assistida (ver
+        # TAREFAS.md) em vez de ficar indistinguível de "dado inexistente".
+        db.marcar_bloqueio_sinal(conn, url=item.link, motivo=motivo_bloqueio)
 
     if extraido is None:
         texto = (extrair_texto_de_html(html) if html else None) or item.resumo or item.titulo
@@ -266,6 +304,8 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
             # não veio dele — marca pra chamar atenção na revisão/painel
             # admin, em vez de só logar num job que ninguém acompanha.
             resumo = f"[ALERTA cobertura: {dominio} tem fonte oficial, mas não achou isto] {resumo}"
+        if motivo_bloqueio:
+            resumo = f"[BLOQUEIO detectado, dado pode estar incompleto: {motivo_bloqueio}] {resumo}"
 
         pagina = vaga.get("pagina") if tipo_documento == "pdf" else None
         url_print_pagina = None

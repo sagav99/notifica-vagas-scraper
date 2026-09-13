@@ -499,3 +499,78 @@ def test_falha_ao_renderizar_pagina_nao_impede_vaga_de_ser_gravada(monkeypatch):
 
     assert resultado == (1, 1)
     assert inserido["url_print_pagina"] is None
+
+
+def test_pagina_bloqueada_registra_sinal_e_segue_com_fallback_de_titulo(monkeypatch, capsys):
+    """Achado real 2026-09-13 (Pouso Alegre/MG): fonte bloqueia o fetch
+    (Cloudflare) e o pipeline não deve fingir que a página não tinha PDF
+    nenhum — precisa marcar o sinal como bloqueado (`db.marcar_bloqueio_sinal`)
+    e deixar isso visível no resumo da vaga, mesmo seguindo com o
+    fallback de melhor esforço (título/resumo do Serper)."""
+    conn = Mock()
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
+
+    def pagina_bloqueada(url):
+        raise script.deteccao_bloqueio.FetchSuspeitoError('marcador anti-bot encontrado: "just a moment" (HTTP 403)')
+
+    monkeypatch.setattr(script, "buscar_pagina_html", pagina_bloqueada)
+    monkeypatch.setattr(
+        script.gemini_texto, "extrair_vagas_de_texto",
+        lambda titulo, texto, *, api_key, modelo=None: {
+            "vagas": [{"cargo": "Médico Clínico", "salario": None, "salario_tipo": None}],
+        },
+    )
+    marcado = {}
+    monkeypatch.setattr(script.db, "marcar_bloqueio_sinal", lambda conn, **kw: marcado.update(kw))
+    inserido = {}
+    monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", lambda conn, **kw: inserido.update(kw) or {"vaga_id": "v1", "evidencia_id": "e1"})
+
+    resultado = script.processar_item(
+        conn, _item(link="https://pousoalegre.test/concursos_view/2386"), "Pouso Alegre", "MG", 3151800,
+        set(), "chave-dedicada",
+    )
+
+    assert resultado == (1, 1)
+    assert marcado["url"] == "https://pousoalegre.test/concursos_view/2386"
+    assert "just a moment" in marcado["motivo"].lower()
+    assert "[BLOQUEIO detectado" in inserido["resumo"]
+    assert "bloqueio detectado" in capsys.readouterr().err.lower()
+
+
+def test_pdf_bloqueado_nao_e_tratado_como_pdf_valido(monkeypatch):
+    """Mesmo achado, mas o bloqueio acontece no download do PDF (WAF
+    devolvendo página de desafio no lugar do arquivo) — não pode seguir
+    pra `gemini_pdf.extrair_vagas_de_pdf` como se fosse o edital real."""
+    conn = Mock()
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
+    monkeypatch.setattr(
+        script, "buscar_pagina_html",
+        lambda url: '<a href="/anexos/edital-01-2026.pdf">Edital de Abertura</a>',
+    )
+
+    def pdf_bloqueado(url):
+        raise script.deteccao_bloqueio.FetchSuspeitoError("conteúdo baixado não é um PDF válido (HTTP 200, 40 bytes)")
+
+    monkeypatch.setattr(script, "baixar_pdf", pdf_bloqueado)
+    chamou_gemini_pdf = False
+
+    def falha_se_chamado(*args, **kwargs):
+        nonlocal chamou_gemini_pdf
+        chamou_gemini_pdf = True
+
+    monkeypatch.setattr(script.gemini_pdf, "extrair_vagas_de_pdf", falha_se_chamado)
+    monkeypatch.setattr(
+        script.gemini_texto, "extrair_vagas_de_texto",
+        lambda titulo, texto, *, api_key, modelo=None: {"vagas": []},
+    )
+    monkeypatch.setattr(script.db, "marcar_bloqueio_sinal", lambda conn, **kw: None)
+
+    resultado = script.processar_item(
+        conn, _item(link="https://prefeitura.test/noticia/1"), "Paracatu", "MG", 3106200,
+        set(), "chave-dedicada",
+    )
+
+    assert resultado == (1, 0)
+    assert not chamou_gemini_pdf

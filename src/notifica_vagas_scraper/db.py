@@ -177,6 +177,23 @@ def registrar_sinal_descoberta(
         return cur.fetchone() is not None
 
 
+def marcar_bloqueio_sinal(conn: psycopg.Connection, *, url: str, motivo: str) -> None:
+    """Marca um sinal já registrado (`registrar_sinal_descoberta`) como
+    degradado por bloqueio anti-bot (migration 035) — `deteccao_bloqueio`
+    detecta a assinatura, esta função só persiste o motivo pra virar fila
+    de resolução assistida em vez de ficar indistinguível de "fonte sem
+    esse dado"."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            update public.sinais_descoberta_externa
+            set bloqueio_detectado = true, motivo_bloqueio = %(motivo)s
+            where url = %(url)s
+            """,
+            {"url": url, "motivo": motivo},
+        )
+
+
 def upsert_municipio(
     conn: psycopg.Connection,
     *,
