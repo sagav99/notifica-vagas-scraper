@@ -151,6 +151,105 @@ def extrair_vagas_de_pdf(
         raise ErroExtracaoGemini(f"JSON inválido do Gemini: {texto[:500]}") from exc
 
 
+PROMPT_CONFERENCIA = """Você é uma segunda camada de conferência sobre vagas de concurso
+público brasileiro já extraídas por uma leitura automática anterior do MESMO documento em anexo.
+Seu trabalho não é extrair do zero — é caçar especificamente o que ficou faltando ou pode estar
+errado.
+
+Vagas já registradas deste documento, cada uma com os dados já conhecidos (JSON):
+{vagas_atuais}
+
+Para CADA vaga da lista acima, releia o documento inteiro (não só a página/linha onde o cargo
+aparece — salário/taxa/prazo às vezes ficam em anexo separado, rodapé ou tabela remissiva no fim)
+procurando:
+1. Qualquer campo `null`/vazio no JSON: salario, salario_tipo, vagas_qtd, requisitos,
+   carga_horaria, numero_edital, data_publicacao, inscricoes_inicio, inscricoes_fim, data_prova,
+   taxa_inscricao, banca_organizadora, tem_prova, exige_curriculo.
+2. Inconsistência entre o que já está registrado e o que o documento realmente diz (cargo com
+   nome diferente do esperado, salário que parece ser de outro cargo, prazo já vencido marcado
+   como aberto).
+
+Responda APENAS um objeto JSON no formato:
+{{"resultados": [
+  {{
+    "cargo": "<cargo exatamente como na lista de entrada>",
+    "campos_encontrados": {{"<campo>": <valor>, ...}},
+    "inconsistencias": [{{"campo": "...", "valor_registrado": ..., "valor_no_documento": ...,
+                          "detalhe": "..."}}],
+    "problema": null | {{"tipo": "documento_ilegivel" | "documento_nao_corresponde_ao_cargo" |
+                          "campo_critico_ausente_mesmo_apos_releitura" | "outro",
+                          "detalhe": "..."}}
+  }}, ...
+]}}
+
+Regras:
+- Nunca invente valor. Campo que você não conseguiu confirmar fica de fora de
+  `campos_encontrados` — não repita o que já estava no JSON de entrada, não escreva null
+  explícito.
+- `problema` só é preenchido quando a conferência EM SI falhou ou achou algo preocupante. Se o
+  campo genuinamente não consta no edital (ex: taxa de inscrição com isenção total), isso NÃO é
+  problema — só deixe esse campo fora de `campos_encontrados`.
+- Se o documento não corresponde a alguma vaga da lista (cargo errado, virou página de
+  erro/bloqueio em vez do PDF), marque o `problema` dessa vaga especificamente — as outras da
+  mesma lista podem estar OK.
+Responda só o JSON, sem markdown, sem texto adicional."""
+
+
+def conferir_vagas_de_pdf(
+    pdf_bytes: bytes, vagas_atuais: list[dict], *, api_key: str | None = None, modelo: str | None = None
+) -> dict:
+    """2ª rodada de conferência (decisão do usuário, 2026-09-13): releitura
+    do MESMO PDF focada em caçar campo faltando/inconsistência nas vagas
+    já extraídas por `extrair_vagas_de_pdf`, em vez de aceitar a 1ª
+    extração como definitiva. 1 chamada por DOCUMENTO (não por vaga) —
+    `vagas_atuais` é a lista inteira das vagas daquele documento que
+    precisam de conferência, pra não multiplicar consumo de cota.
+
+    Retorna {"resultados": [{"cargo", "campos_encontrados",
+    "inconsistencias", "problema"}, ...]} — ver `PROMPT_CONFERENCIA`.
+    `problema` (quando não `null`) é {"tipo", "detalhe"}."""
+    chave = api_key or os.environ.get("GEMINI_API_KEY")
+    if not chave:
+        raise ErroExtracaoGemini("GEMINI_API_KEY não definida.")
+    modelo = modelo or quota_gemini.proximo_modelo()
+
+    body = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": PROMPT_CONFERENCIA.format(vagas_atuais=json.dumps(vagas_atuais, ensure_ascii=False))},
+                    {
+                        "inline_data": {
+                            "mime_type": "application/pdf",
+                            "data": base64.b64encode(pdf_bytes).decode(),
+                        }
+                    },
+                ]
+            }
+        ],
+        "generationConfig": {"temperature": 0},
+    }
+
+    _esperar_rate_limit()
+    resposta = requests.post(
+        URL_API.format(modelo=modelo), params={"key": chave}, json=body, timeout=90
+    )
+    if modelo == quota_gemini.MODELO_PADRAO:
+        quota_gemini.registrar_chamada()
+    resposta.raise_for_status()
+    dados = resposta.json()
+
+    try:
+        texto = dados["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError) as exc:
+        raise ErroExtracaoGemini(f"Resposta inesperada do Gemini: {dados}") from exc
+
+    try:
+        return gemini_util.parsear_json_resposta(texto)
+    except json.JSONDecodeError as exc:
+        raise ErroExtracaoGemini(f"JSON inválido do Gemini: {texto[:500]}") from exc
+
+
 PROMPT_LOCALIZAR_PAGINA = """Este PDF é um edital de concurso público brasileiro. Em que \
 página está o cargo "{cargo}" (a linha/tabela que lista esse cargo especificamente, com \
 vagas/salário/requisitos dele)? Primeira página é 1. Responda APENAS um objeto JSON \

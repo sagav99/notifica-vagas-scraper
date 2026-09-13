@@ -18,6 +18,7 @@ from decimal import Decimal
 from typing import Any, Iterator
 
 import psycopg
+from psycopg.types.json import Jsonb
 
 
 def conectar() -> psycopg.Connection:
@@ -314,6 +315,8 @@ def inserir_vaga_com_evidencia(
     banca_organizadora: str | None = None,
     tem_prova: bool | None = None,
     exige_curriculo: bool | None = None,
+    problema_conferencia: dict[str, Any] | None = None,
+    atualizar_problema_conferencia: bool = False,
 ) -> dict[str, Any]:
     """Cria (ou reaproveita) a vaga canônica e sempre grava a evidência.
 
@@ -343,6 +346,14 @@ def inserir_vaga_com_evidencia(
     estava faltando em vez de nunca tocar a linha. Nunca sobrescreve um
     valor já preenchido (mesmo que a fonte nova discorde), só preenche o
     que está `null`.
+
+    `problema_conferencia` (migration 036, 2026-09-13) é diferente: só é
+    tocado quando `atualizar_problema_conferencia=True` (quem chama
+    acabou de rodar a 2ª rodada de conferência agora) — nesse caso
+    SOBRESCREVE (não coalesce) com o valor passado, mesmo que seja `None`
+    (problema resolvido numa releitura seguinte precisa poder sumir da
+    fila). Chamada comum, sem 2ª rodada, não passa esse flag e a coluna
+    fica como estava.
     """
     with conn.cursor() as cur:
         vaga_id = None
@@ -373,13 +384,13 @@ def inserir_vaga_com_evidencia(
                     (municipio_id, orgao, cargo, salario, salario_tipo, tipo_oportunidade,
                      numero_edital, data_publicacao, inscricoes_inicio, inscricoes_fim, status, resumo,
                      numero_vagas, taxa_inscricao, carga_horaria, valor_hora, data_prova, requisitos,
-                     banca_organizadora, tem_prova, exige_curriculo)
+                     banca_organizadora, tem_prova, exige_curriculo, problema_conferencia)
                 values (%(municipio_id)s, %(orgao)s, %(cargo)s, %(salario)s, %(salario_tipo)s,
                         %(tipo_oportunidade)s, %(numero_edital)s, %(data_publicacao)s,
                         %(inscricoes_inicio)s, %(inscricoes_fim)s, %(status)s, %(resumo)s,
                         %(numero_vagas)s, %(taxa_inscricao)s, %(carga_horaria)s, %(valor_hora)s,
                         %(data_prova)s, %(requisitos)s, %(banca_organizadora)s, %(tem_prova)s,
-                        %(exige_curriculo)s)
+                        %(exige_curriculo)s, %(problema_conferencia)s)
                 returning id
                 """,
                 {
@@ -404,6 +415,7 @@ def inserir_vaga_com_evidencia(
                     "banca_organizadora": banca_organizadora,
                     "tem_prova": tem_prova,
                     "exige_curriculo": exige_curriculo,
+                    "problema_conferencia": Jsonb(problema_conferencia) if problema_conferencia is not None else None,
                 },
             )
             vaga_id = cur.fetchone()[0]
@@ -411,6 +423,8 @@ def inserir_vaga_com_evidencia(
         else:
             # Vaga já existe (dedup) — só PREENCHE o que está `null`, nunca
             # sobrescreve um valor já gravado por outra fonte.
+            # `problema_conferencia` é a exceção: só muda quando
+            # `atualizar_problema_conferencia=True` (ver docstring).
             cur.execute(
                 """
                 update public.vagas set
@@ -428,7 +442,9 @@ def inserir_vaga_com_evidencia(
                     requisitos = coalesce(requisitos, %(requisitos)s),
                     banca_organizadora = coalesce(banca_organizadora, %(banca_organizadora)s),
                     tem_prova = coalesce(tem_prova, %(tem_prova)s),
-                    exige_curriculo = coalesce(exige_curriculo, %(exige_curriculo)s)
+                    exige_curriculo = coalesce(exige_curriculo, %(exige_curriculo)s),
+                    problema_conferencia = case when %(atualizar_problema_conferencia)s
+                        then %(problema_conferencia)s else problema_conferencia end
                 where id = %(vaga_id)s
                 """,
                 {
@@ -448,6 +464,8 @@ def inserir_vaga_com_evidencia(
                     "banca_organizadora": banca_organizadora,
                     "tem_prova": tem_prova,
                     "exige_curriculo": exige_curriculo,
+                    "atualizar_problema_conferencia": atualizar_problema_conferencia,
+                    "problema_conferencia": Jsonb(problema_conferencia) if problema_conferencia is not None else None,
                 },
             )
 

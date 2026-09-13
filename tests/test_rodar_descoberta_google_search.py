@@ -1,3 +1,4 @@
+from decimal import Decimal
 from unittest.mock import Mock
 
 import requests
@@ -574,3 +575,168 @@ def test_pdf_bloqueado_nao_e_tratado_como_pdf_valido(monkeypatch):
 
     assert resultado == (1, 0)
     assert not chamou_gemini_pdf
+
+
+def test_conferencia_completa_salario_faltando(monkeypatch):
+    """2ª rodada (decisão do usuário, 2026-09-13): vaga extraída sem
+    salário dispara 1 releitura do mesmo PDF focada em achar o que falta
+    — achado real que motivou isto foi Pouso Alegre/MG (ver TAREFAS.md)."""
+    conn = Mock()
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
+    monkeypatch.setattr(script, "baixar_pdf", lambda url: b"%PDF-bytes")
+    monkeypatch.setattr(
+        script.gemini_pdf, "extrair_vagas_de_pdf",
+        lambda pdf_bytes, *, api_key, modelo=None: {
+            "numero_edital": "057/2026",
+            "vagas": [{"cargo": "Médico Clínico", "salario": None, "salario_tipo": None}],
+        },
+    )
+    chamadas_conferencia = []
+    monkeypatch.setattr(
+        script.gemini_pdf, "conferir_vagas_de_pdf",
+        lambda pdf_bytes, vagas, *, api_key, modelo=None: chamadas_conferencia.append(vagas) or {
+            "resultados": [
+                {"cargo": "Médico Clínico", "campos_encontrados": {"salario": 14657.17, "salario_tipo": "mensal"},
+                 "inconsistencias": [], "problema": None},
+            ],
+        },
+    )
+    inserido = {}
+    monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", lambda conn, **kw: inserido.update(kw) or {"vaga_id": "v1", "evidencia_id": "e1"})
+
+    resultado = script.processar_item(
+        conn, _item(link="https://prefeitura.test/edital.pdf"), "Pouso Alegre", "MG", 3151800,
+        set(), "chave-dedicada",
+    )
+
+    assert resultado == (1, 1)
+    assert len(chamadas_conferencia) == 1
+    assert chamadas_conferencia[0] == [{"cargo": "Médico Clínico", "salario": None, "salario_tipo": None}]
+    assert inserido["salario"] == Decimal("14657.17")
+    assert inserido["atualizar_problema_conferencia"] is True
+    assert inserido["problema_conferencia"] is None
+
+
+def test_conferencia_nao_roda_quando_salario_ja_veio_preenchido(monkeypatch):
+    conn = Mock()
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
+    monkeypatch.setattr(script, "baixar_pdf", lambda url: b"%PDF-bytes")
+    monkeypatch.setattr(
+        script.gemini_pdf, "extrair_vagas_de_pdf",
+        lambda pdf_bytes, *, api_key, modelo=None: {
+            "vagas": [{"cargo": "Médico Clínico", "salario": 14657.17, "salario_tipo": "mensal"}],
+        },
+    )
+
+    def falha_se_chamado(*args, **kwargs):
+        raise AssertionError("não deveria rodar 2ª rodada quando salário já veio preenchido")
+
+    monkeypatch.setattr(script.gemini_pdf, "conferir_vagas_de_pdf", falha_se_chamado)
+    inserido = {}
+    monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", lambda conn, **kw: inserido.update(kw) or {"vaga_id": "v1", "evidencia_id": "e1"})
+
+    resultado = script.processar_item(
+        conn, _item(link="https://prefeitura.test/edital.pdf"), "Pouso Alegre", "MG", 3151800,
+        set(), "chave-dedicada",
+    )
+
+    assert resultado == (1, 1)
+    assert inserido["atualizar_problema_conferencia"] is False
+
+
+def test_conferencia_registra_problema_quando_documento_nao_corresponde(monkeypatch):
+    conn = Mock()
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
+    monkeypatch.setattr(script, "baixar_pdf", lambda url: b"%PDF-bytes")
+    monkeypatch.setattr(
+        script.gemini_pdf, "extrair_vagas_de_pdf",
+        lambda pdf_bytes, *, api_key, modelo=None: {
+            "vagas": [{"cargo": "Médico Clínico", "salario": None, "salario_tipo": None}],
+        },
+    )
+    monkeypatch.setattr(
+        script.gemini_pdf, "conferir_vagas_de_pdf",
+        lambda pdf_bytes, vagas, *, api_key, modelo=None: {
+            "resultados": [
+                {"cargo": "Médico Clínico", "campos_encontrados": {}, "inconsistencias": [],
+                 "problema": {"tipo": "documento_nao_corresponde_ao_cargo", "detalhe": "PDF é de outro edital"}},
+            ],
+        },
+    )
+    inserido = {}
+    monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", lambda conn, **kw: inserido.update(kw) or {"vaga_id": "v1", "evidencia_id": "e1"})
+
+    script.processar_item(
+        conn, _item(link="https://prefeitura.test/edital.pdf"), "Pouso Alegre", "MG", 3151800,
+        set(), "chave-dedicada",
+    )
+
+    assert inserido["atualizar_problema_conferencia"] is True
+    assert inserido["problema_conferencia"]["tipo"] == "documento_nao_corresponde_ao_cargo"
+
+
+def test_falha_na_conferencia_nao_impede_insercao_da_vaga(monkeypatch, capsys):
+    conn = Mock()
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
+    monkeypatch.setattr(script, "baixar_pdf", lambda url: b"%PDF-bytes")
+    monkeypatch.setattr(
+        script.gemini_pdf, "extrair_vagas_de_pdf",
+        lambda pdf_bytes, *, api_key, modelo=None: {
+            "vagas": [{"cargo": "Médico Clínico", "salario": None, "salario_tipo": None}],
+        },
+    )
+
+    def falha_conferencia(*args, **kwargs):
+        raise script.gemini_pdf.ErroExtracaoGemini("cota esgotada")
+
+    monkeypatch.setattr(script.gemini_pdf, "conferir_vagas_de_pdf", falha_conferencia)
+    inserido = {}
+    monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", lambda conn, **kw: inserido.update(kw) or {"vaga_id": "v1", "evidencia_id": "e1"})
+
+    resultado = script.processar_item(
+        conn, _item(link="https://prefeitura.test/edital.pdf"), "Pouso Alegre", "MG", 3151800,
+        set(), "chave-dedicada",
+    )
+
+    assert resultado == (1, 1)
+    assert inserido["atualizar_problema_conferencia"] is False
+    assert "falha na 2ª rodada de conferência" in capsys.readouterr().err
+
+
+def test_bloqueio_marca_problema_conferencia_sem_chamar_gemini_de_novo(monkeypatch):
+    """Documento já sabidamente bloqueado não precisa de mais uma
+    chamada Gemini pra saber que está incompleto — marca direto."""
+    conn = Mock()
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script.db, "upsert_fonte", lambda conn, **kw: "fonte-google-search")
+
+    def pagina_bloqueada(url):
+        raise script.deteccao_bloqueio.FetchSuspeitoError('marcador anti-bot encontrado: "just a moment" (HTTP 403)')
+
+    monkeypatch.setattr(script, "buscar_pagina_html", pagina_bloqueada)
+    monkeypatch.setattr(
+        script.gemini_texto, "extrair_vagas_de_texto",
+        lambda titulo, texto, *, api_key, modelo=None: {
+            "vagas": [{"cargo": "Médico Clínico", "salario": None, "salario_tipo": None}],
+        },
+    )
+
+    def falha_se_chamado(*args, **kwargs):
+        raise AssertionError("não deveria rodar 2ª rodada quando o documento já está bloqueado")
+
+    monkeypatch.setattr(script.gemini_texto, "conferir_vagas_de_texto", falha_se_chamado)
+    monkeypatch.setattr(script.db, "marcar_bloqueio_sinal", lambda conn, **kw: None)
+    inserido = {}
+    monkeypatch.setattr(script.db, "inserir_vaga_com_evidencia", lambda conn, **kw: inserido.update(kw) or {"vaga_id": "v1", "evidencia_id": "e1"})
+
+    script.processar_item(
+        conn, _item(link="https://pousoalegre.test/concursos_view/2386"), "Pouso Alegre", "MG", 3151800,
+        set(), "chave-dedicada",
+    )
+
+    assert inserido["atualizar_problema_conferencia"] is True
+    assert inserido["problema_conferencia"]["tipo"] == "documento_ilegivel"

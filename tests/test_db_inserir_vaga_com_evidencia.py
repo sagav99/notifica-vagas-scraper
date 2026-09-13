@@ -40,8 +40,10 @@ class _FakeCursor:
             self._resultado = (novo_id,)
         elif sql_norm.startswith("update public.vagas set"):
             linha = next(v for v in self._estado["vagas"] if v["id"] == params["vaga_id"])
+            if params.get("atualizar_problema_conferencia"):
+                linha["problema_conferencia"] = params["problema_conferencia"]
             for campo, valor in params.items():
-                if campo == "vaga_id":
+                if campo in ("vaga_id", "atualizar_problema_conferencia", "problema_conferencia"):
                     continue
                 if linha.get(campo) is None and valor is not None:
                     linha[campo] = valor
@@ -72,7 +74,10 @@ class _FakeConn:
         return _FakeCursor(self._estado)
 
 
-def _inserir(conn, *, orgao, cargo, salario, identificador_externo, fonte_id="fonte-a"):
+def _inserir(
+    conn, *, orgao, cargo, salario, identificador_externo, fonte_id="fonte-a",
+    problema_conferencia=None, atualizar_problema_conferencia=False,
+):
     return db.inserir_vaga_com_evidencia(
         conn,
         fonte_id=fonte_id,
@@ -92,6 +97,8 @@ def _inserir(conn, *, orgao, cargo, salario, identificador_externo, fonte_id="fo
         url_evidencia="https://exemplo.org/edital",
         tipo_documento="pagina_html",
         texto_extraido=None,
+        problema_conferencia=problema_conferencia,
+        atualizar_problema_conferencia=atualizar_problema_conferencia,
     )
 
 
@@ -153,3 +160,57 @@ def test_cargos_diferentes_no_mesmo_edital_nao_colidem():
 
     assert vaga_acs["vaga_id"] != vaga_ace["vaga_id"]
     assert len(conn._estado["vagas"]) == 2
+
+
+def test_problema_conferencia_e_gravado_na_criacao():
+    conn = _FakeConn()
+
+    resultado = _inserir(
+        conn, orgao="Prefeitura de Z", cargo="Médico", salario=None, identificador_externo="a",
+        problema_conferencia={"tipo": "documento_ilegivel", "detalhe": "bloqueio Cloudflare"},
+    )
+
+    assert conn._estado["vagas"][0]["problema_conferencia"] is not None
+    assert resultado["vaga_criada"] is True
+
+
+def test_problema_conferencia_so_muda_quando_flag_de_atualizacao_e_true():
+    """Achado de design (2026-09-13): reprocessar a mesma vaga por outro
+    motivo (ex: outra fonte casando no dedup) sem rodar a 2ª rodada de
+    conferência não pode apagar um problema já sinalizado."""
+    conn = _FakeConn()
+
+    _inserir(
+        conn, orgao="Prefeitura de Z", cargo="Médico", salario=None, identificador_externo="a",
+    )
+    _inserir(
+        conn, orgao="Prefeitura de Z", cargo="Médico", salario=None, identificador_externo="b",
+        fonte_id="fonte-b", problema_conferencia={"tipo": "outro", "detalhe": "x"},
+        atualizar_problema_conferencia=True,
+    )
+
+    assert conn._estado["vagas"][0]["problema_conferencia"] is not None
+
+    _inserir(
+        conn, orgao="Prefeitura de Z", cargo="Médico", salario=None, identificador_externo="c",
+        fonte_id="fonte-c",
+    )
+
+    assert conn._estado["vagas"][0]["problema_conferencia"] is not None
+
+
+def test_problema_conferencia_pode_ser_limpo_com_flag_e_valor_none():
+    """Uma releitura seguinte que não acha mais problema precisa poder
+    fazer o diagnóstico sumir da fila (overwrite pra None, não coalesce)."""
+    conn = _FakeConn()
+
+    _inserir(
+        conn, orgao="Prefeitura de Z", cargo="Médico", salario=None, identificador_externo="a",
+        problema_conferencia={"tipo": "outro", "detalhe": "x"},
+    )
+    _inserir(
+        conn, orgao="Prefeitura de Z", cargo="Médico", salario=5000, identificador_externo="b",
+        fonte_id="fonte-b", problema_conferencia=None, atualizar_problema_conferencia=True,
+    )
+
+    assert conn._estado["vagas"][0]["problema_conferencia"] is None

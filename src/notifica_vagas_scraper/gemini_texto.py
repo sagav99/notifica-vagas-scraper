@@ -88,6 +88,51 @@ ou não der pra determinar qual dos dois é)
 Responda APENAS com o objeto JSON, sem markdown, sem texto adicional."""
 
 
+PROMPT_CONFERENCIA_TEMPLATE = """Você é uma segunda camada de conferência sobre vagas de concurso
+público brasileiro já extraídas por uma leitura automática anterior do MESMO texto abaixo. Seu
+trabalho não é extrair do zero — é caçar especificamente o que ficou faltando ou pode estar errado.
+
+Texto (HTML ou texto corrido, pode ter tabela):
+{texto}
+
+Vagas já registradas deste texto, cada uma com os dados já conhecidos (JSON):
+{vagas_atuais}
+
+Para CADA vaga da lista acima, releia o texto inteiro (não só o trecho onde o cargo aparece —
+salário/taxa/prazo às vezes ficam em outro parágrafo/tabela) procurando:
+1. Qualquer campo `null`/vazio no JSON: salario, salario_tipo, vagas_qtd, requisitos,
+   carga_horaria, numero_edital, data_publicacao, inscricoes_inicio, inscricoes_fim, data_prova,
+   taxa_inscricao, banca_organizadora, tem_prova, exige_curriculo.
+2. Inconsistência entre o que já está registrado e o que o texto realmente diz (cargo com nome
+   diferente do esperado, salário que parece ser de outro cargo, prazo já vencido marcado como
+   aberto).
+
+Responda APENAS um objeto JSON no formato:
+{{"resultados": [
+  {{
+    "cargo": "<cargo exatamente como na lista de entrada>",
+    "campos_encontrados": {{"<campo>": <valor>, ...}},
+    "inconsistencias": [{{"campo": "...", "valor_registrado": ..., "valor_no_documento": ...,
+                          "detalhe": "..."}}],
+    "problema": null | {{"tipo": "documento_ilegivel" | "documento_nao_corresponde_ao_cargo" |
+                          "campo_critico_ausente_mesmo_apos_releitura" | "outro",
+                          "detalhe": "..."}}
+  }}, ...
+]}}
+
+Regras:
+- Nunca invente valor. Campo que você não conseguiu confirmar fica de fora de
+  `campos_encontrados` — não repita o que já estava no JSON de entrada, não escreva null
+  explícito.
+- `problema` só é preenchido quando a conferência EM SI falhou ou achou algo preocupante. Se o
+  campo genuinamente não consta no texto (ex: taxa de inscrição com isenção total), isso NÃO é
+  problema — só deixe esse campo fora de `campos_encontrados`.
+- Se o texto não corresponde a alguma vaga da lista (cargo errado, virou página de erro/bloqueio
+  em vez do conteúdo real), marque o `problema` dessa vaga especificamente — as outras da mesma
+  lista podem estar OK.
+Responda só o JSON, sem markdown, sem texto adicional."""
+
+
 class ErroExtracaoGemini(Exception):
     pass
 
@@ -111,6 +156,46 @@ def extrair_vagas_de_texto(
 
     body = {
         "contents": [{"parts": [{"text": PROMPT_TEMPLATE.format(titulo=titulo, texto=texto)}]}],
+        "generationConfig": {"temperature": 0},
+    }
+
+    _esperar_rate_limit()
+    resposta = requests.post(
+        URL_API.format(modelo=modelo), params={"key": chave}, json=body, timeout=60
+    )
+    if modelo == quota_gemini.MODELO_PADRAO:
+        quota_gemini.registrar_chamada()
+    resposta.raise_for_status()
+    dados = resposta.json()
+
+    try:
+        texto_resposta = dados["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError) as exc:
+        raise ErroExtracaoGemini(f"Resposta inesperada do Gemini: {dados}") from exc
+
+    try:
+        return gemini_util.parsear_json_resposta(texto_resposta)
+    except json.JSONDecodeError as exc:
+        raise ErroExtracaoGemini(f"JSON inválido do Gemini: {texto_resposta[:500]}") from exc
+
+
+def conferir_vagas_de_texto(
+    texto: str, vagas_atuais: list[dict], *, api_key: str | None = None, modelo: str | None = None
+) -> dict:
+    """Equivalente de `gemini_pdf.conferir_vagas_de_pdf` pra fonte sem
+    PDF (texto/HTML já extraído) — 2ª rodada de conferência, 1 chamada
+    por documento cobrindo todas as vagas dele que precisam de
+    conferência. Ver `PROMPT_CONFERENCIA_TEMPLATE`."""
+    chave = api_key or os.environ.get("GEMINI_API_KEY")
+    if not chave:
+        raise ErroExtracaoGemini("GEMINI_API_KEY não definida.")
+    modelo = modelo or quota_gemini.proximo_modelo()
+
+    prompt = PROMPT_CONFERENCIA_TEMPLATE.format(
+        texto=texto, vagas_atuais=json.dumps(vagas_atuais, ensure_ascii=False)
+    )
+    body = {
+        "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"temperature": 0},
     }
 

@@ -41,6 +41,19 @@ TEXTO_MAX_CHARS = 8000
 RELATORIOS_DIR = Path(__file__).parent.parent / "relatorios"
 MAX_FALHAS_CONSECUTIVAS_API = 3
 
+#: Campos que, faltando, disparam a 2ª rodada de conferência (decisão do
+#: usuário, 2026-09-13) — nível de CARGO (dentro de cada vaga) vs nível
+#: de EDITAL (`extraido`, compartilhado por todas as vagas do documento).
+#: Mesma separação de `auditoria_completude._CAMPOS_CARGO`/`_CAMPOS_EDITAL`,
+#: mas aqui os nomes já são os do schema de extração (não de coluna do
+#: banco), porque operamos direto nos dicts em memória antes do insert.
+_CAMPOS_CONFERENCIA_CARGO = {"salario", "salario_tipo", "vagas_qtd", "requisitos", "carga_horaria"}
+_CAMPOS_CONFERENCIA_EDITAL = {
+    "numero_edital", "data_publicacao", "inscricoes_inicio", "inscricoes_fim",
+    "data_prova", "taxa_inscricao", "banca_organizadora", "tem_prova", "exige_curriculo",
+}
+_CAMPOS_CRITICOS_CARGO = {"salario", "requisitos", "carga_horaria", "vagas_qtd"}
+
 
 def _slug(texto: str) -> str:
     sem_acento = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii")
@@ -195,6 +208,45 @@ def _gerar_print_pagina(pdf_bytes: bytes, pagina: int, url_documento: str,
         return None
 
 
+def _precisa_conferencia(vaga: dict) -> bool:
+    """Só dispara a 2ª rodada quando falta o campo mais crítico
+    (salário) — os outros de `_CAMPOS_CRITICOS_CARGO`
+    (requisitos/carga_horaria/vagas_qtd) entram na resposta quando a
+    releitura acontece por outro motivo, mas sozinhos não justificam mais
+    uma chamada Gemini por vaga (cota apertada, ver CLAUDE.md do repo
+    principal — 500 req/dia). Reavaliar o gatilho se a auditoria mostrar
+    que vale a pena ampliar."""
+    return vaga.get("salario") is None
+
+
+def _conferir_documento(
+    *, extraido: dict, vagas_para_conferir: list[dict], tipo_documento: str,
+    pdf_bytes: bytes | None, texto: str | None, gemini_api_key: str, titulo_para_log: str,
+) -> dict[str, dict]:
+    """2ª rodada de conferência (decisão do usuário, 2026-09-13): 1
+    chamada Gemini cobrindo TODAS as vagas do mesmo documento que
+    precisam ({_precisa_conferencia}), pra não multiplicar cota por
+    cargo. Devolve `{cargo_normalizado: resultado}` — `{}` em qualquer
+    falha (cota esgotada, JSON inválido etc.): a conferência é uma
+    camada extra, uma falha nela não pode derrubar a extração original."""
+    payload = [{k: v for k, v in vaga.items() if k != "pagina"} for vaga in vagas_para_conferir]
+    try:
+        if tipo_documento == "pdf" and pdf_bytes:
+            resposta = gemini_pdf.conferir_vagas_de_pdf(pdf_bytes, payload, api_key=gemini_api_key)
+        elif texto:
+            resposta = gemini_texto.conferir_vagas_de_texto(texto, payload, api_key=gemini_api_key)
+        else:
+            return {}
+    except (gemini_pdf.ErroExtracaoGemini, gemini_texto.ErroExtracaoGemini, requests.HTTPError) as exc:
+        print(f"  aviso: falha na 2ª rodada de conferência de '{titulo_para_log[:60]}': {exc}", file=sys.stderr)
+        return {}
+    return {
+        r["cargo"].strip().casefold(): r
+        for r in resposta.get("resultados", [])
+        if isinstance(r, dict) and r.get("cargo")
+    }
+
+
 def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str, codigo_ibge: int,
                    dominios_conhecidos: set[str], gemini_api_key: str,
                    supabase_url: str | None = None, service_role_key: str | None = None) -> tuple[int, int]:
@@ -286,6 +338,50 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
     if not extraido.get("vagas"):
         return int(sinal_novo), 0
 
+    # 2ª rodada de conferência (decisão do usuário, 2026-09-13): antes de
+    # gravar, relê o MESMO documento focando em qualquer vaga com campo
+    # crítico faltando — 1 chamada cobrindo todas as do documento, não
+    # por vaga (ver `_conferir_documento`).
+    problemas_por_cargo: dict[str, dict | None] = {}
+    if motivo_bloqueio:
+        # Documento já sabidamente comprometido — sem sentido gastar
+        # Gemini relendo a mesma página de desafio. Marca direto: vira
+        # fila visível em `vagas.problema_conferencia` sem depender de
+        # quem olha o painel também cruzar com `sinais_descoberta_externa`.
+        for vaga in extraido["vagas"]:
+            if vaga.get("cargo"):
+                problemas_por_cargo[vaga["cargo"].strip().casefold()] = {
+                    "tipo": "documento_ilegivel", "detalhe": motivo_bloqueio,
+                }
+
+    vagas_para_conferir = [v for v in extraido["vagas"] if v.get("cargo") and _precisa_conferencia(v)]
+    if vagas_para_conferir and not motivo_bloqueio:
+        resultados_por_cargo = _conferir_documento(
+            extraido=extraido, vagas_para_conferir=vagas_para_conferir, tipo_documento=tipo_documento,
+            pdf_bytes=pdf_bytes, texto=texto if tipo_documento == "pagina_html" else None,
+            gemini_api_key=gemini_api_key, titulo_para_log=item.titulo,
+        )
+        for vaga in vagas_para_conferir:
+            chave = vaga["cargo"].strip().casefold()
+            resultado_conferencia = resultados_por_cargo.get(chave)
+            if resultado_conferencia is None:
+                if resultados_por_cargo:
+                    # Chamada funcionou mas não trouxe nada pra este
+                    # cargo específico — Gemini pode ter ignorado a
+                    # instrução de cobrir todos; melhor sinalizar do que
+                    # fingir que foi conferido.
+                    problemas_por_cargo[chave] = {
+                        "tipo": "outro",
+                        "detalhe": "2ª rodada de conferência não retornou resultado para este cargo",
+                    }
+                continue
+            for campo, valor in (resultado_conferencia.get("campos_encontrados") or {}).items():
+                if campo in _CAMPOS_CONFERENCIA_CARGO and vaga.get(campo) is None:
+                    vaga[campo] = valor
+                elif campo in _CAMPOS_CONFERENCIA_EDITAL and extraido.get(campo) is None:
+                    extraido[campo] = valor
+            problemas_por_cargo[chave] = resultado_conferencia.get("problema")
+
     fonte_id = db.upsert_fonte(conn, nome=f"Vigia Serper ({uf})", url=google_search.BASE_URL,
                                tipo="indice", uf=uf)
     orgao = extraido.get("orgao") or f"Prefeitura Municipal de {municipio}/{uf}"
@@ -328,6 +424,8 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
             tipo_documento=tipo_documento, texto_extraido=None,
             pagina_pdf=pagina, url_print_pagina=url_print_pagina,
             **gemini_util.campos_estruturados_extras(extraido, vaga),
+            atualizar_problema_conferencia=cargo.strip().casefold() in problemas_por_cargo,
+            problema_conferencia=problemas_por_cargo.get(cargo.strip().casefold()),
         )
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         if coberto and resultado["vaga_criada"]:
