@@ -216,6 +216,13 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_bocaiuva_mg.py
 
+      - name: Rodar coleta (Instituto Consulplan)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/rodar_institutoconsulplan.py
+
       - name: Descoberta ampla (PCI Concursos — radar, não coleta)
         if: always()
         env:
