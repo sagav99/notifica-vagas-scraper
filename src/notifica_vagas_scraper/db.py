@@ -556,7 +556,16 @@ def listar_vagas_revisadas_para_consistencia(conn: psycopg.Connection) -> list[d
     rejeitada por profissão) e 1 médico aprovado marcaria o médico como
     "divergente da maioria" e arriscaria reverter a aprovação real — essa
     2ª passada existe pra corrigir inconsistência do Gemini, não faz
-    sentido pra decisão que nunca passou por ele."""
+    sentido pra decisão que nunca passou por ele.
+
+    NÃO filtra mais por `numero_edital is not null` (removido 2026-09-14,
+    achado da checagem externa de 2026-09-15 em `TAREFAS.md`): vaga sem
+    número de edital — comum na descoberta via Vigia/Serper — ficava fora
+    do agrupamento de "vagas irmãs" mesmo com mesma fonte+município+órgão,
+    ponto cego que deixou 2 vagas médicas rejeitadas por não-determinismo
+    do Gemini nunca entrarem no consenso. `consistencia_revisao.agrupar_por_edital`
+    agora cai num fallback por `orgao` normalizado quando `numero_edital`
+    é nulo."""
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -572,7 +581,6 @@ def listar_vagas_revisadas_para_consistencia(conn: psycopg.Connection) -> list[d
             from public.vagas v
             join public.municipios m on m.codigo_ibge = v.municipio_id
             where v.revisao_status in ('aprovada', 'rejeitada', 'incompleta')
-              and v.numero_edital is not null
               and left(coalesce(v.revisao_motivo, ''), 15) != '[filtro médico]'
             order by v.municipio_id, v.numero_edital
             """

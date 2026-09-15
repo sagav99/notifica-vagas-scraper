@@ -1,7 +1,7 @@
 from notifica_vagas_scraper import consistencia_revisao
 
 
-def _vaga(id_, decisao, *, fonte_id="fonte-x", municipio_id=1, numero_edital="01/2026", cargo="Médico", municipio_nome="Bariri", municipio_uf="SP"):
+def _vaga(id_, decisao, *, fonte_id="fonte-x", municipio_id=1, numero_edital="01/2026", orgao=None, cargo="Médico", municipio_nome="Bariri", municipio_uf="SP"):
     return {
         "id": id_,
         "cargo": cargo,
@@ -9,6 +9,7 @@ def _vaga(id_, decisao, *, fonte_id="fonte-x", municipio_id=1, numero_edital="01
         "fonte_id": fonte_id,
         "municipio_id": municipio_id,
         "numero_edital": numero_edital,
+        "orgao": orgao,
         "municipio_nome": municipio_nome,
         "municipio_uf": municipio_uf,
     }
@@ -67,6 +68,56 @@ def test_achar_decisoes_divergentes_nao_mistura_editais_diferentes():
 def test_achar_decisoes_divergentes_sem_grupo_nenhuma_vaga_diverge():
     vagas = [_vaga("v1", "aprovada"), _vaga("v2", "aprovada"), _vaga("v3", "aprovada")]
     assert consistencia_revisao.achar_decisoes_divergentes(vagas) == []
+
+
+def test_achar_decisoes_divergentes_agrupa_por_orgao_quando_sem_numero_edital():
+    # achado real (Vargem Grande Paulista/SP, checagem externa 2026-09-15,
+    # TAREFAS.md): vaga do Vigia sem numero_edital não entrava no consenso
+    # antes deste fallback — 2 rejeitadas, 1 aprovada, mesmo órgão.
+    vagas = [
+        _vaga("v-ortopedista", "aprovada", numero_edital=None, orgao="Prefeitura de Vargem Grande Paulista - SP"),
+        _vaga("v-pediatra", "rejeitada", numero_edital=None, orgao="Prefeitura de Vargem Grande Paulista - SP"),
+        _vaga("v-psiquiatra-infantil", "rejeitada", numero_edital=None, orgao="Prefeitura de Vargem Grande Paulista - SP"),
+    ]
+
+    divergentes = consistencia_revisao.achar_decisoes_divergentes(vagas)
+
+    ids = {v["id"] for v in divergentes}
+    assert ids == {"v-ortopedista"}
+    assert divergentes[0]["decisao_majoritaria"] == "rejeitada"
+
+
+def test_achar_decisoes_divergentes_nao_junta_vaga_sem_edital_nem_orgao():
+    # sem numero_edital E sem orgao preenchido: cada vaga fica isolada
+    # (chave única por id) — nunca deveria formar grupo, mesmo com 3+
+    # vagas idênticas na mesma fonte/município.
+    vagas = [
+        _vaga(f"v{i}", "aprovada" if i < 2 else "rejeitada", numero_edital=None, orgao=None)
+        for i in range(3)
+    ]
+    assert consistencia_revisao.achar_decisoes_divergentes(vagas) == []
+
+
+def test_achar_decisoes_divergentes_nao_mistura_orgaos_diferentes_sem_edital():
+    vagas = [
+        _vaga("v1", "aprovada", numero_edital=None, orgao="Prefeitura de A"),
+        _vaga("v2", "aprovada", numero_edital=None, orgao="Prefeitura de A"),
+        _vaga("v3", "rejeitada", numero_edital=None, orgao="Prefeitura de B"),  # órgão diferente
+        _vaga("v4", "rejeitada", numero_edital=None, orgao="Prefeitura de B"),
+    ]
+    # cada grupo (A e B) só tem 2 vagas — abaixo do mínimo, não conta.
+    assert consistencia_revisao.achar_decisoes_divergentes(vagas) == []
+
+
+def test_montar_contexto_irmas_usa_orgao_quando_sem_numero_edital():
+    vaga = {
+        **_vaga("v-pediatra", "rejeitada", numero_edital=None, orgao="Prefeitura de Vargem Grande Paulista - SP"),
+        "decisao_majoritaria": "aprovada",
+        "contagem_grupo": {"aprovada": 1, "rejeitada": 2},
+    }
+    contexto = consistencia_revisao.montar_contexto_irmas(vaga)
+    assert "órgão Prefeitura de Vargem Grande Paulista - SP" in contexto
+    assert "Bariri/SP" in contexto
 
 
 def test_montar_contexto_irmas_descreve_consenso():
