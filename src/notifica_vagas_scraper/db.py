@@ -607,7 +607,9 @@ def aplicar_revisao(conn: psycopg.Connection, *, vaga_id: str, decisao: str, mot
     revisao_motivo, revisado_em; revisado_por fica NULL (sem humano — ver
     docs/revisao_automatica_gemini.md no repo principal). Marca toda
     evidência da vaga como verificado_por_ia=true — o Gemini avaliou os
-    dados extraídos de todas elas nesta mesma chamada."""
+    dados extraídos de todas elas nesta mesma chamada. Também grava 1
+    evento em `vagas_conferencias` (migration 037, repo principal) — log
+    de auditoria, nunca sobrescreve nada."""
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -624,6 +626,9 @@ def aplicar_revisao(conn: psycopg.Connection, *, vaga_id: str, decisao: str, mot
             "update public.vaga_evidencias set verificado_por_ia = true where vaga_id = %(vaga_id)s",
             {"vaga_id": vaga_id},
         )
+    registrar_conferencia(
+        conn, vaga_id=vaga_id, conferido_por="gemini_revisao_automatica", resultado=decisao, detalhe=motivo
+    )
 
 
 def listar_evidencias_pdf_sem_print(conn: psycopg.Connection, *, limite: int) -> list[dict[str, Any]]:
@@ -787,6 +792,30 @@ def registrar_evidencia_adicional(
         )
         row = cur.fetchone()
         return row[0] if row else None
+
+
+def registrar_conferencia(
+    conn: psycopg.Connection,
+    *,
+    vaga_id: str,
+    conferido_por: str,
+    resultado: str,
+    detalhe: str | None = None,
+) -> None:
+    """Grava 1 evento em `public.vagas_conferencias` (migration 037, repo
+    principal) — log só-insert de auditoria: quem conferiu a vaga, quando,
+    com que resultado. Nunca sobrescreve evento anterior, só soma; "quantas
+    vezes uma vaga foi conferida" é só `count(*)` sobre isto.
+    `conferido_por` é restrito pelo CHECK da tabela ('gemini_revisao_automatica',
+    'auditoria_completude', 'checagem_externa_google')."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            insert into public.vagas_conferencias (vaga_id, conferido_por, resultado, detalhe)
+            values (%(vaga_id)s, %(conferido_por)s, %(resultado)s, %(detalhe)s)
+            """,
+            {"vaga_id": vaga_id, "conferido_por": conferido_por, "resultado": resultado, "detalhe": detalhe},
+        )
 
 
 def _gravar_execucao(

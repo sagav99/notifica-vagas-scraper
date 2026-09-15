@@ -81,6 +81,11 @@ def main() -> None:
                         f"busca não achou substituto diferente."
                     )
                     sem_solucao.append(f"{vaga['cargo']} ({local}): link quebrado, sem substituto encontrado")
+                    db.registrar_conferencia(
+                        conn, vaga_id=vaga["id"], conferido_por="auditoria_completude",
+                        resultado="link_quebrado_sem_substituto", detalhe=resultado_link.motivo,
+                    )
+                    conn.commit()
                     continue
 
                 evidencia_id = db.registrar_evidencia_adicional(
@@ -91,18 +96,26 @@ def main() -> None:
                     url=item.link,
                     tipo_documento="pagina_html",
                 )
-                conn.commit()
                 if evidencia_id:
                     links_repostos += 1
                     linhas_relatorio.append(
                         f"- **{vaga['cargo']}** ({local}) — link original quebrado ({resultado_link.motivo}); "
                         f"achado e adicionado um novo: {item.link}"
                     )
+                    db.registrar_conferencia(
+                        conn, vaga_id=vaga["id"], conferido_por="auditoria_completude",
+                        resultado="link_substituido", detalhe=item.link,
+                    )
                 else:
                     linhas_relatorio.append(
                         f"- **{vaga['cargo']}** ({local}) — link original quebrado; substituto achado já estava "
                         f"registrado como evidência desta vaga."
                     )
+                    db.registrar_conferencia(
+                        conn, vaga_id=vaga["id"], conferido_por="auditoria_completude",
+                        resultado="link_substituto_ja_existia", detalhe=item.link,
+                    )
+                conn.commit()
                 continue
 
             try:
@@ -114,6 +127,10 @@ def main() -> None:
 
             if extraido is None:
                 sem_solucao.append(f"{vaga['cargo']} ({local}): link acessível mas releitura falhou")
+                db.registrar_conferencia(
+                    conn, vaga_id=vaga["id"], conferido_por="auditoria_completude", resultado="releitura_falhou",
+                )
+                conn.commit()
                 continue
 
             dados_cargo = encontrar_dados_cargo(extraido, vaga["cargo"])
@@ -121,9 +138,17 @@ def main() -> None:
 
             if not campos:
                 sem_solucao.append(f"{vaga['cargo']} ({local}): releitura não trouxe nada novo além do já salvo")
+                db.registrar_conferencia(
+                    conn, vaga_id=vaga["id"], conferido_por="auditoria_completude", resultado="sem_alteracao",
+                )
+                conn.commit()
                 continue
 
             db.atualizar_campos_vaga(conn, vaga_id=vaga["id"], campos=campos)
+            db.registrar_conferencia(
+                conn, vaga_id=vaga["id"], conferido_por="auditoria_completude",
+                resultado="campo_preenchido", detalhe=", ".join(sorted(campos)),
+            )
             conn.commit()
             vagas_completadas += 1
             campos_preenchidos_total += len(campos)
