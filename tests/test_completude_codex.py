@@ -208,6 +208,19 @@ def test_processar_vaga_sem_alteracao_quando_confianca_baixa(monkeypatch):
     assert conferencias[0]["resultado"] == "sem_alteracao"
 
 
+def test_eh_erro_de_cota_reconhece_sinais_comuns():
+    assert completude_codex.eh_erro_de_cota("HTTP 429 Too Many Requests")
+    assert completude_codex.eh_erro_de_cota("Usage limit reached, try again later")
+    assert completude_codex.eh_erro_de_cota("Rate limit exceeded")
+    assert completude_codex.eh_erro_de_cota("cota esgotada pra hoje")
+
+
+def test_eh_erro_de_cota_nao_confunde_erro_pontual():
+    assert not completude_codex.eh_erro_de_cota("codex exec estourou timeout de 480s")
+    assert not completude_codex.eh_erro_de_cota("connection reset by peer")
+    assert not completude_codex.eh_erro_de_cota("saída do codex exec não é JSON válido: ...")
+
+
 def test_processar_vaga_erro_codex_registra_e_nao_quebra(monkeypatch):
     conferencias = []
     _instalar_db_falso(monkeypatch, registrar=lambda conn, **k: conferencias.append(k))

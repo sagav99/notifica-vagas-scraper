@@ -66,6 +66,28 @@ CONFIANCAS_ACEITAS = {"alta", "media"}
 
 TIMEOUT_CODEX_S = 480  # ~4x o tempo medido no teste real (~2min17s), margem pra caso difícil
 
+#: trechos de mensagem de erro que indicam cota/limite de uso da
+#: assinatura estourado (não erro pontual de rede/vaga específica) —
+#: mesmo espírito da heurística já usada em
+#: `scripts/lib/classificar-saida-claude.mjs` (repo principal) pro loop
+#: do /continuar-tarefas. Casamento por substring, case-insensitive:
+#: texto exato do Codex CLI nesse cenário não foi confirmado ainda (2026-09-16,
+#: rodando "até acabar os tokens" pela 1ª vez) — lista ampla de propósito,
+#: ajustar aqui se a mensagem real observada não bater com nenhum destes.
+_SINAIS_COTA_ESGOTADA = (
+    "usage limit", "rate limit", "quota", "too many requests",
+    "429", "resource_exhausted", "limite de uso", "cota esgotada",
+)
+
+
+def eh_erro_de_cota(mensagem: str) -> bool:
+    """True se a mensagem de erro parece ser cota/limite de uso da
+    assinatura Codex esgotado (deve pausar bastante antes de tentar de
+    novo), False se parece erro pontual (rede instável, timeout de 1
+    vaga difícil, site fora do ar) — nesse caso só pula pra próxima."""
+    texto = mensagem.lower()
+    return any(sinal in texto for sinal in _SINAIS_COTA_ESGOTADA)
+
 #: sandbox restrito (não danger-full-access): rede liberada
 #: (network_access=true, config do usuário) mas escrita de arquivo
 #: confinada ao --cd informado em rodar_codex — Codex não toca no

@@ -1,10 +1,14 @@
 #!/bin/zsh
-# Wrapper pra rodar scripts/completude_codex.py automaticamente 1x por dia
-# via launchd (ver scripts/com.medvagas.completude-codex.plist) — pedido
-# do usuário, 2026-09-16: preencher os campos faltando das ~618 vagas
-# médicas aprovadas incompletas usando a cota da assinatura Codex/ChatGPT
-# já autenticada nesta máquina (`codex login`), sem precisar rodar na mão
-# todo dia.
+# Wrapper pra rodar scripts/completude_codex.py em CONTÍNUO via launchd
+# (ver scripts/com.medvagas.completude-codex.plist, KeepAlive=true) —
+# pedido do usuário, 2026-09-16: "tire esse limite, e pra ficar rodando
+# direto ... até acabar os tokens ... quando fica sem net volta sozinho
+# etc nao perde progresso". O script Python em si já é o loop (nunca
+# termina sozinho, só em SIGINT/SIGTERM) — este wrapper só prepara o
+# ambiente e existe pra caso o processo Python morra por qualquer
+# motivo: `launchd` com KeepAlive=true sobe ele de novo automaticamente
+# (retry em falha de rede, queda do processo etc. já é coberto por
+# isso, sem lógica extra aqui).
 #
 # DATABASE_URL nunca fica commitado aqui — lido em runtime do
 # .env.local do repo principal (fora deste repo, git-ignorado lá).
@@ -17,7 +21,6 @@ set -euo pipefail
 REPO_SCRAPER="/Users/herminioneto/notifica-vagas-scraper"
 REPO_PRINCIPAL="/Users/herminioneto/notifica-vagas"
 LOG_DIR="$REPO_SCRAPER/logs"
-LIMITE="${COMPLETUDE_CODEX_LIMITE:-15}"
 
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/completude-codex-$(date +%Y-%m-%d).log"
@@ -25,7 +28,7 @@ LOG_FILE="$LOG_DIR/completude-codex-$(date +%Y-%m-%d).log"
 export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 {
-  echo "===== $(date -u +%Y-%m-%dT%H:%M:%SZ) — iniciando completude_codex.py (limite=$LIMITE) ====="
+  echo "===== $(date -u +%Y-%m-%dT%H:%M:%SZ) — iniciando completude_codex.py (contínuo) ====="
 
   DATABASE_URL="$(grep '^DATABASE_URL=' "$REPO_PRINCIPAL/.env.local" | cut -d= -f2-)"
   if [ -z "$DATABASE_URL" ]; then
@@ -36,10 +39,14 @@ export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:/usr/local/bin:/usr/bin:/bin:
 
   cd "$REPO_SCRAPER"
   source .venv/bin/activate
-  python scripts/completude_codex.py --limite "$LIMITE"
+  # LOG_FILE fica fixo no dia em que o processo SUBIU (não vira à meia-
+  # noite sozinho) -- como o processo roda contínuo por horas/dias, o
+  # arquivo só troca de fato quando o launchd reinicia o wrapper (queda
+  # de rede, kill, reboot). Isso é aceitável: `tail -f` no arquivo do
+  # dia do último start sempre mostra o log corrente.
+  python scripts/completude_codex.py
 
-  echo "===== $(date -u +%Y-%m-%dT%H:%M:%SZ) — terminou ====="
+  echo "===== $(date -u +%Y-%m-%dT%H:%M:%SZ) — processo terminou (launchd deve reiniciar se KeepAlive=true) ====="
 } >> "$LOG_FILE" 2>&1
 
-# mantém só os últimos 30 dias de log, mesmo padrão do loop-continuar-tarefas
 find "$LOG_DIR" -name 'completude-codex-*.log' -mtime +30 -delete 2>/dev/null || true
