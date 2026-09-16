@@ -11,29 +11,20 @@ name: Coleta de vagas (diário — todas menos Instar)
 # fazendo o job inteiro estourar o timeout-minutes e ser morto no meio da
 # revisão (achado em produção, 3 execuções seguidas 06-08/09/2026) — ver
 # comentário em revisar-vagas.yml.
+#
+# As 3 etapas de "Descoberta ampla" (PCI, Google News RSS, Serper) foram
+# extraídas pra descoberta-ampla.yml em 2026-09-16, mesmo motivo: nas
+# execuções de 14 e 15/09/2026 a coleta das fontes oficiais abaixo já
+# estourou sozinha os 75min, matando o job antes de a Serper rodar.
 
 on:
   schedule:
     # 18h horário de Brasília (UTC-3, sem horário de verão) = 21h UTC —
     # decisão do usuário, 2026-09-12 (antes rodava 06h UTC/03h Brasília).
-    - cron: "0 21 * * *"
-  workflow_dispatch:
-    inputs:
-      google_search_backfill:
-        description: "Executa descoberta ampla (Serper) em modo backfill retroativo (usar --janela pra escolher o estágio)"
-        required: false
-        default: false
-        type: boolean
-      google_search_janela:
-        description: "Só com backfill=true: estágio de recência do backfill"
-        required: false
-        default: "tudo"
-        type: choice
-        options:
-          - semana
-          - mes
-          - trimestre
-          - tudo
+    # Só dias úteis (decisão do usuário, 2026-09-16): fonte oficial não
+    # publica edital novo em fim de semana.
+    - cron: "0 21 * * 1-5"
+  workflow_dispatch: {}
 
 jobs:
   coletar:
