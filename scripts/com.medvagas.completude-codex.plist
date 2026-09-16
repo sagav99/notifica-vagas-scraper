@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.medvagas.completude-codex</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-c</string>
+        <string>/Users/herminioneto/notifica-vagas-scraper/scripts/loop-completude-codex.sh</string>
+    </array>
+
+    <!-- 1x por dia às 10h locais — horário em que o Mac costuma estar
+         ligado/desbloqueado (ChatGPT/Codex precisa de sessão de usuário
+         ativa pra autenticação funcionar direito, diferente de um cron
+         de servidor). -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>10</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/herminioneto/notifica-vagas-scraper/logs/launchd-completude-codex-stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/herminioneto/notifica-vagas-scraper/logs/launchd-completude-codex-stderr.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>
