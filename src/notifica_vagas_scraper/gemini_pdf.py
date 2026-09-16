@@ -5,13 +5,13 @@ si (decisão em CLAUDE.md do repo principal) — usada só para fontes onde a
 informação básica não existe em HTML (ex: FGV, diferente da IMESO que já
 expõe cargo/salário estruturado).
 
-Modelo: Gemini 3.5 Flash-Lite por decisão explícita do usuário — cota da
-chave usada é 500 requisições/dia, 15 RPM, 250k TPM (bem mais apertada que
-o Flash normal). Troca pra Gemini 3.1 Flash-Lite depois de ~470 chamadas
-no dia (cota diária separada, ver `quota_gemini.py`). `_esperar_rate_limit()`
-garante >=4.5s entre chamadas ao Gemini feitas por QUALQUER um dos 3
-módulos (gemini_pdf/gemini_texto/revisao_ia) no mesmo processo — estado
-compartilhado em `gemini_util.py`, ver docstring de lá.
+Modelo: Gemini 3.5 Flash-Lite/3.1 Flash-Lite (RPD 500, RPM 15, TPM 250k
+CADA, independentes) — `quota_gemini.proximo_modelo()` intercala entre
+os dois pelo de menor uso hoje (ver docstring de `quota_gemini.py`).
+Chamada de verdade passa por `gemini_util.chamar_api`, que respeita RPM
+E TPM por modelo (achado 2026-09-16: RPM sozinho não bastava — várias
+chamadas de PDF grande em sequência estouravam TPM mesmo respeitando o
+intervalo entre chamadas, causando 503/timeout em produção).
 """
 
 from __future__ import annotations
@@ -20,14 +20,10 @@ import base64
 import json
 import os
 
-import requests
-
 from . import gemini_util, quota_gemini
 
 MODELO_PADRAO = quota_gemini.MODELO_PADRAO
 URL_API = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
-
-_esperar_rate_limit = gemini_util.esperar_rate_limit
 
 PROMPT = """Você está lendo um edital de concurso público brasileiro em PDF.
 Extraia um objeto JSON com:
@@ -131,12 +127,14 @@ def extrair_vagas_de_pdf(
         "generationConfig": {"temperature": 0},
     }
 
-    _esperar_rate_limit()
-    resposta = requests.post(
-        URL_API.format(modelo=modelo), params={"key": chave}, json=body, timeout=90
+    resposta = gemini_util.chamar_api(
+        URL_API.format(modelo=modelo),
+        body,
+        chave=chave,
+        modelo=modelo,
+        timeout=90,
+        tokens_estimados=gemini_util.ESTIMATIVA_TOKENS_PDF,
     )
-    if modelo == quota_gemini.MODELO_PADRAO:
-        quota_gemini.registrar_chamada()
     resposta.raise_for_status()
     dados = resposta.json()
 
@@ -230,12 +228,14 @@ def conferir_vagas_de_pdf(
         "generationConfig": {"temperature": 0},
     }
 
-    _esperar_rate_limit()
-    resposta = requests.post(
-        URL_API.format(modelo=modelo), params={"key": chave}, json=body, timeout=90
+    resposta = gemini_util.chamar_api(
+        URL_API.format(modelo=modelo),
+        body,
+        chave=chave,
+        modelo=modelo,
+        timeout=90,
+        tokens_estimados=gemini_util.ESTIMATIVA_TOKENS_PDF,
     )
-    if modelo == quota_gemini.MODELO_PADRAO:
-        quota_gemini.registrar_chamada()
     resposta.raise_for_status()
     dados = resposta.json()
 
@@ -283,12 +283,14 @@ def localizar_pagina_cargo(
         "generationConfig": {"temperature": 0},
     }
 
-    _esperar_rate_limit()
-    resposta = requests.post(
-        URL_API.format(modelo=modelo), params={"key": chave}, json=body, timeout=90
+    resposta = gemini_util.chamar_api(
+        URL_API.format(modelo=modelo),
+        body,
+        chave=chave,
+        modelo=modelo,
+        timeout=90,
+        tokens_estimados=gemini_util.ESTIMATIVA_TOKENS_PDF,
     )
-    if modelo == quota_gemini.MODELO_PADRAO:
-        quota_gemini.registrar_chamada()
     resposta.raise_for_status()
     dados = resposta.json()
 

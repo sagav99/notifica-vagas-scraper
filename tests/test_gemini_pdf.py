@@ -1,17 +1,18 @@
 import pytest
 
-from notifica_vagas_scraper import gemini_pdf, quota_gemini
+from notifica_vagas_scraper import gemini_pdf, gemini_util, quota_gemini
 
 
 @pytest.fixture(autouse=True)
 def _sem_rate_limit_real(monkeypatch):
     # sem isso, cada teste esperaria de verdade os 4.5s do rate limit
-    monkeypatch.setattr(gemini_pdf, "_esperar_rate_limit", lambda: None)
+    monkeypatch.setattr(gemini_util, "esperar_rate_limit", lambda modelo: None)
+    monkeypatch.setattr(gemini_util, "aguardar_orcamento_tpm", lambda modelo, tokens_estimados: None)
     # proximo_modelo() agora consulta o Postgres (quota_gemini.py,
     # migration 010) -- esses testes não têm DATABASE_URL nem se importam
     # com qual modelo é escolhido, só com o parsing da resposta.
     monkeypatch.setattr(quota_gemini, "proximo_modelo", lambda: quota_gemini.MODELO_PADRAO)
-    monkeypatch.setattr(quota_gemini, "registrar_chamada", lambda: None)
+    monkeypatch.setattr(quota_gemini, "registrar_chamada", lambda modelo: None)
 
 
 class _RespostaFalsa:
@@ -34,7 +35,7 @@ def _payload_com_texto(texto: str) -> dict:
 def test_extrai_json_puro(monkeypatch):
     texto = '{"numero_edital": "01/2026", "orgao": "X", "data_publicacao": "2026-01-28", "inscricoes_inicio": null, "inscricoes_fim": null, "vagas": []}'
     monkeypatch.setattr(
-        gemini_pdf.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto(texto))
+        gemini_util.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto(texto))
     )
 
     resultado = gemini_pdf.extrair_vagas_de_pdf(b"pdf falso", api_key="chave-teste")
@@ -46,7 +47,7 @@ def test_extrai_json_puro(monkeypatch):
 def test_remove_cerca_de_markdown(monkeypatch):
     texto = '```json\n{"numero_edital": null, "orgao": null, "inscricoes_inicio": null, "inscricoes_fim": null, "vagas": [{"cargo": "X", "vagas_qtd": 1, "salario": 1000.0, "requisitos": null, "carga_horaria": null}]}\n```'
     monkeypatch.setattr(
-        gemini_pdf.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto(texto))
+        gemini_util.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto(texto))
     )
 
     resultado = gemini_pdf.extrair_vagas_de_pdf(b"pdf falso", api_key="chave-teste")
@@ -60,14 +61,14 @@ def test_sem_api_key_levanta_erro(monkeypatch):
 
 
 def test_resposta_sem_candidates_levanta_erro(monkeypatch):
-    monkeypatch.setattr(gemini_pdf.requests, "post", lambda *a, **k: _RespostaFalsa({"error": "algo"}))
+    monkeypatch.setattr(gemini_util.requests, "post", lambda *a, **k: _RespostaFalsa({"error": "algo"}))
     with pytest.raises(gemini_pdf.ErroExtracaoGemini):
         gemini_pdf.extrair_vagas_de_pdf(b"pdf falso", api_key="chave-teste")
 
 
 def test_json_invalido_levanta_erro(monkeypatch):
     monkeypatch.setattr(
-        gemini_pdf.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto("isso não é json"))
+        gemini_util.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto("isso não é json"))
     )
     with pytest.raises(gemini_pdf.ErroExtracaoGemini):
         gemini_pdf.extrair_vagas_de_pdf(b"pdf falso", api_key="chave-teste")
@@ -78,13 +79,13 @@ def test_json_invalido_levanta_erro(monkeypatch):
 
 def test_localizar_pagina_cargo_encontrado(monkeypatch):
     monkeypatch.setattr(
-        gemini_pdf.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto('{"pagina": 7}'))
+        gemini_util.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto('{"pagina": 7}'))
     )
     assert gemini_pdf.localizar_pagina_cargo(b"pdf falso", "Médico Pediatra", api_key="chave-teste") == 7
 
 
 def test_localizar_pagina_cargo_nao_encontrado(monkeypatch):
     monkeypatch.setattr(
-        gemini_pdf.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto('{"pagina": null}'))
+        gemini_util.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto('{"pagina": null}'))
     )
     assert gemini_pdf.localizar_pagina_cargo(b"pdf falso", "Médico Pediatra", api_key="chave-teste") is None

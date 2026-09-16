@@ -21,6 +21,23 @@ alternados furavam o limite de 15 RPM (gaps reais de <1s entre chamadas
 no log de produção, mesmo com os 4.5s respeitados dentro de cada módulo
 isoladamente), causando 429 em cascata. Rate limiter centralizado aqui
 resolve isso pra qualquer combinação de módulos chamados no mesmo processo.
+
+**TPM por modelo, além de RPM (achado 2026-09-16)**: o limitador de RPM
+sozinho garante <=15 chamadas/minuto, mas não impede estourar as 250k
+TPM (tokens por minuto) do Gemini Flash-Lite quando várias chamadas
+seguidas levam PDF grande (`gemini_pdf.py`, que lê o documento inteiro)
+— RPM ok, TPM não. Sintoma real em produção: 2 execuções seguidas do
+workflow `Coleta de vagas` (passo "Rodar coleta (Ache Concursos)", que
+chama `gemini_pdf.extrair_vagas_de_pdf` uma vez por achado) travaram em
+`503 Service Unavailable`/`Read timed out` repetidos e estouraram o
+`timeout-minutes` do job — mesmo a cota diária (RPD) estando bem longe
+do limite (372/500 no momento do 2º travamento). `aguardar_orcamento_tpm`
+abaixo fecha essa lacuna: janela móvel de 60s por MODELO (o padrão e o
+fallback têm TPM próprio e independente), baseada no uso REAL relatado
+pela própria API (`usageMetadata.totalTokenCount`) depois de cada
+chamada — só usa estimativa (`ESTIMATIVA_TOKENS_PDF`/`_TEXTO`) pra decidir
+se vale esperar ANTES da 1ª chamada de uma rajada, quando ainda não há
+uso medido na janela.
 """
 
 from __future__ import annotations
@@ -28,8 +45,13 @@ from __future__ import annotations
 import json
 import re
 import time
+from collections import deque
 from datetime import date
 from typing import Any
+
+import requests
+
+from . import quota_gemini
 
 _CERCA_MARKDOWN = re.compile(r"^```(?:json)?\s*|\s*```$")
 _ESCAPE_INVALIDO = re.compile(r'\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})')
@@ -42,22 +64,104 @@ _RE_CARGA_HORARIA_SEMANAL = re.compile(
     r"^\s*(\d{1,3})\s*h(?:oras)?(?:\s*semanais?)?\s*$", re.IGNORECASE
 )
 
-INTERVALO_MINIMO_ENTRE_CHAMADAS_S = 4.5  # 15 RPM = 1 a cada 4s; margem de segurança
+RPM_LIMITE = 15
+TPM_LIMITE = 250_000
+INTERVALO_MINIMO_ENTRE_CHAMADAS_S = 4.5  # 15 RPM = 1 a cada 4s; margem de segurança, por modelo
 
-_ultima_chamada: float = 0.0
+#: estimativas conservadoras de tokens só pra decidir se vale ESPERAR
+#: antes da 1ª chamada de uma janela nova (sem uso real medido ainda) —
+#: o uso real relatado pela API corrige a janela logo depois de cada
+#: chamada, então uma estimativa grosseira aqui é segura.
+ESTIMATIVA_TOKENS_PDF = 30_000
+ESTIMATIVA_TOKENS_TEXTO = 2_000
+
+_ultima_chamada_por_modelo: dict[str, float] = {}
+_janela_tokens_por_modelo: dict[str, deque[tuple[float, int]]] = {}
 
 
-def esperar_rate_limit() -> None:
-    """Garante >=4.5s desde a última chamada real ao Gemini feita por
-    QUALQUER um dos 3 módulos (gemini_pdf, gemini_texto, revisao_ia) no
-    mesmo processo — estado compartilhado de propósito, ver docstring
-    do módulo."""
-    global _ultima_chamada
+def esperar_rate_limit(modelo: str) -> None:
+    """Garante >=4.5s desde a última chamada real ao Gemini pro MESMO
+    modelo, feita por QUALQUER um dos 3 módulos (gemini_pdf, gemini_texto,
+    revisao_ia) no mesmo processo — estado compartilhado de propósito
+    (ver docstring do módulo), agora por modelo: padrão e fallback têm
+    RPM próprio, então intercalar entre os dois (ver
+    `quota_gemini.proximo_modelo`) não precisa esperar o RPM de um pelo
+    do outro."""
     agora = time.monotonic()
-    espera = INTERVALO_MINIMO_ENTRE_CHAMADAS_S - (agora - _ultima_chamada)
+    ultima = _ultima_chamada_por_modelo.get(modelo, 0.0)
+    espera = INTERVALO_MINIMO_ENTRE_CHAMADAS_S - (agora - ultima)
     if espera > 0:
         time.sleep(espera)
-    _ultima_chamada = time.monotonic()
+    _ultima_chamada_por_modelo[modelo] = time.monotonic()
+
+
+def _purgar_janela_tpm(modelo: str) -> deque[tuple[float, int]]:
+    janela = _janela_tokens_por_modelo.setdefault(modelo, deque())
+    limite = time.monotonic() - 60
+    while janela and janela[0][0] < limite:
+        janela.popleft()
+    return janela
+
+
+def aguardar_orcamento_tpm(modelo: str, tokens_estimados: int) -> None:
+    """Espera o quanto for preciso pra que mandar mais `tokens_estimados`
+    tokens pro `modelo` não estoure as 250k TPM da janela móvel de 60s
+    dele — ver achado no docstring do módulo. `tokens_estimados` só
+    importa quando a janela ainda não tem uso real registrado nela
+    (chamada anterior recente já corrige com o valor de verdade via
+    `registrar_tokens_usados`)."""
+    while True:
+        janela = _purgar_janela_tpm(modelo)
+        usado = sum(tokens for _, tokens in janela)
+        if usado + tokens_estimados <= TPM_LIMITE:
+            return
+        # +0.01 pra nunca acordar bem na borda dos 60s e o item mais
+        # antigo ainda contar como "dentro da janela" na próxima purga
+        # (`< limite`, não `<=`) — sem essa folga, um sleep calculado
+        # exatamente pro instante de expiração podia girar sem nunca
+        # progredir.
+        espera = (janela[0][0] + 60) - time.monotonic() + 0.01
+        if espera > 0:
+            time.sleep(espera)
+
+
+def registrar_tokens_usados(modelo: str, tokens: int) -> None:
+    """Registra tokens realmente consumidos por uma chamada (ou a
+    estimativa, se a resposta não trouxe `usageMetadata` — ex: erro
+    antes de gerar conteúdo) na janela de TPM do modelo."""
+    janela = _janela_tokens_por_modelo.setdefault(modelo, deque())
+    janela.append((time.monotonic(), tokens))
+
+
+def chamar_api(
+    url: str,
+    body: dict,
+    *,
+    chave: str,
+    modelo: str,
+    timeout: int,
+    tokens_estimados: int,
+) -> requests.Response:
+    """Ponto único de chamada HTTP à API do Gemini, usado por
+    gemini_pdf.py/gemini_texto.py/revisao_ia.py — respeita RPM (15) e
+    TPM (250k, por modelo, ver `aguardar_orcamento_tpm`) antes de
+    mandar, registra a chamada na cota diária por modelo
+    (`quota_gemini.registrar_chamada`, migration 042) e registra o uso
+    real de token (do `usageMetadata` da resposta, com fallback pra
+    `tokens_estimados` se a resposta não vier em JSON) na janela de TPM
+    depois. Não faz retry nem `raise_for_status` — isso fica com quem
+    chama (ver `revisao_ia._chamar_gemini` pro retry com backoff)."""
+    esperar_rate_limit(modelo)
+    aguardar_orcamento_tpm(modelo, tokens_estimados)
+    resposta = requests.post(url, params={"key": chave}, json=body, timeout=timeout)
+    quota_gemini.registrar_chamada(modelo)
+    tokens_usados = tokens_estimados
+    try:
+        tokens_usados = resposta.json().get("usageMetadata", {}).get("totalTokenCount", tokens_estimados)
+    except ValueError:
+        pass
+    registrar_tokens_usados(modelo, tokens_usados)
+    return resposta
 
 
 def parsear_json_resposta(texto: str) -> dict:

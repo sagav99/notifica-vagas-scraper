@@ -1,8 +1,9 @@
+import time
 from datetime import date
 
 import pytest
 
-from notifica_vagas_scraper import gemini_util
+from notifica_vagas_scraper import gemini_util, quota_gemini
 
 
 def test_parseia_json_puro():
@@ -104,3 +105,121 @@ def test_campos_estruturados_extras_tudo_ausente_vira_none():
         "tem_prova": None,
         "exige_curriculo": None,
     }
+
+
+# --- rate limit por modelo: RPM + TPM (achado 2026-09-16) ---
+
+
+@pytest.fixture(autouse=True)
+def _limpa_estado_global_do_limiter():
+    # os dicts de estado são globais no módulo (de propósito, ver
+    # docstring) -- sem isolar entre testes, um teste vaza estado pro
+    # próximo e os tempos de espera calculados ficam imprevisíveis.
+    gemini_util._ultima_chamada_por_modelo.clear()
+    gemini_util._janela_tokens_por_modelo.clear()
+    yield
+    gemini_util._ultima_chamada_por_modelo.clear()
+    gemini_util._janela_tokens_por_modelo.clear()
+
+
+def test_esperar_rate_limit_e_por_modelo_independente(monkeypatch):
+    # 2 modelos diferentes não esperam um pelo relógio RPM do outro --
+    # só entram no mesmo "balde" se forem o mesmo modelo.
+    chamadas_sleep = []
+    monkeypatch.setattr(time, "sleep", lambda s: chamadas_sleep.append(s))
+
+    gemini_util.esperar_rate_limit(quota_gemini.MODELO_PADRAO)
+    gemini_util.esperar_rate_limit(quota_gemini.MODELO_FALLBACK)
+
+    assert chamadas_sleep == []  # 1ª chamada de cada modelo, nunca espera
+
+
+def test_esperar_rate_limit_espera_no_mesmo_modelo(monkeypatch):
+    chamadas_sleep = []
+    monkeypatch.setattr(time, "sleep", lambda s: chamadas_sleep.append(s))
+
+    gemini_util.esperar_rate_limit(quota_gemini.MODELO_PADRAO)
+    gemini_util.esperar_rate_limit(quota_gemini.MODELO_PADRAO)
+
+    assert len(chamadas_sleep) == 1
+    assert chamadas_sleep[0] == pytest.approx(gemini_util.INTERVALO_MINIMO_ENTRE_CHAMADAS_S, abs=0.1)
+
+
+def test_aguardar_orcamento_tpm_nao_espera_dentro_do_teto(monkeypatch):
+    chamadas_sleep = []
+    monkeypatch.setattr(time, "sleep", lambda s: chamadas_sleep.append(s))
+    gemini_util.registrar_tokens_usados(quota_gemini.MODELO_PADRAO, 100_000)
+
+    gemini_util.aguardar_orcamento_tpm(quota_gemini.MODELO_PADRAO, 50_000)
+
+    assert chamadas_sleep == []
+
+
+def test_aguardar_orcamento_tpm_espera_quando_estouraria(monkeypatch):
+    # Achado real 2026-09-16: várias chamadas de PDF grande (gemini_pdf.py)
+    # em sequência podiam estourar as 250k TPM mesmo respeitando o
+    # intervalo de RPM entre chamadas -- este teste é a regressão disso.
+    # Relógio simulado: `sleep` avança o mesmo relógio que `monotonic`
+    # lê, senão o loop de espera giraria pra sempre num teste (tempo real
+    # não passa só porque o mock de sleep "aceitou" o argumento).
+    agora = [1000.0]
+    monkeypatch.setattr(time, "monotonic", lambda: agora[0])
+    chamadas_sleep = []
+
+    def _sleep(segundos):
+        chamadas_sleep.append(segundos)
+        agora[0] += segundos
+
+    monkeypatch.setattr(time, "sleep", _sleep)
+    gemini_util.registrar_tokens_usados(quota_gemini.MODELO_PADRAO, 230_000)
+
+    gemini_util.aguardar_orcamento_tpm(quota_gemini.MODELO_PADRAO, 30_000)
+
+    assert len(chamadas_sleep) >= 1
+
+
+def test_aguardar_orcamento_tpm_e_por_modelo_independente(monkeypatch):
+    chamadas_sleep = []
+    monkeypatch.setattr(time, "sleep", lambda s: chamadas_sleep.append(s))
+    gemini_util.registrar_tokens_usados(quota_gemini.MODELO_PADRAO, 240_000)
+
+    # o fallback tem orçamento de TPM próprio -- não deveria esperar por
+    # causa do uso do padrão.
+    gemini_util.aguardar_orcamento_tpm(quota_gemini.MODELO_FALLBACK, 30_000)
+
+    assert chamadas_sleep == []
+
+
+def test_registrar_tokens_usados_expira_da_janela_apos_60s(monkeypatch):
+    agora = [1000.0]
+    monkeypatch.setattr(time, "monotonic", lambda: agora[0])
+
+    gemini_util.registrar_tokens_usados(quota_gemini.MODELO_PADRAO, 240_000)
+    agora[0] += 61  # janela de 60s expirou
+
+    janela = gemini_util._purgar_janela_tpm(quota_gemini.MODELO_PADRAO)
+    assert sum(tokens for _, tokens in janela) == 0
+
+
+class _RespostaFalsaComUso:
+    def __init__(self, tokens_reais: int):
+        self._tokens_reais = tokens_reais
+
+    def json(self):
+        return {"usageMetadata": {"totalTokenCount": self._tokens_reais}}
+
+
+def test_chamar_api_registra_uso_real_da_resposta(monkeypatch):
+    monkeypatch.setattr(gemini_util, "esperar_rate_limit", lambda modelo: None)
+    monkeypatch.setattr(gemini_util, "aguardar_orcamento_tpm", lambda modelo, tokens_estimados: None)
+    monkeypatch.setattr(quota_gemini, "registrar_chamada", lambda modelo: None)
+    monkeypatch.setattr(
+        gemini_util.requests, "post", lambda *a, **k: _RespostaFalsaComUso(tokens_reais=12345)
+    )
+
+    gemini_util.chamar_api(
+        "http://fake", {}, chave="x", modelo=quota_gemini.MODELO_PADRAO, timeout=10, tokens_estimados=999
+    )
+
+    janela = gemini_util._purgar_janela_tpm(quota_gemini.MODELO_PADRAO)
+    assert sum(tokens for _, tokens in janela) == 12345  # uso real, não a estimativa

@@ -9,12 +9,12 @@ class _CursorFalso:
         self._ultimo_resultado = None
 
     def execute(self, sql: str, parametros: dict):
-        hoje = parametros["hoje"]
+        chave = (parametros["hoje"], parametros["modelo"])
         if sql.strip().startswith("select"):
-            contagem = self._tabela.get(hoje)
+            contagem = self._tabela.get(chave)
             self._ultimo_resultado = (contagem,) if contagem is not None else None
         elif sql.strip().startswith("insert"):
-            self._tabela[hoje] = self._tabela.get(hoje, 0) + 1
+            self._tabela[chave] = self._tabela.get(chave, 0) + 1
         else:
             raise AssertionError(f"SQL inesperado: {sql}")
 
@@ -59,20 +59,47 @@ def test_sem_registro_comeca_no_modelo_padrao(monkeypatch):
 def test_registrar_chamada_incrementa(monkeypatch):
     tabela = _instalar_tabela_falsa(monkeypatch)
 
-    quota_gemini.registrar_chamada()
-    quota_gemini.registrar_chamada()
+    quota_gemini.registrar_chamada(quota_gemini.MODELO_PADRAO)
+    quota_gemini.registrar_chamada(quota_gemini.MODELO_PADRAO)
 
-    assert tabela[quota_gemini._hoje()] == 2
+    assert tabela[(quota_gemini._hoje(), quota_gemini.MODELO_PADRAO)] == 2
 
 
-def test_troca_para_fallback_apos_limite(monkeypatch):
-    tabela = _instalar_tabela_falsa(monkeypatch, {quota_gemini._hoje(): quota_gemini.LIMITE_ANTES_DE_TROCAR})
+def test_registrar_chamada_rastreia_cada_modelo_separado(monkeypatch):
+    tabela = _instalar_tabela_falsa(monkeypatch)
+
+    quota_gemini.registrar_chamada(quota_gemini.MODELO_PADRAO)
+    quota_gemini.registrar_chamada(quota_gemini.MODELO_FALLBACK)
+    quota_gemini.registrar_chamada(quota_gemini.MODELO_FALLBACK)
+
+    hoje = quota_gemini._hoje()
+    assert tabela[(hoje, quota_gemini.MODELO_PADRAO)] == 1
+    assert tabela[(hoje, quota_gemini.MODELO_FALLBACK)] == 2
+
+
+def test_escolhe_modelo_com_menor_contagem_hoje(monkeypatch):
+    """Despacho por menor uso (migration 042, 2026-09-16), não mais troca
+    sequencial só depois de LIMITE_ANTES_DE_TROCAR — com o padrão já mais
+    usado, a próxima chamada vai pro fallback mesmo sem ter estourado
+    nenhum limiar."""
+    hoje = quota_gemini._hoje()
+    tabela = _instalar_tabela_falsa(
+        monkeypatch, {(hoje, quota_gemini.MODELO_PADRAO): 50, (hoje, quota_gemini.MODELO_FALLBACK): 10}
+    )
     assert quota_gemini.proximo_modelo() == quota_gemini.MODELO_FALLBACK
-    assert tabela[quota_gemini._hoje()] == quota_gemini.LIMITE_ANTES_DE_TROCAR
+    assert tabela[(hoje, quota_gemini.MODELO_PADRAO)] == 50  # só leu, não escreveu
+
+
+def test_empate_prefere_modelo_padrao(monkeypatch):
+    hoje = quota_gemini._hoje()
+    _instalar_tabela_falsa(
+        monkeypatch, {(hoje, quota_gemini.MODELO_PADRAO): 20, (hoje, quota_gemini.MODELO_FALLBACK): 20}
+    )
+    assert quota_gemini.proximo_modelo() == quota_gemini.MODELO_PADRAO
 
 
 def test_dia_diferente_nao_conta(monkeypatch):
-    _instalar_tabela_falsa(monkeypatch, {date(2000, 1, 1): 999})
+    _instalar_tabela_falsa(monkeypatch, {(date(2000, 1, 1), quota_gemini.MODELO_PADRAO): 999})
     assert quota_gemini.proximo_modelo() == quota_gemini.MODELO_PADRAO
 
 
@@ -117,5 +144,5 @@ def test_incremento_e_atomico_via_upsert_concorrente(monkeypatch):
     # como um read-then-write local perderia sob corrida real.
     tabela = _instalar_tabela_falsa(monkeypatch)
     for _ in range(5):
-        quota_gemini.registrar_chamada()
-    assert tabela[quota_gemini._hoje()] == 5
+        quota_gemini.registrar_chamada(quota_gemini.MODELO_PADRAO)
+    assert tabela[(quota_gemini._hoje(), quota_gemini.MODELO_PADRAO)] == 5

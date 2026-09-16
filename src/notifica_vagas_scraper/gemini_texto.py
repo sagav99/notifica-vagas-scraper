@@ -17,14 +17,10 @@ from __future__ import annotations
 import json
 import os
 
-import requests
-
 from . import gemini_util, quota_gemini
 
 MODELO_PADRAO = quota_gemini.MODELO_PADRAO
 URL_API = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
-
-_esperar_rate_limit = gemini_util.esperar_rate_limit
 
 
 PROMPT_TEMPLATE = """Você está lendo o texto de uma publicação de prefeitura brasileira, que \
@@ -159,12 +155,14 @@ def extrair_vagas_de_texto(
         "generationConfig": {"temperature": 0},
     }
 
-    _esperar_rate_limit()
-    resposta = requests.post(
-        URL_API.format(modelo=modelo), params={"key": chave}, json=body, timeout=60
+    resposta = gemini_util.chamar_api(
+        URL_API.format(modelo=modelo),
+        body,
+        chave=chave,
+        modelo=modelo,
+        timeout=60,
+        tokens_estimados=max(gemini_util.ESTIMATIVA_TOKENS_TEXTO, len(texto) // 4),
     )
-    if modelo == quota_gemini.MODELO_PADRAO:
-        quota_gemini.registrar_chamada()
     resposta.raise_for_status()
     dados = resposta.json()
 
@@ -199,12 +197,14 @@ def conferir_vagas_de_texto(
         "generationConfig": {"temperature": 0},
     }
 
-    _esperar_rate_limit()
-    resposta = requests.post(
-        URL_API.format(modelo=modelo), params={"key": chave}, json=body, timeout=60
+    resposta = gemini_util.chamar_api(
+        URL_API.format(modelo=modelo),
+        body,
+        chave=chave,
+        modelo=modelo,
+        timeout=60,
+        tokens_estimados=max(gemini_util.ESTIMATIVA_TOKENS_TEXTO, len(prompt) // 4),
     )
-    if modelo == quota_gemini.MODELO_PADRAO:
-        quota_gemini.registrar_chamada()
     resposta.raise_for_status()
     dados = resposta.json()
 

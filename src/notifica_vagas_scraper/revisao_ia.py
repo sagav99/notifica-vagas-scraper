@@ -103,7 +103,9 @@ URL_API = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:gene
 TENTATIVAS_MAX = 3
 BACKOFF_INICIAL_S = 5.0
 
-_esperar_rate_limit = gemini_util.esperar_rate_limit
+#: payload de revisão é pequeno (campos já extraídos, sem PDF) — bem
+#: menor que gemini_pdf/gemini_texto, ver gemini_util.ESTIMATIVA_TOKENS_*.
+ESTIMATIVA_TOKENS_REVISAO = 800
 
 
 def _chamar_gemini(body: dict, *, chave: str, modelo: str) -> dict:
@@ -116,13 +118,15 @@ def _chamar_gemini(body: dict, *, chave: str, modelo: str) -> dict:
     for tentativa in range(TENTATIVAS_MAX):
         if tentativa > 0:
             time.sleep(BACKOFF_INICIAL_S * tentativa)
-        _esperar_rate_limit()
         try:
-            resposta = requests.post(
-                URL_API.format(modelo=modelo), params={"key": chave}, json=body, timeout=60
+            resposta = gemini_util.chamar_api(
+                URL_API.format(modelo=modelo),
+                body,
+                chave=chave,
+                modelo=modelo,
+                timeout=60,
+                tokens_estimados=ESTIMATIVA_TOKENS_REVISAO,
             )
-            if modelo == quota_gemini.MODELO_PADRAO:
-                quota_gemini.registrar_chamada()
             resposta.raise_for_status()
             return resposta.json()
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:

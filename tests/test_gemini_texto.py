@@ -1,16 +1,17 @@
 import pytest
 
-from notifica_vagas_scraper import gemini_texto, quota_gemini
+from notifica_vagas_scraper import gemini_texto, gemini_util, quota_gemini
 
 
 @pytest.fixture(autouse=True)
 def _sem_rate_limit_real(monkeypatch):
-    monkeypatch.setattr(gemini_texto, "_esperar_rate_limit", lambda: None)
+    monkeypatch.setattr(gemini_util, "esperar_rate_limit", lambda modelo: None)
+    monkeypatch.setattr(gemini_util, "aguardar_orcamento_tpm", lambda modelo, tokens_estimados: None)
     # proximo_modelo() agora consulta o Postgres (quota_gemini.py,
     # migration 010) -- esses testes não têm DATABASE_URL nem se importam
     # com qual modelo é escolhido, só com o parsing da resposta.
     monkeypatch.setattr(quota_gemini, "proximo_modelo", lambda: quota_gemini.MODELO_PADRAO)
-    monkeypatch.setattr(quota_gemini, "registrar_chamada", lambda: None)
+    monkeypatch.setattr(quota_gemini, "registrar_chamada", lambda modelo: None)
 
 
 class _RespostaFalsa:
@@ -33,7 +34,7 @@ def _payload_com_texto(texto: str) -> dict:
 def test_extrai_json_puro(monkeypatch):
     texto = '{"numero_edital": "17/26", "orgao": "X", "data_publicacao": null, "inscricoes_inicio": null, "inscricoes_fim": null, "vagas": [{"cargo": "Agente de Comunicação", "vagas_qtd": null, "salario": null, "requisitos": null, "carga_horaria": null}]}'
     monkeypatch.setattr(
-        gemini_texto.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto(texto))
+        gemini_util.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto(texto))
     )
 
     resultado = gemini_texto.extrair_vagas_de_texto("titulo", "texto", api_key="chave-teste")
@@ -44,7 +45,7 @@ def test_extrai_json_puro(monkeypatch):
 def test_texto_sem_vaga_real_devolve_lista_vazia(monkeypatch):
     texto = '{"numero_edital": null, "orgao": null, "data_publicacao": null, "inscricoes_inicio": null, "inscricoes_fim": null, "vagas": []}'
     monkeypatch.setattr(
-        gemini_texto.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto(texto))
+        gemini_util.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto(texto))
     )
 
     resultado = gemini_texto.extrair_vagas_de_texto(
@@ -56,7 +57,7 @@ def test_texto_sem_vaga_real_devolve_lista_vazia(monkeypatch):
 def test_remove_cerca_de_markdown(monkeypatch):
     texto = '```json\n{"numero_edital": null, "orgao": null, "data_publicacao": null, "inscricoes_inicio": null, "inscricoes_fim": null, "vagas": []}\n```'
     monkeypatch.setattr(
-        gemini_texto.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto(texto))
+        gemini_util.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto(texto))
     )
 
     resultado = gemini_texto.extrair_vagas_de_texto("titulo", "texto", api_key="chave-teste")
@@ -70,6 +71,6 @@ def test_sem_api_key_levanta_erro(monkeypatch):
 
 
 def test_resposta_sem_candidates_levanta_erro(monkeypatch):
-    monkeypatch.setattr(gemini_texto.requests, "post", lambda *a, **k: _RespostaFalsa({"error": "algo"}))
+    monkeypatch.setattr(gemini_util.requests, "post", lambda *a, **k: _RespostaFalsa({"error": "algo"}))
     with pytest.raises(gemini_texto.ErroExtracaoGemini):
         gemini_texto.extrair_vagas_de_texto("titulo", "texto", api_key="chave-teste")

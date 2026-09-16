@@ -1,9 +1,5 @@
 """Rastreador de cota diária compartilhado entre os 3 módulos que chamam a
-API do Gemini (gemini_pdf.py, gemini_texto.py, revisao_ia.py) — decisão do
-usuário (2026-09-01): ao passar de ~470 chamadas no dia (a cota de
-gemini-3.5-flash-lite é 500/dia), trocar pra gemini-3.1-flash-lite, que
-tem cota diária própria e separada — ganha ~470 chamadas/dia extras sem
-estourar limite de nenhum dos dois modelos.
+API do Gemini (gemini_pdf.py, gemini_texto.py, revisao_ia.py).
 
 Contador persiste em `public.gemini_quota_diaria` (migration 010, repo
 principal) — não em arquivo `/tmp` como antes (achado real 2026-09-01,
@@ -12,7 +8,17 @@ cron no mesmo dia contava cada uma do zero e nunca cruzava o limiar de
 troca de verdade). Incremento via `INSERT ... ON CONFLICT DO UPDATE`
 (upsert atômico do Postgres) — seguro mesmo com processos concorrentes
 escrevendo ao mesmo tempo, sem precisar de lock explícito.
-"""
+
+**Despacho por menor uso do dia, não troca sequencial (migration 042,
+2026-09-16)**: o desenho anterior usava só `gemini-3.5-flash-lite` até
+~470 chamadas e só então trocava pra `gemini-3.1-flash-lite` — sub-usava
+o fallback, que tem RPD (500), RPM (15) e TPM (250k) próprios e
+independentes do padrão. `proximo_modelo()` agora escolhe, a cada
+chamada, qual dos dois modelos tem MENOR contagem hoje (empate -> padrão)
+— na prática intercala entre os dois desde o início, dobrando o
+throughput combinado (30 RPM / 500k TPM / 1000 RPD) em vez de usar só 1
+de cada vez. A tabela `gemini_quota_diaria` agora tem 1 linha por
+`(data, modelo)`, não mais 1 por dia só (migration 042)."""
 
 from __future__ import annotations
 
@@ -22,7 +28,7 @@ from zoneinfo import ZoneInfo
 
 import psycopg
 
-LIMITE_ANTES_DE_TROCAR = 470
+LIMITE_ANTES_DE_TROCAR = 470  # mantido só como referência histórica/testes; não usado no despacho
 
 MODELO_PADRAO = "gemini-3.5-flash-lite"
 MODELO_FALLBACK = "gemini-3.1-flash-lite"
@@ -69,20 +75,21 @@ def _conectar() -> psycopg.Connection:
     return psycopg.connect(database_url)
 
 
-def _ler_contagem_hoje() -> int:
+def _ler_contagem_hoje(modelo: str) -> int:
     with _conectar() as conn, conn.cursor() as cur:
         cur.execute(
-            "select contagem from public.gemini_quota_diaria where data = %(hoje)s",
-            {"hoje": _hoje()},
+            "select contagem from public.gemini_quota_diaria where data = %(hoje)s and modelo = %(modelo)s",
+            {"hoje": _hoje(), "modelo": modelo},
         )
         linha = cur.fetchone()
         return linha[0] if linha else 0
 
 
 def proximo_modelo() -> str:
-    """Modelo a usar na PRÓXIMA chamada, considerando quantas já foram
-    feitas hoje (somando todos os processos/módulos que usam este
-    rastreador, via a tabela compartilhada).
+    """Modelo a usar na PRÓXIMA chamada: o que tiver MENOR contagem hoje
+    entre `MODELO_PADRAO`/`MODELO_FALLBACK` (empate -> padrão) — ver
+    docstring do módulo. Considera todos os processos/módulos que usam
+    este rastreador, via a tabela compartilhada.
 
     `GEMINI_MODELO_FORCADO` (env var) continua disponível como saída
     manual — útil quando se sabe, por um sinal fora deste contador (ex:
@@ -91,23 +98,25 @@ def proximo_modelo() -> str:
     forcado = os.environ.get("GEMINI_MODELO_FORCADO")
     if forcado:
         return forcado
-    return MODELO_FALLBACK if _ler_contagem_hoje() >= LIMITE_ANTES_DE_TROCAR else MODELO_PADRAO
+    contagem_padrao = _ler_contagem_hoje(MODELO_PADRAO)
+    contagem_fallback = _ler_contagem_hoje(MODELO_FALLBACK)
+    return MODELO_FALLBACK if contagem_fallback < contagem_padrao else MODELO_PADRAO
 
 
-def registrar_chamada() -> None:
-    """Chamar depois de CADA request de verdade feito à API do modelo
-    padrão (sucesso ou erro — a cota é consumida pela tentativa, não só
-    por resposta boa). Não conta chamadas ao modelo fallback: cada modelo
-    tem cota própria, só rastreamos o consumo do padrão pra saber quando
-    trocar."""
+def registrar_chamada(modelo: str) -> None:
+    """Chamar depois de CADA request de verdade feito à API de um
+    modelo (sucesso ou erro — a cota é consumida pela tentativa, não só
+    por resposta boa). Cada modelo tem sua própria linha
+    `(data, modelo)` — os dois são rastreados agora, não só o padrão
+    (migration 042), porque `proximo_modelo()` intercala entre os dois."""
     with _conectar() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            insert into public.gemini_quota_diaria (data, contagem)
-            values (%(hoje)s, 1)
-            on conflict (data) do update
+            insert into public.gemini_quota_diaria (data, modelo, contagem)
+            values (%(hoje)s, %(modelo)s, 1)
+            on conflict (data, modelo) do update
               set contagem = gemini_quota_diaria.contagem + 1
             """,
-            {"hoje": _hoje()},
+            {"hoje": _hoje(), "modelo": modelo},
         )
         conn.commit()
