@@ -73,6 +73,13 @@ def _checar_codex_disponivel() -> None:
         sys.exit(1)
 
 
+def _dormir_interrompivel(segundos: int) -> None:
+    for _ in range(segundos):
+        if _PARAR:
+            return
+        time.sleep(1)
+
+
 def main() -> None:
     signal.signal(signal.SIGINT, _pedir_parada)
     signal.signal(signal.SIGTERM, _pedir_parada)
@@ -85,14 +92,33 @@ def main() -> None:
 
     try:
         while not _PARAR:
-            candidatas = db.listar_vagas_medicas_incompletas(conn, minimo_campos_faltando=1, limite=TAMANHO_LOTE)
+            # Achado real (2026-09-16, 1ª rodada contínua): queda de rede/DNS
+            # derruba a conexão psycopg (`OperationalError`/`InterfaceError`)
+            # em QUALQUER ponto que fale com o banco — antes só o erro do
+            # Codex era tolerado, uma queda de conexão matava o processo
+            # inteiro sem ninguém reiniciar (rodando sem launchd/KeepAlive
+            # naquele momento). Todo acesso ao banco dentro do loop agora
+            # está coberto por este bloco: reconecta e tenta de novo, nunca
+            # deixa a exceção subir e derrubar o loop.
+            try:
+                candidatas = db.listar_vagas_medicas_incompletas(
+                    conn, minimo_campos_faltando=1, limite=TAMANHO_LOTE
+                )
+            except Exception as exc:
+                print(f"Erro consultando o banco ({exc}). Reconectando em {SLEEP_ERRO_PONTUAL_S}s.")
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+                _dormir_interrompivel(SLEEP_ERRO_PONTUAL_S)
+                if _PARAR:
+                    break
+                conn = db.conectar()
+                continue
 
             if not candidatas:
                 print(f"Nenhuma vaga incompleta agora. Dormindo {SLEEP_OCIOSO_S}s antes de reconferir.")
-                for _ in range(SLEEP_OCIOSO_S):
-                    if _PARAR:
-                        break
-                    time.sleep(1)
+                _dormir_interrompivel(SLEEP_OCIOSO_S)
                 continue
 
             print(f"Lote de {len(candidatas)} vaga(s) médica(s) aprovada(s) com dado incompleto.")
@@ -111,14 +137,28 @@ def main() -> None:
                     conn.rollback()
                     if completude_codex.eh_erro_de_cota(str(exc)):
                         print(f"  -> parece cota/limite de uso esgotado ({exc}). Pausando {SLEEP_COTA_ESGOTADA_S}s.")
-                        for _ in range(SLEEP_COTA_ESGOTADA_S):
-                            if _PARAR:
-                                break
-                            time.sleep(1)
+                        _dormir_interrompivel(SLEEP_COTA_ESGOTADA_S)
                     else:
                         print(f"  -> erro pontual, pulando (fica candidata na próxima passada): {exc}")
                         erro += 1
-                        time.sleep(SLEEP_ERRO_PONTUAL_S)
+                        _dormir_interrompivel(SLEEP_ERRO_PONTUAL_S)
+                    continue
+                except Exception as exc:
+                    # qualquer outra falha (conexão com o banco caiu no meio
+                    # do commit/registro, por ex.) -- reconecta e segue pra
+                    # próxima vaga, essa continua candidata na passada
+                    # seguinte (campo continua null). Nunca deixa o loop
+                    # inteiro morrer por causa de 1 vaga.
+                    print(f"  -> erro inesperado ({exc!r}), reconectando e pulando.")
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+                    _dormir_interrompivel(SLEEP_ERRO_PONTUAL_S)
+                    if _PARAR:
+                        break
+                    conn = db.conectar()
+                    erro += 1
                     continue
 
                 if resultado == "campo_preenchido":
@@ -132,7 +172,10 @@ def main() -> None:
                     print("  -> sem alteração (confiança baixa ou nada confirmado)")
 
     finally:
-        conn.close()
+        try:
+            conn.close()
+        except Exception:
+            pass
 
     print(
         f"\nEncerrado. Total desta sessão: {campo_preenchido} vaga(s) com campo preenchido, "
