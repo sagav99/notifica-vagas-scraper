@@ -44,7 +44,13 @@ export PATH="$HOME/.nvm/versions/node/v24.18.0/bin:/usr/local/bin:/usr/bin:/bin:
   # arquivo só troca de fato quando o launchd reinicia o wrapper (queda
   # de rede, kill, reboot). Isso é aceitável: `tail -f` no arquivo do
   # dia do último start sempre mostra o log corrente.
-  python scripts/completude_codex.py
+  # -u (unbuffered): sem isso, print() vai pra um buffer de bloco quando
+  # a saída é redirecionada pra arquivo (não é TTY) -- o log só grava de
+  # verdade quando o buffer enche ou o processo termina, então um
+  # `tail -f` fica "parado" mesmo com o processo trabalhando normal
+  # (achado real, 2026-09-17, conferindo progresso com `tail` vs. o
+  # dado real já gravado no banco).
+  python -u scripts/completude_codex.py
 
   echo "===== $(date -u +%Y-%m-%dT%H:%M:%SZ) — processo terminou (launchd deve reiniciar se KeepAlive=true) ====="
 } >> "$LOG_FILE" 2>&1
