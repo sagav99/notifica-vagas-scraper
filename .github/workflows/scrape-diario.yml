@@ -214,6 +214,14 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_guiricema.py
 
+      - name: Rodar coleta (Prefeitura de Sorocaba/SP)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        # sem GEMINI_API_KEY: extração de cargo/salário 100% determinística
+        # (pdfplumber.extract_tables()), ver fontes/sorocaba_sp.py.
+        run: python scripts/rodar_sorocaba.py
+
       - name: Rodar coleta (Instituto Consulplan)
         if: always()
         env:
