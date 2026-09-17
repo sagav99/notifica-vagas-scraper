@@ -262,6 +262,16 @@ def processar_vaga(conn, vaga: dict[str, Any]) -> str:
     try:
         resultado_bruto = rodar_codex(prompt, schema)
     except ErroCompletudeCodex as exc:
+        # achado real (2026-09-16): cota/limite de uso esgotado ("You've
+        # hit your usage limit") vinha do Codex como um ErroCompletudeCodex
+        # normal, era engolido AQUI (virava "erro_codex" no log e seguia
+        # pra próxima vaga) antes de `scripts/completude_codex.py` (o
+        # loop principal) conseguir detectar e pausar — resultado: 80
+        # tentativas seguidas todas falhando pela mesma cota esgotada, sem
+        # nunca pausar. Cota esgotada tem que propagar pro chamador, não
+        # ser tratada como falha isolada desta vaga.
+        if eh_erro_de_cota(str(exc)):
+            raise
         db.registrar_conferencia(
             conn, vaga_id=vaga["id"], conferido_por="completude_codex",
             resultado="erro_codex", detalhe=str(exc)[:1000],

@@ -240,3 +240,32 @@ def test_processar_vaga_erro_codex_registra_e_nao_quebra(monkeypatch):
 
     assert resultado == "erro_codex"
     assert conferencias[0]["resultado"] == "erro_codex"
+
+
+def test_processar_vaga_propaga_erro_de_cota_em_vez_de_engolir(monkeypatch):
+    """Regressão do achado real 2026-09-16: cota esgotada ("usage limit")
+    virava só mais 1 'erro_codex' no log, sem o loop principal
+    (scripts/completude_codex.py) nunca conseguir detectar e pausar --
+    80 tentativas seguidas martelaram a mesma cota esgotada. Erro de
+    cota tem que subir pro chamador, não ser tratado como falha isolada
+    de 1 vaga."""
+    conferencias = []
+    _instalar_db_falso(monkeypatch, registrar=lambda conn, **k: conferencias.append(k))
+
+    def _rodar_codex_cota_esgotada(prompt, schema, **k):
+        raise completude_codex.ErroCompletudeCodex(
+            "codex exec saiu com código 1: ...ERROR: You've hit your usage limit..."
+        )
+
+    monkeypatch.setattr(completude_codex, "rodar_codex", _rodar_codex_cota_esgotada)
+    vaga = {c: "algo" for c in completude_codex.CAMPOS_PEDIVEIS}
+    vaga["salario"] = None
+    vaga["id"] = "v1"
+    vaga["cargo"] = "Médico"
+    vaga["nome"] = "X"
+    vaga["uf"] = "MG"
+
+    with pytest.raises(completude_codex.ErroCompletudeCodex, match="usage limit"):
+        completude_codex.processar_vaga(conn=None, vaga=vaga)
+
+    assert conferencias == []  # não registra "erro_codex" -- quem chama decide o que fazer
