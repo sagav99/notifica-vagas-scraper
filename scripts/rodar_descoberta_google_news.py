@@ -219,7 +219,7 @@ def main() -> None:
         total_geral = 0
         casados = 0
         for item in itens:
-            match = fgv.casar_municipio_com_guarda_de_uf(item.titulo, "", municipios)
+            match = fgv.casar_municipio_com_guarda_de_uf(item.titulo, "", municipios, link=item.link)
             if match is None:
                 continue
             municipio, uf = match

@@ -91,3 +91,40 @@ def test_encontrar_municipio_ainda_casa_titulo_legitimo_com_banca_no_meio():
     municipios = [("Governador Valadares", "MG")]
     titulo = "Instituto AOCP organiza concurso da Prefeitura de Governador Valadares"
     assert fgv.encontrar_municipio(titulo, municipios) == ("Governador Valadares", "MG")
+
+
+def test_encontrar_municipio_rejeita_match_no_meio_de_palavra_sem_borda():
+    # achado real 2026-09-18 (auditoria de revisão Gemini): "Arandu" (SP)
+    # batia dentro de "Massaranduba" (SC) sem espaço nem qualquer borda de
+    # palavra entre os dois — 4 vagas médicas reais de Massaranduba/SC
+    # gravadas com município errado (Arandu/SP).
+    municipios = [("Arandu", "SP")]
+    titulo = "Prefeitura de Massaranduba abre concurso para médicos"
+    assert fgv.encontrar_municipio(titulo, municipios) is None
+
+
+def test_extrair_uf_do_link_site_oficial_prefeitura():
+    assert fgv.extrair_uf_do_link("https://www.cruzmachado.pr.gov.br/editais") == "PR"
+    assert fgv.extrair_uf_do_link("https://qconcursos.com/algum/pdf") is None
+
+
+def test_casar_municipio_com_guarda_de_uf_rejeita_quando_link_diverge():
+    # achado real 2026-09-18: título sem marcador "- UF" casava "Machado"
+    # (MG) num edital de Cruz Machado/PR de verdade — o link oficial já
+    # denunciava o UF certo. 5 vagas médicas reais gravadas com município
+    # errado antes desta guarda existir.
+    municipios = [("Machado", "MG")]
+    titulo = "Prefeitura Municipal de Cruz Machado abre concurso para médicos"
+    match = fgv.casar_municipio_com_guarda_de_uf(
+        titulo, "", municipios, link="https://www.cruzmachado.pr.gov.br/editais"
+    )
+    assert match is None
+
+
+def test_casar_municipio_com_guarda_de_uf_aceita_quando_link_confirma_uf():
+    municipios = [("Governador Valadares", "MG")]
+    titulo = "Prefeitura de Governador Valadares abre concurso para médicos"
+    match = fgv.casar_municipio_com_guarda_de_uf(
+        titulo, "", municipios, link="https://www.valadares.mg.gov.br/editais"
+    )
+    assert match == ("Governador Valadares", "MG")

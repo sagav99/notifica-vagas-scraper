@@ -481,7 +481,7 @@ def main(argv: list[str] | None = None) -> None:
         dominios_conhecidos = db.listar_dominios_fontes_conhecidas(conn)
         casados = sinais_novos = vagas = 0
         for item in itens:
-            match = fgv.casar_municipio_com_guarda_de_uf(item.titulo, "", municipios)
+            match = fgv.casar_municipio_com_guarda_de_uf(item.titulo, "", municipios, link=item.link)
             if match is None or (codigo_ibge := codigos.get(match)) is None:
                 continue
             casados += 1

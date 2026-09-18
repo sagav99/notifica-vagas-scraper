@@ -130,6 +130,14 @@ def encontrar_municipio(titulo: str, municipios: list[tuple[str, str]]) -> tuple
         posicao = texto.find(nome_norm)
         if posicao == -1:
             continue
+        # Achado real 2026-09-18 (auditoria de revisão Gemini): "Arandu"
+        # (SP) batia dentro de "Massaranduba" (SC) sem borda de palavra
+        # nenhuma (nem espaço, nem início de string) — 4 vagas médicas
+        # reais de Massaranduba/SC gravadas com município errado. Exige
+        # que o match comece em início de string ou logo após caractere
+        # não-alfabético.
+        if posicao > 0 and texto[posicao - 1].isalpha():
+            continue
         prefixo = texto[:posicao]
         ultima_palavra = prefixo.split()[-1] if prefixo.split() else ""
         if "estado" in prefixo and ultima_palavra in {"do", "da", "dos", "das", "de"}:
@@ -144,8 +152,25 @@ def encontrar_municipio(titulo: str, municipios: list[tuple[str, str]]) -> tuple
     return melhor
 
 
+_REGEX_UF_DOMINIO_GOV_BR = re.compile(r"\.([a-z]{2})\.gov\.br$")
+
+
+def extrair_uf_do_link(link: str) -> str | None:
+    """UF a partir do domínio de site oficial de prefeitura, padrão
+    `<slug>.<uf>.gov.br` (ex.: `cruzmachado.pr.gov.br` -> "PR"). Achado
+    real 2026-09-18 (auditoria de revisão Gemini): 5 vagas médicas reais
+    de Cruz Machado/PR gravadas com município "Machado/MG" — o link de
+    evidência já denunciava o estado certo, mas nada conferia isso contra
+    o UF casado por texto do título."""
+    from urllib.parse import urlparse
+
+    netloc = urlparse(link).netloc.lower()
+    match = _REGEX_UF_DOMINIO_GOV_BR.search(netloc)
+    return match.group(1).upper() if match else None
+
+
 def casar_municipio_com_guarda_de_uf(
-    titulo: str, uf_alvo: str, municipios: list[tuple[str, str]]
+    titulo: str, uf_alvo: str, municipios: list[tuple[str, str]], link: str | None = None
 ) -> tuple[str, str] | None:
     """`encontrar_municipio` sozinho ainda deixa passar falso positivo em
     fonte de descoberta ampla (título com marcador de UF explícito tipo
@@ -157,6 +182,10 @@ def casar_municipio_com_guarda_de_uf(
     dois nomes, caso que a guarda de prefixo do `encontrar_municipio` não
     cobre). Compartilhada entre toda fonte de descoberta ampla por índice
     externo (PCI Concursos, Google News RSS) — não é específica de uma só.
+
+    `link`, quando informado, dá uma 2ª guarda independente do título: se o
+    domínio for de site oficial `<slug>.<uf>.gov.br` com UF diferente do
+    município casado, rejeita (achado 2026-09-18, ver `extrair_uf_do_link`).
     """
     match = encontrar_municipio(titulo, municipios)
     if not match:
@@ -164,6 +193,10 @@ def casar_municipio_com_guarda_de_uf(
     marcadores_uf = re.findall(r"-\s*([A-Z]{2})\b", titulo)
     if marcadores_uf and match[1] not in marcadores_uf:
         return None
+    if link:
+        uf_link = extrair_uf_do_link(link)
+        if uf_link and uf_link != match[1]:
+            return None
     return match
 
 
