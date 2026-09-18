@@ -645,7 +645,16 @@ def listar_evidencias_pdf_sem_print(conn: psycopg.Connection, *, limite: int) ->
     prompt do Gemini nessa data, ver `evidencia_imagem.py`). Ordenado pela
     vaga mais recente primeiro (`vagas.detectada_em desc`), decisão do
     usuário 2026-09-10: priorizar vaga atual sobre backlog antigo.
-    Usado por `scripts/backfill_print_evidencias.py`."""
+    Usado por `scripts/backfill_print_evidencias.py`.
+
+    Restrito a `categoria_saude = 'medico'` + `revisao_status = 'aprovada'`
+    (achado real 2026-09-18: sem esse filtro, o orçamento diário de
+    `LIMITE_TOTAL` era gasto em evidência de vaga rejeitada/outra
+    profissão — 4337 evidência pendente no total, mas só 435 eram de
+    vaga médica aprovada de verdade visível ao usuário; cobertura real
+    travada em ~23% mesmo com o cron rodando com sucesso todo dia).
+    Mesmo recorte de escopo já aplicado no resto do produto (`vagas_pagina`
+    no repo principal, `listar_vagas_medicas_incompletas` aqui)."""
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -656,6 +665,8 @@ def listar_evidencias_pdf_sem_print(conn: psycopg.Connection, *, limite: int) ->
               and ve.pagina_pdf is null
               and ve.url_print_pagina is null
               and ve.url is not null
+              and v.categoria_saude = 'medico'
+              and v.revisao_status = 'aprovada'
             order by v.detectada_em desc
             limit %(limite)s
             """,
