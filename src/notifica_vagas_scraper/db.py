@@ -739,6 +739,50 @@ def listar_vagas_medicas_incompletas(
         return [dict(zip(colunas, row)) for row in cur.fetchall()]
 
 
+def listar_vagas_medicas_para_completude_gemini(conn: psycopg.Connection, *, limite: int) -> list[dict[str, Any]]:
+    """Vaga médica já aprovada que `completude_gemini.py` ainda NUNCA
+    conferiu (`not exists` em `vagas_conferencias` com
+    `conferido_por='completude_gemini'`) — diferente de
+    `listar_vagas_medicas_incompletas`, não exige campo faltando: a
+    conferência de natureza (é concurso/PSS de emprego, ou residência
+    médica/fellowship disfarçado de vaga? — achado real 2026-09-18, Santa
+    Casa de BH) vale a pena mesmo em vaga com todo campo já preenchido.
+    Cada vaga é conferida no máximo 1x por este módulo (registra em
+    `vagas_conferencias` mesmo quando `resultado='sem_alteracao'`) —
+    nunca reprocessa a mesma vaga em execução seguinte, pra não gastar
+    cota do Gemini de novo sem necessidade."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            select v.id, v.cargo, v.orgao, v.numero_edital, v.municipio_id, m.nome, m.uf,
+                   v.numero_vagas, v.taxa_inscricao, v.carga_horaria, v.valor_hora,
+                   v.data_prova, v.requisitos, v.banca_organizadora, v.tem_prova,
+                   v.exige_curriculo, v.salario, v.salario_tipo, v.inscricoes_inicio, v.inscricoes_fim,
+                   ev.id as evidencia_id, ev.fonte_id, ev.url, ev.tipo_documento
+            from public.vagas v
+            join public.municipios m on m.codigo_ibge = v.municipio_id
+            join lateral (
+                select ve.id, ve.fonte_id, ve.url, ve.tipo_documento
+                from public.vaga_evidencias ve
+                where ve.vaga_id = v.id
+                order by ve.detectada_em asc
+                limit 1
+            ) ev on true
+            where v.revisao_status = 'aprovada'
+              and v.categoria_saude = 'medico'
+              and not exists (
+                select 1 from public.vagas_conferencias vc
+                where vc.vaga_id = v.id and vc.conferido_por = 'completude_gemini'
+              )
+            order by v.detectada_em desc
+            limit %(limite)s
+            """,
+            {"limite": limite},
+        )
+        colunas = [coluna.name for coluna in cur.description]
+        return [dict(zip(colunas, row)) for row in cur.fetchall()]
+
+
 def atualizar_campos_vaga(conn: psycopg.Connection, *, vaga_id: str, campos: dict[str, Any]) -> None:
     """Preenche só os campos passados em `campos` (subconjunto de
     `CAMPOS_COMPLETUDE`) — usado por `scripts/auditar_completude_vagas.py`
@@ -759,6 +803,35 @@ def atualizar_campos_vaga(conn: psycopg.Connection, *, vaga_id: str, campos: dic
             f"update public.vagas set {atribuicoes} where id = %(vaga_id)s",
             {**campos, "vaga_id": vaga_id},
         )
+
+
+def marcar_nao_e_vaga_de_emprego(conn: psycopg.Connection, *, vaga_id: str, motivo: str) -> None:
+    """Reverte uma vaga já `aprovada` pra `rejeitada` quando a conferência
+    de completude (`completude_gemini.py`) descobre, pesquisando o edital
+    de verdade, que não é uma vaga de emprego via concurso/PSS — é
+    residência médica, fellowship, estágio ou outro processo de formação.
+    Achado real 2026-09-18: edital "de fellowship" da Santa Casa de
+    Misericórdia de BH (16 vagas) passou pela revisão normal do Gemini
+    (que só vê campo estruturado, não lê o edital) e só foi pego na
+    conferência manual do usuário. Mesmo formato de
+    `aplicar_revisao` (revisao_status/motivo/revisado_em), mas
+    `conferido_por='completude_gemini'` no log de auditoria, não
+    `'gemini_revisao_automatica'` — decisão veio da conferência
+    posterior, não da 1ª revisão."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            update public.vagas
+            set revisao_status = 'rejeitada', revisao_motivo = %(motivo)s,
+                revisado_em = now(), revisado_por = null
+            where id = %(vaga_id)s
+            """,
+            {"motivo": motivo, "vaga_id": vaga_id},
+        )
+    registrar_conferencia(
+        conn, vaga_id=vaga_id, conferido_por="completude_gemini",
+        resultado="rejeitada_nao_e_concurso", detalhe=motivo,
+    )
 
 
 def registrar_evidencia_adicional(
