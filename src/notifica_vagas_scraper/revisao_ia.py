@@ -76,6 +76,17 @@ mesmo sendo dado real e fácil de conferir no PDF. Corrigido: `salario_tipo`
 agora vai pro payload e o prompt explica que "plantao" é valor por
 hora/plantão, não mensal.
 
+Sétimo achado (2026-09-18, achado pelo usuário conferindo manualmente o
+edital da Santa Casa de BH, 16 vagas): título/cargo com "fellowship" foi
+aprovado pelo Gemini como concurso médico normal — mas é processo
+seletivo de FORMAÇÃO (residência médica/fellowship/especialização), não
+vaga de emprego, fora do objetivo do produto mesmo sendo cargo "médico"
+de verdade e mesmo com dado bem extraído. PROMPT_TEMPLATE agora instrui
+rejeição explícita quando o título/cargo/resumo indica residência
+médica, fellowship ou programa de especialização/aperfeiçoamento restrito
+a médico já formado que busca treinamento (não emprego efetivo) — distinto
+de pós-graduação genérica de outra área, que não é o padrão em questão.
+
 Terceira decisão possível, "incompleta" (decisão do usuário, 2026-09-01,
 migration 012 do repo principal): vaga real (cargo/orgao identificam a
 oportunidade) mas com incerteza genuína que merece revisão humana antes
@@ -194,11 +205,23 @@ vaga inexistente nem de baixa qualidade de dado.
 Rejeite de verdade quando: `cargo` E `orgao` ausentes ou genéricos demais \
 pra identificar a vaga (ex: cargo "vaga"/"diversos" sem órgão nenhum), \
 valor implausível pro contexto (salário público absurdamente alto/baixo), \
-ou qualquer sinal concreto de erro de extração (cargo sem relação \
+qualquer sinal concreto de erro de extração (cargo sem relação \
 nenhuma com concurso público, texto claramente cortado no meio de uma \
-frase relevante). Ausência isolada de campo opcional (datas de \
-inscrição, número de edital, texto_extraido) enquanto `cargo` e `orgao` \
-identificam a vaga não é, sozinha, motivo de rejeição.
+frase relevante), OU o processo é de RESIDÊNCIA MÉDICA/FELLOWSHIP/programa \
+de especialização — título, cargo ou resumo mencionando "residência \
+médica", "fellowship", "programa de residência", "R1"/"R2"/"R3" \
+(nomenclatura de ano de residência) ou "especialização"/"aperfeiçoamento" \
+voltado a médico já formado que busca TREINAMENTO, não uma vaga de \
+emprego efetivo (achado real: edital da Santa Casa de BH aprovado por \
+engano como concurso médico normal, era "fellowship" — 2026-09-18); é \
+fora do objetivo do produto mesmo sendo cargo "médico" de verdade e \
+mesmo com o resto do dado bem extraído. Não confunda com pós-graduação \
+genérica de outra área nem com cargo efetivo que simplesmente exige \
+alguma especialização como pré-requisito (isso continua vaga de emprego \
+normal, não rejeite só por a palavra "especialização" aparecer). Ausência \
+isolada de campo opcional (datas de inscrição, número de edital, \
+texto_extraido) enquanto `cargo` e `orgao` identificam a vaga não é, \
+sozinha, motivo de rejeição.
 
 Existe uma terceira decisão, "incompleta", pra quando `cargo` e `orgao` \
 identificam a vaga (não é um erro de extração, não é pra rejeitar) mas \

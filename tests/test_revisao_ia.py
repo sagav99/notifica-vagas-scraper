@@ -174,6 +174,25 @@ def test_prompt_inclui_data_de_hoje_como_referencia(monkeypatch):
     assert str(hoje.year) in capturado["prompt"]
 
 
+def test_prompt_instrui_rejeitar_residencia_medica_fellowship(monkeypatch):
+    # Achado real (2026-09-18): edital da Santa Casa de BH (fellowship) foi
+    # aprovado como concurso médico normal — o prompt agora instrui
+    # rejeição explícita pra residência médica/fellowship/especialização
+    # de treinamento, distinto de vaga de emprego efetivo.
+    texto = '{"decisao": "aprovada", "motivo": "ok"}'
+    capturado = {}
+
+    def _post(url, params, json, timeout):
+        capturado["prompt"] = json["contents"][0]["parts"][0]["text"]
+        return _RespostaFalsa(_payload_com_texto(texto))
+
+    monkeypatch.setattr(revisao_ia.requests, "post", _post)
+    revisao_ia.decidir_revisao({"cargo": "Médico Fellowship"}, api_key="chave-teste")
+
+    assert "fellowship" in capturado["prompt"].lower()
+    assert "residência médica" in capturado["prompt"].lower()
+
+
 def test_contexto_irmas_none_nao_aparece_no_prompt(monkeypatch):
     texto = '{"decisao": "aprovada", "motivo": "ok"}'
     capturado = {}
