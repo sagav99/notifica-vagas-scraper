@@ -31,10 +31,32 @@ não conta, não dá pra saber qual lado está certo).
 
 from __future__ import annotations
 
+import re
 from collections import Counter, defaultdict
 from typing import Any
 
 TAMANHO_MINIMO_GRUPO = 3
+
+#: casa sufixo de carga horária em nome de cargo, ex: "(12 Horas)",
+#: "- 20h", "24 horas semanais" — usado por `normalizar_cargo_base` pra
+#: agrupar cargas horárias diferentes do MESMO cargo (achado da auditoria
+#: de 2026-09-19, edital PBH 01/2025: "Médico - Clínico Geral" 12h/20h
+#: aprovadas, 24h rejeitada com motivo de data que deveria valer igual
+#: pras 3, porque cada carga horária era decidida quase independente).
+_PADRAO_CARGA_HORARIA = re.compile(
+    r"[\(\-–,]?\s*\d{1,3}\s*h(?:oras?)?\.?(?:\s*(?:semanais|por\s+semana))?\s*\)?",
+    re.IGNORECASE,
+)
+
+
+def normalizar_cargo_base(cargo: str) -> str:
+    """Remove o sufixo de carga horária de um nome de cargo, pra achar o
+    "cargo-base" comum entre linhas que só variam a carga horária (ex:
+    "Médico - Clínico Geral (12 Horas)" e "Médico - Clínico Geral (24
+    Horas)" viram o mesmo "médico - clínico geral"). Casefold + espaços
+    colapsados pra comparação estável."""
+    sem_carga_horaria = _PADRAO_CARGA_HORARIA.sub("", cargo or "")
+    return " ".join(sem_carga_horaria.split()).strip(" -–,").casefold()
 
 
 def _chave_grupo(vaga: dict[str, Any]) -> tuple[Any, ...]:
@@ -80,6 +102,26 @@ def achar_decisoes_divergentes(vagas: list[dict[str, Any]]) -> list[dict[str, An
                     "contagem_grupo": dict(contagem),
                 })
     return divergentes
+
+
+def agrupar_divergentes_por_cargo_base(
+    divergentes: list[dict[str, Any]],
+) -> dict[tuple[Any, ...], list[dict[str, Any]]]:
+    """Agrupa vagas divergentes (saída de `achar_decisoes_divergentes`) por
+    cargo-base dentro do mesmo edital/órgão — mesmo cargo, só a carga
+    horária muda. Fatos que são estruturalmente idênticos entre cargas
+    horárias do mesmo cargo (ex: se o edital encerrou o cronograma, se é
+    processo de residência médica) NÃO variam por carga horária, então a
+    2ª passada de revisão deve decidir UMA VEZ por grupo e aplicar o
+    mesmo veredito a toda carga horária dele, em vez de reavaliar cada
+    linha quase independente (achado da auditoria de 2026-09-19: mesmo
+    cargo/edital/motivo de data, decisão diferente só pela carga
+    horária — não-determinismo, não diferença real de dado)."""
+    grupos: dict[tuple[Any, ...], list[dict[str, Any]]] = defaultdict(list)
+    for vaga in divergentes:
+        chave = _chave_grupo(vaga) + (normalizar_cargo_base(vaga["cargo"]),)
+        grupos[chave].append(vaga)
+    return grupos
 
 
 def montar_contexto_irmas(vaga: dict[str, Any]) -> str:

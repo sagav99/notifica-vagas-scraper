@@ -109,6 +109,73 @@ def test_achar_decisoes_divergentes_nao_mistura_orgaos_diferentes_sem_edital():
     assert consistencia_revisao.achar_decisoes_divergentes(vagas) == []
 
 
+def test_normalizar_cargo_base_remove_sufixo_de_carga_horaria():
+    assert consistencia_revisao.normalizar_cargo_base("Médico - Clínico Geral (12 Horas)") == "médico - clínico geral"
+    assert consistencia_revisao.normalizar_cargo_base("Médico - Clínico Geral (20h)") == "médico - clínico geral"
+    assert consistencia_revisao.normalizar_cargo_base("Médico - Clínico Geral - 24 horas semanais") == "médico - clínico geral"
+    assert consistencia_revisao.normalizar_cargo_base("Médico - Clínico Geral (40 Horas)") == "médico - clínico geral"
+
+
+def test_agrupar_divergentes_por_cargo_base_aplica_mesmo_veredito_as_4_cargas_horarias():
+    # achado real da auditoria de 2026-09-19 (edital PBH 01/2025): mesmo
+    # cargo-base, mesma data de encerramento, decisão diferente só pela
+    # carga horária (maioria aprovada, uma carga horária isolada
+    # rejeitada) — todas as cargas horárias do cargo devem cair no MESMO
+    # grupo pra reavaliação em lote receber o mesmo veredito.
+    vagas = [
+        _vaga("v-12h", "aprovada", cargo="Médico - Clínico Geral (12 Horas)"),
+        _vaga("v-20h", "aprovada", cargo="Médico - Clínico Geral (20 Horas)"),
+        _vaga("v-24h", "aprovada", cargo="Médico - Clínico Geral (24 Horas)"),
+        _vaga("v-40h", "rejeitada", cargo="Médico - Clínico Geral (40 Horas)"),
+    ]
+    divergentes = consistencia_revisao.achar_decisoes_divergentes(vagas)
+    assert {v["id"] for v in divergentes} == {"v-40h"}
+
+    grupos = consistencia_revisao.agrupar_divergentes_por_cargo_base(divergentes)
+    assert len(grupos) == 1
+    [grupo] = grupos.values()
+    assert {v["id"] for v in grupo} == {"v-40h"}
+
+
+def test_agrupar_divergentes_por_cargo_base_junta_as_4_cargas_horarias_pra_receber_mesmo_veredito():
+    # mesmo se as 4 cargas horárias vierem marcadas como "divergentes"
+    # (ex: cada uma comparada contra uma maioria diferente em execuções
+    # passadas), elas têm que cair no MESMO grupo de cargo-base — o
+    # script aplica 1 resultado de Gemini a todo o grupo, garantindo que
+    # as 4 recebam o MESMO veredito final (nunca reavaliadas isoladas).
+    divergentes = [
+        {**_vaga("v-12h", "rejeitada", cargo="Médico - Clínico Geral (12 Horas)"), "decisao_majoritaria": "aprovada", "contagem_grupo": {}},
+        {**_vaga("v-20h", "rejeitada", cargo="Médico - Clínico Geral (20 Horas)"), "decisao_majoritaria": "aprovada", "contagem_grupo": {}},
+        {**_vaga("v-24h", "rejeitada", cargo="Médico - Clínico Geral (24 Horas)"), "decisao_majoritaria": "aprovada", "contagem_grupo": {}},
+        {**_vaga("v-40h", "rejeitada", cargo="Médico - Clínico Geral (40 Horas)"), "decisao_majoritaria": "aprovada", "contagem_grupo": {}},
+    ]
+
+    grupos = consistencia_revisao.agrupar_divergentes_por_cargo_base(divergentes)
+
+    assert len(grupos) == 1
+    [grupo] = grupos.values()
+    assert {v["id"] for v in grupo} == {"v-12h", "v-20h", "v-24h", "v-40h"}
+    # simula o script: 1 resultado de Gemini aplicado a todo o grupo —
+    # todas as 4 cargas horárias recebem o MESMO veredito.
+    resultado_unico = {"decisao": "aprovada", "motivo": "edital dentro do prazo, dado consistente"}
+    veredito_por_vaga = {v["id"]: resultado_unico["decisao"] for v in grupo}
+    assert len(set(veredito_por_vaga.values())) == 1
+
+
+def test_agrupar_divergentes_por_cargo_base_nao_mistura_cargos_diferentes():
+    vagas = [
+        _vaga("v1", "aprovada", cargo="Médico - Clínico Geral (12 Horas)"),
+        _vaga("v2", "aprovada", cargo="Médico - Clínico Geral (20 Horas)"),
+        _vaga("v3", "aprovada", cargo="Médico - Pediatra (12 Horas)"),
+        _vaga("v4", "rejeitada", cargo="Médico - Clínico Geral (24 Horas)"),
+        _vaga("v5", "rejeitada", cargo="Médico - Pediatra (24 Horas)"),
+    ]
+    divergentes = consistencia_revisao.achar_decisoes_divergentes(vagas)
+    grupos = consistencia_revisao.agrupar_divergentes_por_cargo_base(divergentes)
+    ids_por_grupo = {frozenset(v["id"] for v in g) for g in grupos.values()}
+    assert ids_por_grupo == {frozenset({"v4"}), frozenset({"v5"})}
+
+
 def test_montar_contexto_irmas_usa_orgao_quando_sem_numero_edital():
     vaga = {
         **_vaga("v-pediatra", "rejeitada", numero_edital=None, orgao="Prefeitura de Vargem Grande Paulista - SP"),

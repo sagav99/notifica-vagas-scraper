@@ -106,6 +106,39 @@ def test_main_nao_aplica_rejeicao_por_falha_tecnica_da_2a_chamada(monkeypatch):
     assert aplicadas == []
 
 
+def test_main_reavalia_uma_vez_por_cargo_base_aplicando_mesmo_veredito(monkeypatch):
+    # achado real da auditoria de 2026-09-19 (edital PBH 01/2025): mesmo
+    # cargo-base, mesma data de encerramento, decisão diferente só pela
+    # carga horária — a 2ª passada deve chamar o Gemini 1 vez por
+    # cargo-base (não 1 vez por carga horária) e aplicar o MESMO veredito
+    # a todas as cargas horárias divergentes daquele cargo.
+    vagas = (
+        [_vaga(f"v{i}", "aprovada", cargo="Médico - Clínico Geral (12 Horas)") for i in range(14)]
+        + [
+            _vaga("v-24h", "rejeitada", cargo="Médico - Clínico Geral (24 Horas)"),
+            _vaga("v-40h", "rejeitada", cargo="Médico - Clínico Geral (40 Horas)"),
+        ]
+    )
+    monkeypatch.setattr(script.db, "conectar", lambda: Mock())
+    monkeypatch.setattr(script.db, "listar_vagas_revisadas_para_consistencia", lambda conn: vagas)
+
+    chamadas = {"n": 0}
+
+    def _decidir(dados, **kw):
+        chamadas["n"] += 1
+        return {"decisao": "aprovada", "motivo": "edital dentro do prazo, mesmo cargo-base das outras cargas horárias"}
+
+    monkeypatch.setattr(script.revisao_ia, "decidir_revisao", _decidir)
+    aplicadas = []
+    monkeypatch.setattr(script.db, "aplicar_revisao", lambda conn, **kw: aplicadas.append(kw))
+
+    script.main()
+
+    assert chamadas["n"] == 1
+    assert {a["vaga_id"] for a in aplicadas} == {"v-24h", "v-40h"}
+    assert all(a["decisao"] == "aprovada" for a in aplicadas)
+
+
 def test_main_sem_divergencia_nao_chama_gemini(monkeypatch):
     vagas = [_vaga(f"v{i}", "aprovada") for i in range(15)]
     monkeypatch.setattr(script.db, "conectar", lambda: Mock())

@@ -28,20 +28,27 @@ def main() -> None:
         divergentes = consistencia_revisao.achar_decisoes_divergentes(vagas)
         print(f"{len(divergentes)} vaga(s) com decisão divergente da maioria de irmãs do mesmo edital.")
 
+        # Agrupa por cargo-base (mesmo cargo, só a carga horária muda) —
+        # 1 chamada de Gemini por GRUPO, aplicando o mesmo veredito a
+        # todas as cargas horárias dele, em vez de 1 chamada por vaga.
+        # Corrige o não-determinismo achado na auditoria de 2026-09-19:
+        # mesmo cargo/edital/motivo de data recebendo decisão diferente
+        # só porque cada carga horária era avaliada quase independente.
+        grupos = consistencia_revisao.agrupar_divergentes_por_cargo_base(divergentes)
+        print(f"{len(grupos)} grupo(s) de cargo-base a reavaliar.")
+
+        lista_grupos = list(grupos.values())
         corrigidas = 0
-        for indice, vaga in enumerate(divergentes):
-            dados = montar_dados_para_revisao(vaga)
-            contexto = consistencia_revisao.montar_contexto_irmas(vaga)
+        for indice_grupo, grupo in enumerate(lista_grupos):
+            vaga_representante = grupo[0]
+            dados = montar_dados_para_revisao(vaga_representante)
+            contexto = consistencia_revisao.montar_contexto_irmas(vaga_representante)
             try:
                 resultado = revisao_ia.decidir_revisao(dados, contexto_irmas=contexto)
             except revisao_ia.CotaGeminiEsgotadaError:
-                print(
-                    f"  Cota do Gemini esgotada — parando aqui. "
-                    f"{len(divergentes) - indice} vaga(s) seguem pra próxima execução."
-                )
+                vagas_restantes = sum(len(g) for g in lista_grupos[indice_grupo:])
+                print(f"  Cota do Gemini esgotada — parando aqui. {vagas_restantes} vaga(s) seguem pra próxima execução.")
                 break
-
-            local = f"{vaga['municipio_nome']}/{vaga['municipio_uf']}"
 
             # `decidir_revisao` devolve "rejeitada" tanto quando o Gemini
             # decide isso de verdade quanto quando a própria chamada falha
@@ -52,27 +59,32 @@ def main() -> None:
             # já estava "aprovada" — aqui é uma FALHA TÉCNICA, não uma
             # reavaliação real, então pula sem aplicar, igual ao 429.
             if resultado["motivo"].startswith("[revisão automática]"):
-                print(f"  Pulada (falha técnica na 2ª chamada, não reavaliação real) — {vaga['cargo']} ({local}): {resultado['motivo']}")
+                print(
+                    f"  Grupo pulado (falha técnica na 2ª chamada, não reavaliação real) — "
+                    f"{vaga_representante['cargo']!r} ({len(grupo)} carga(s) horária(s)): {resultado['motivo']}"
+                )
                 continue
 
-            if resultado["decisao"] != vaga["revisao_status"]:
-                db.aplicar_revisao(
-                    conn,
-                    vaga_id=vaga["id"],
-                    decisao=resultado["decisao"],
-                    motivo=f"[2ª passada, consenso de irmãs do edital] {resultado['motivo']}",
-                )
-                conn.commit()
-                corrigidas += 1
-                print(
-                    f"  CORRIGIDA — {vaga['cargo']} ({local}): "
-                    f"{vaga['revisao_status']} -> {resultado['decisao']}"
-                )
-            else:
-                print(
-                    f"  Mantida — {vaga['cargo']} ({local}): confirmado "
-                    f"'{resultado['decisao']}' mesmo com o contexto das irmãs."
-                )
+            for vaga in grupo:
+                local = f"{vaga['municipio_nome']}/{vaga['municipio_uf']}"
+                if resultado["decisao"] != vaga["revisao_status"]:
+                    db.aplicar_revisao(
+                        conn,
+                        vaga_id=vaga["id"],
+                        decisao=resultado["decisao"],
+                        motivo=f"[2ª passada, consenso de irmãs do edital] {resultado['motivo']}",
+                    )
+                    conn.commit()
+                    corrigidas += 1
+                    print(
+                        f"  CORRIGIDA — {vaga['cargo']} ({local}): "
+                        f"{vaga['revisao_status']} -> {resultado['decisao']}"
+                    )
+                else:
+                    print(
+                        f"  Mantida — {vaga['cargo']} ({local}): confirmado "
+                        f"'{resultado['decisao']}' mesmo com o contexto das irmãs."
+                    )
 
         print(f"{corrigidas} vaga(s) corrigida(s).")
     finally:
