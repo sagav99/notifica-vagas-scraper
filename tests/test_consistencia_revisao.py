@@ -120,6 +120,32 @@ def test_montar_contexto_irmas_usa_orgao_quando_sem_numero_edital():
     assert "Bariri/SP" in contexto
 
 
+def test_montar_contexto_irmas_nunca_inclui_motivo_literal_de_vaga_irma():
+    # achado real da auditoria de 2026-09-19
+    # (docs/auditoria_revisao_gemini_2026-09-19.md no repo principal):
+    # "Médico - Medicina de Emergência (24 Horas)" foi rejeitada citando
+    # "processo de seleção para Residência Médica" — motivo de uma vaga
+    # irmã COMPLETAMENTE diferente do mesmo edital PBH 01/2025
+    # ("Medicina de Emergência (12 Horas)", rejeitada por "período de
+    # inscrições expirado"). O contexto de irmãs só pode carregar a
+    # CONTAGEM estatística por decisão — nunca o texto de `revisao_motivo`
+    # de nenhuma vaga, mesmo que ele esteja presente no dict da vaga (a
+    # função tem que ignorá-lo por completo).
+    motivo_vaga_irma_nao_relacionada = "processo de seleção para Residência Médica"
+    vaga = {
+        **_vaga("v-medicina-emergencia-24h", "rejeitada", cargo="Médico - Medicina de Emergência (24 Horas)"),
+        "revisao_motivo": motivo_vaga_irma_nao_relacionada,  # motivo da PRÓPRIA vaga, não deve vazar tampouco
+        "decisao_majoritaria": "aprovada",
+        "contagem_grupo": {"aprovada": 10, "rejeitada": 1},
+    }
+
+    contexto = consistencia_revisao.montar_contexto_irmas(vaga)
+
+    assert motivo_vaga_irma_nao_relacionada not in contexto
+    assert "Residência Médica" not in contexto
+    assert "residência médica" not in contexto.lower()
+
+
 def test_montar_contexto_irmas_descreve_consenso():
     vaga = {
         **_vaga("v-incompleta-1", "incompleta"),

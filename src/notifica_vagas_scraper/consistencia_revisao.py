@@ -83,6 +83,18 @@ def achar_decisoes_divergentes(vagas: list[dict[str, Any]]) -> list[dict[str, An
 
 
 def montar_contexto_irmas(vaga: dict[str, Any]) -> str:
+    """Monta só o CONSENSO ESTATÍSTICO das vagas irmãs (quantas aprovadas/
+    rejeitadas/incompletas) — nunca o texto literal de `revisao_motivo` de
+    nenhuma irmã. Achado real da auditoria de 2026-09-19
+    (`docs/auditoria_revisao_gemini_2026-09-19.md` no repo principal): a
+    vaga "Médico - Medicina de Emergência (24 Horas)" foi rejeitada citando
+    "processo de seleção para Residência Médica" — motivo de um caso
+    completamente diferente (Santa Casa de BH, fellowship de verdade) que
+    não se aplica a essa especialidade/edital, sinal de contaminação de
+    contexto. Passar só números (nunca frase pronta) elimina o vetor óbvio
+    de cópia literal; a instrução explícita no `PROMPT_TEMPLATE`
+    (`revisao_ia.py`) reforça que o motivo desta vaga tem que ser
+    específico pra ela, nunca herdado de outra."""
     contagem: dict[str, int] = vaga["contagem_grupo"]
     total = sum(contagem.values())
     partes = ", ".join(f"{n} {d}" for d, n in contagem.items())
@@ -92,9 +104,15 @@ def montar_contexto_irmas(vaga: dict[str, Any]) -> str:
     )
     return (
         f"Este edital ({identificador}, {local}) tem {total} vagas já "
-        f"revisadas nesta mesma fonte: {partes}. A maioria foi decidida como "
-        f"'{vaga['decisao_majoritaria']}'. Esta vaga específica foi decidida como "
-        f"'{vaga['revisao_status']}' numa chamada anterior, isolada — reavalie se o "
-        f"dado dela realmente justifica uma decisão diferente das irmãs, ou se segue "
-        f"o mesmo padrão que já foi aprovado/rejeitado pra elas."
+        f"revisadas nesta mesma fonte: {partes} (só a CONTAGEM por decisão — "
+        f"nenhum motivo textual de vaga irmã está incluído aqui de propósito). "
+        f"A maioria foi decidida como '{vaga['decisao_majoritaria']}'. Esta vaga "
+        f"específica foi decidida como '{vaga['revisao_status']}' numa chamada "
+        f"anterior, isolada — reavalie se o DADO DESTA VAGA (cargo, salário, "
+        f"resumo, evidências abaixo) realmente justifica uma decisão diferente "
+        f"das irmãs, ou se segue o mesmo padrão que já foi aprovado/rejeitado "
+        f"pra elas. NUNCA reutilize um motivo específico de outra vaga (deste "
+        f"edital ou de qualquer outro caso que você lembre) — o motivo que você "
+        f"escrever tem que descrever um problema real e concreto desta vaga "
+        f"específica, nunca uma frase genérica herdada de outro cargo."
     )

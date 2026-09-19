@@ -215,7 +215,17 @@ voltado a médico já formado que busca TREINAMENTO, não uma vaga de \
 emprego efetivo (achado real: edital da Santa Casa de BH aprovado por \
 engano como concurso médico normal, era "fellowship" — 2026-09-18); é \
 fora do objetivo do produto mesmo sendo cargo "médico" de verdade e \
-mesmo com o resto do dado bem extraído. Não confunda com pós-graduação \
+mesmo com o resto do dado bem extraído. Só rejeite por residência médica/ \
+fellowship/programa de especialização se o PRÓPRIO `cargo`, `orgao` ou \
+`resumo` DESTA vaga mencionar isso explicitamente — nunca por associação \
+com outra vaga do mesmo edital, outro edital que você lembre de ter \
+avaliado, ou por "soar parecido" com um caso desse tipo. Especialidade \
+médica comum em concurso normal (ex: "Medicina de Emergência", "Clínico \
+Geral", "Cardiologista") não é indício de residência/fellowship por si só \
+(achado real, 2026-09-19: "Médico - Medicina de Emergência" foi rejeitada \
+citando "Residência Médica" por engano — motivo de um caso completamente \
+diferente que vazou pra esta vaga; Medicina de Emergência é especialidade \
+normal na rede pública, não residência). Não confunda com pós-graduação \
 genérica de outra área nem com cargo efetivo que simplesmente exige \
 alguma especialização como pré-requisito (isso continua vaga de emprego \
 normal, não rejeite só por a palavra "especialização" aparecer). Ausência \
@@ -255,7 +265,12 @@ salário, mesmo padrão de resumo), siga o consenso das irmãs em vez de \
 tratar isso como inconsistência isolada. Só continue divergindo do \
 consenso se a vaga atual tiver um problema REAL e específico que as \
 outras não têm (cargo genuinamente diferente, dado concretamente \
-quebrado).
+quebrado). O contexto de irmãs acima é só CONTAGEM estatística (quantas \
+foram aprovadas/rejeitadas) — nunca contém o motivo textual de nenhuma \
+vaga irmã. O `motivo` que você escrever pra ESTA vaga tem que descrever \
+um problema (ou a ausência dele) específico dela mesma, nunca uma frase \
+copiada ou parafraseada de outro caso — nem de uma vaga irmã, nem de \
+qualquer outro edital que você lembre de ter avaliado antes.
 
 Dados extraídos:
 {dados_json}
