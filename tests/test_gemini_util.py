@@ -92,6 +92,47 @@ def test_campos_estruturados_extras_mapeia_e_calcula():
     }
 
 
+def test_parsear_numero_vagas_aceita_int_e_none():
+    assert gemini_util.parsear_numero_vagas(5) == 5
+    assert gemini_util.parsear_numero_vagas(None) is None
+    assert gemini_util.parsear_numero_vagas(3.0) == 3
+
+
+def test_parsear_numero_vagas_string_numerica():
+    assert gemini_util.parsear_numero_vagas("12") == 12
+    assert gemini_util.parsear_numero_vagas(" 7 ") == 7
+
+
+def test_parsear_numero_vagas_trata_cadastro_de_reserva_como_none():
+    # achado real em produção (scripts/rodar_descoberta_google_search.py,
+    # 2 dias seguidos): "Concurso Prefeitura de Santa Mercedes/SP" falhava
+    # com `invalid input syntax for type integer: "CR"` — "CR" é
+    # abreviação comum de "Cadastro de Reserva" em edital brasileiro, não
+    # dado inválido, e derrubava o processamento da vaga inteira.
+    assert gemini_util.parsear_numero_vagas("CR") is None
+    assert gemini_util.parsear_numero_vagas("cr") is None
+    assert gemini_util.parsear_numero_vagas("C.R.") is None
+    assert gemini_util.parsear_numero_vagas("Cadastro de Reserva") is None
+    assert gemini_util.parsear_numero_vagas("  CR  ") is None
+
+
+def test_parsear_numero_vagas_texto_nao_numerico_desconhecido_vira_none():
+    # qualquer outro texto não numérico também não deve derrubar o
+    # processamento — grava NULL em vez de propagar erro de conversão.
+    assert gemini_util.parsear_numero_vagas("a definir") is None
+    assert gemini_util.parsear_numero_vagas("") is None
+
+
+def test_campos_estruturados_extras_com_vagas_qtd_cadastro_de_reserva():
+    # fixture semelhante ao caso real: edital com "Vagas: CR" no lugar de
+    # um número — campos_estruturados_extras tem que gravar None, nunca
+    # deixar o texto "CR" seguir pro insert do banco.
+    extraido = {}
+    vaga = {"vagas_qtd": "CR", "carga_horaria": "40h semanais"}
+    resultado = gemini_util.campos_estruturados_extras(extraido, vaga)
+    assert resultado["numero_vagas"] is None
+
+
 def test_campos_estruturados_extras_tudo_ausente_vira_none():
     resultado = gemini_util.campos_estruturados_extras({}, {})
     assert resultado == {

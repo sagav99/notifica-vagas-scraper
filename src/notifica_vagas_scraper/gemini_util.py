@@ -188,6 +188,41 @@ def parsear_data_iso(texto: str | None) -> date | None:
         return None
 
 
+#: casa "CR", "C.R.", "cadastro de reserva" (case-insensitive, com ou sem
+#: pontuação) — abreviação comum em edital brasileiro pra vaga sem
+#: quantidade fixa. Usado por `parsear_numero_vagas`.
+_PADRAO_CADASTRO_RESERVA = re.compile(r"^\s*c\.?\s*r\.?\s*$|cadastro\s+de\s+reserva", re.IGNORECASE)
+
+
+def parsear_numero_vagas(valor: Any) -> int | None:
+    """Converte o `vagas_qtd` extraído pelo Gemini pra `int`, tratando o
+    caso de "cadastro de reserva" — edital sem quantidade fixa de vaga,
+    abreviado como "CR"/"C.R."/"cadastro de reserva" no texto original.
+    Achado real em produção (`scripts/rodar_descoberta_google_search.py`,
+    2 dias seguidos, "Concurso Prefeitura de Santa Mercedes/SP"): o
+    Gemini às vezes devolve o texto literal "CR" nesse campo em vez de
+    `null`, e o valor ia direto pro insert sem tratamento — Postgres
+    rejeitava com `invalid input syntax for type integer: "CR"` e
+    derrubava o processamento da vaga inteira. `None`/`NULL` é a leitura
+    correta aqui (não existe quantidade fixa pra registrar), não um erro
+    a propagar."""
+    if valor is None:
+        return None
+    if isinstance(valor, int):
+        return valor
+    if isinstance(valor, float):
+        return int(valor)
+    texto = str(valor).strip()
+    if not texto:
+        return None
+    if _PADRAO_CADASTRO_RESERVA.search(texto):
+        return None
+    try:
+        return int(texto)
+    except ValueError:
+        return None
+
+
 def calcular_valor_hora(
     salario: float | None, salario_tipo: str | None, carga_horaria: str | None
 ) -> float | None:
@@ -225,7 +260,7 @@ def campos_estruturados_extras(extraido: dict[str, Any], vaga: dict[str, Any]) -
     salario = vaga.get("salario")
     salario_tipo = vaga.get("salario_tipo")
     return {
-        "numero_vagas": vaga.get("vagas_qtd"),
+        "numero_vagas": parsear_numero_vagas(vaga.get("vagas_qtd")),
         "taxa_inscricao": extraido.get("taxa_inscricao"),
         "carga_horaria": carga_horaria,
         "valor_hora": calcular_valor_hora(salario, salario_tipo, carga_horaria),
