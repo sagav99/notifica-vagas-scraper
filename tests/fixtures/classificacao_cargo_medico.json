@@ -1,0 +1,18 @@
+[
+  {"cargo": "Médico Clínico Geral", "eh_medico": true},
+  {"cargo": "Cardiologista", "eh_medico": true},
+  {"cargo": "Médico - Medicina de Emergência", "eh_medico": true},
+  {"cargo": "Médica Pediatra", "eh_medico": true},
+  {"cargo": "Médico do Trabalho", "eh_medico": true},
+  {"cargo": "Psiquiatra", "eh_medico": true},
+  {"cargo": "Ginecologista e Obstetra", "eh_medico": true},
+  {"cargo": "Médico Veterinário", "eh_medico": false},
+  {"cargo": "Medicina Veterinária", "eh_medico": false},
+  {"cargo": "Estagiário - Medicina", "eh_medico": false},
+  {"cargo": "Biomedicina", "eh_medico": false},
+  {"cargo": "Fisioterapeuta Geriátrico", "eh_medico": false},
+  {"cargo": "Fisioterapeuta", "eh_medico": false},
+  {"cargo": "Enfermeiro", "eh_medico": false},
+  {"cargo": null, "eh_medico": false},
+  {"cargo": "", "eh_medico": false}
+]

@@ -28,6 +28,16 @@ _ESPECIALIDADES_SEM_PREFIXO = [
     "medicina do trabalho", "medicina de emergencia",
 ]
 
+# Profissão de saúde não-médica cujo nome colide por substring com uma
+# raiz de `_ESPECIALIDADES_SEM_PREFIXO` (achado real: "Fisioterapeuta
+# Geriátrico" virava "médico" por engano — "geriatrico" contém a raiz
+# "geriatr"). Presença de um destes bloqueia o match por especialidade,
+# a não ser que o cargo também tenha a palavra "médico"/"médica" de
+# verdade (ex: cargo composto real, prioriza o prefixo explícito).
+_PROFISSOES_NAO_MEDICAS_QUE_COLIDEM_COM_ESPECIALIDADE = [
+    "fisioterapeut",
+]
+
 
 def _normalizar(texto: str) -> str:
     sem_acento = unicodedata.normalize("NFD", texto)
@@ -42,7 +52,9 @@ def eh_cargo_medico(cargo: str | None) -> bool:
     veterinária" (categoria própria, fora do escopo do produto). Evita os
     2 falsos positivos reais já encontrados no lado TS: "Estagiário -
     Medicina" e "Biomedicina" não viram médico só por conterem o radical
-    "medic"."""
+    "medic". Também evita "Fisioterapeuta Geriátrico" virar médico só
+    porque "geriatrico" contém a raiz de especialidade "geriatr" — ver
+    `_PROFISSOES_NAO_MEDICAS_QUE_COLIDEM_COM_ESPECIALIDADE`."""
     if not cargo:
         return False
     normalizado = _normalizar(cargo)
@@ -52,6 +64,14 @@ def eh_cargo_medico(cargo: str | None) -> bool:
     if eh_veterinario:
         return False
 
-    return any(p.startswith("medico") or p.startswith("medica") for p in palavras) or any(
-        raiz in normalizado for raiz in _ESPECIALIDADES_SEM_PREFIXO
+    tem_prefixo_medico = any(p.startswith("medico") or p.startswith("medica") for p in palavras)
+    if tem_prefixo_medico:
+        return True
+
+    eh_profissao_nao_medica_colidente = any(
+        raiz in normalizado for raiz in _PROFISSOES_NAO_MEDICAS_QUE_COLIDEM_COM_ESPECIALIDADE
     )
+    if eh_profissao_nao_medica_colidente:
+        return False
+
+    return any(raiz in normalizado for raiz in _ESPECIALIDADES_SEM_PREFIXO)
