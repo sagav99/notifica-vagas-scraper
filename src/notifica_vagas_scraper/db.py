@@ -924,6 +924,25 @@ def _gravar_execucao(
         conn.commit()
 
 
+def registrar_execucao_interrompida(script: str, *, motivo: str) -> None:
+    """Grava `status='falha'` em `public.execucoes_scraper` pra uma
+    execução que nem chegou a rodar dentro de `db.rastrear_execucao`
+    (ex: job do GitHub Actions cancelado por estourar `timeout-minutes`)
+    — sem isso, essa falha só existia no histórico de runs do GitHub
+    Actions, que expira, sem deixar rastro consultável (achado real:
+    workflow `scrape-diario.yml` já estourou o timeout mais de uma vez
+    sem gravar nada no banco). Usa o mesmo status `'falha'` que
+    `rastrear_execucao` já usa pra erro genérico (`status` tem CHECK
+    restrito a `'sucesso'`/`'falha'`, migration 011 — não criar valor
+    novo sem migration) — `motivo` no `detalhe` distingue o caso de
+    timeout/cancelamento de um erro de código normal.
+
+    `iniciado_em`/`finalizado_em` ficam iguais a "agora": não dá pra
+    saber quando o job cancelado de verdade começou a partir daqui (isso
+    fica no histórico do GitHub Actions), só que ele não terminou."""
+    _gravar_execucao(script, iniciado_em=datetime.now(timezone.utc), status="falha", detalhe=motivo)
+
+
 @contextmanager
 def rastrear_execucao(script: str) -> Iterator[None]:
     """Registra em `public.execucoes_scraper` o resultado de rodar um

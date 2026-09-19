@@ -29,12 +29,16 @@ on:
 jobs:
   coletar:
     runs-on: ubuntu-latest
-    # 75min: 30min de base (checkout/deps/testes + fontes de volume baixo)
+    # 90min (aumentado de 75min em 2026-09-19, mitigação imediata — causa
+    # raiz de qual fonte trava ainda não investigada): job já foi
+    # cancelado por estourar o timeout sem deixar nenhum rastro no banco
+    # (ver step "Registrar timeout/cancelamento" no fim do job). 75min
+    # era: 30min de base (checkout/deps/testes + fontes de volume baixo)
     # + ~30min pra DOM/AMM-MG em busca automática por entidade (161
     # municípios x 2 termos, ~1,5s entre buscas) + folga. Não inclui mais
     # revisão automática (ver revisar-vagas.yml) nem Instar (maior
     # consumidora de tempo/cota, isolada em scrape-instar.yml).
-    timeout-minutes: 75
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -251,3 +255,17 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python scripts/rodar_descoberta_google_search.py ${{ inputs.google_search_backfill && format('--backfill --janela {0}', inputs.google_search_janela) || '' }}
+
+      - name: Registrar timeout/cancelamento em execucoes_scraper
+        # Só roda quando o job inteiro foi cancelado (timeout-minutes
+        # estourado, ou cancelamento manual) ou falhou de um jeito que
+        # nenhum passo individual chegou a capturar via
+        # db.rastrear_execucao — sem isso, essa falha só existia no
+        # histórico de runs do GitHub Actions (expira, não é
+        # consultável). `if: always()` não seria certo aqui: cada
+        # `rodar_*.py` já grava seu próprio sucesso/falha, então rodar
+        # sempre duplicaria uma linha extra a cada execução normal.
+        if: failure() || cancelled()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/registrar_execucao_interrompida.py scrape-diario.yml "${{ job.status }}"

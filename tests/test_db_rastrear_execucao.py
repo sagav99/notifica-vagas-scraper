@@ -39,3 +39,20 @@ def test_falha_nao_engole_a_excecao_original(monkeypatch):
     with pytest.raises(RuntimeError):
         with db.rastrear_execucao("rodar_fgv.py"):
             raise RuntimeError("erro real")
+
+
+def test_registrar_execucao_interrompida_grava_status_falha_com_motivo(monkeypatch):
+    # achado real: job do GitHub Actions cancelado por estourar
+    # timeout-minutes não deixava rastro nenhum no banco — só no
+    # histórico de runs do GitHub Actions, que expira.
+    gravados = []
+    monkeypatch.setattr(
+        db, "_gravar_execucao", lambda script, **kw: gravados.append({"script": script, **kw})
+    )
+
+    db.registrar_execucao_interrompida("scrape-diario.yml", motivo="Job terminou com status 'cancelled'.")
+
+    assert len(gravados) == 1
+    assert gravados[0]["script"] == "scrape-diario.yml"
+    assert gravados[0]["status"] == "falha"
+    assert "cancelled" in gravados[0]["detalhe"]
