@@ -70,7 +70,10 @@ Extraia um objeto JSON com:
   títulos como etapa da seleção — mesmo que também tenha prova — false se
   não menciona essa etapa, null se não der pra determinar)
 - vagas: lista de vagas, cada uma com:
-  - cargo (string)
+  - cargo (string — UM cargo por item da lista; se o documento listar mais
+    de um cargo/especialidade junto na mesma linha, ex: "Enfermeiro, Médico
+    Anestesiologista", crie um item separado na lista pra cada cargo, nunca
+    concatene vários num único campo `cargo`)
   - pagina (int, o número da página do PDF — primeira página é 1 — onde
     está a linha/tabela com esse cargo; null só se genuinamente não der
     pra identificar em qual página aparece)

@@ -71,7 +71,10 @@ etapa da seleção — mesmo que também tenha prova — false se não menciona 
 etapa, null se não der pra determinar)
 - vagas: lista de vagas REAIS de preenchimento de cargo (vazia se o texto não for \
 sobre isso), cada uma com:
-  - cargo (string)
+  - cargo (string — UM cargo por item da lista; se o texto listar mais de \
+um cargo/especialidade junto, ex: "Enfermeiro, Médico Anestesiologista", crie \
+um item separado na lista pra cada cargo, nunca concatene vários num único \
+campo `cargo`)
   - vagas_qtd (int ou null)
   - salario (number, o valor numérico em reais, sem "R$", ou null — se a \
 remuneração for por hora/unidade que não converte num valor fixo, deixe null, \
