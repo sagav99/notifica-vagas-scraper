@@ -34,11 +34,22 @@ from notifica_vagas_scraper.auditoria_completude import (
 from notifica_vagas_scraper.revisao_ia import CotaGeminiEsgotadaError
 
 #: Cap por execução — cada vaga aqui pode gastar 1 chamada de Gemini
-#: (releitura) +, se o link estiver quebrado, 1 busca Serper. Teto
-#: conservador pra não competir demais com a cota diária de
-#: `revisar_vagas.py`/coleta (mesma chave `GEMINI_API_KEY`).
-LIMITE_VAGAS_POR_EXECUCAO = 40
-MINIMO_CAMPOS_FALTANDO = 3
+#: (releitura) +, se o link estiver quebrado, 1 busca Serper. Cota
+#: gratuita diária do Gemini Flash-Lite é ~1000 requisições (2 modelos
+#: intercalados via `quota_gemini.py`, ver `gemini_quota_diaria`) — o
+#: resto do pipeline (revisão + coleta) usa em torno de 450/dia no pico,
+#: sobra folga real pra este job. Subido de 40 pra 200 (2026-09-23,
+#: decisão do usuário) pra dar conta do backlog sem competir a ponto de
+#: esgotar a cota do dia.
+LIMITE_VAGAS_POR_EXECUCAO = 200
+#: Baixado de 3 pra 1 (2026-09-23, decisão do usuário, achado da
+#: auditoria de revisão Gemini 2026-09-22): com o teto de 3, vaga
+#: faltando só 1-2 dos 13 campos (incl. banca_organizadora/tem_prova/
+#: exige_curriculo, os 3 que a tela do usuário exibe) nunca era
+#: selecionada pra reprocessar — 220 vagas médicas presas nessa situação
+#: no achado real. Com cota sobrando, não faz sentido deixar vaga
+#: incompleta parada só por um teto de lote conservador demais.
+MINIMO_CAMPOS_FALTANDO = 1
 
 
 def main() -> None:
