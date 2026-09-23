@@ -48,6 +48,81 @@ def test_montar_prompt_inclui_pedido_de_natureza_e_pdf_quando_aplicavel():
     assert "link_edital_pdf" in prompt
 
 
+def test_consultar_usa_so_url_context_quando_ja_tem_link_e_nao_precisa_de_pdf(monkeypatch):
+    """Achado real 2026-09-23: google_search tem cota própria, separada e
+    bem mais escassa que generateContent/url_context — não gastar essa
+    cota relendo um link que já existe (url_context sozinho já resolve)."""
+    bodies_enviados = []
+
+    def _chamar_api_falso(url, body, **k):
+        bodies_enviados.append(body)
+
+        class _RespostaFalsa:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"candidates": [{"content": {"parts": [{"text": '{"salario": 5000, "confianca": "alta", "eh_vaga_de_emprego": true, "fonte_usada": "x"}'}]}}]}
+
+        return _RespostaFalsa()
+
+    monkeypatch.setattr(completude_gemini.gemini_util, "chamar_api", _chamar_api_falso)
+    vaga = _vaga_base(url="https://exemplo.com/edital.pdf", tipo_documento="pdf")
+
+    completude_gemini.consultar(vaga, ["salario"], api_key="chave-falsa", modelo="gemini-3.5-flash-lite")
+
+    tools_usadas = {list(t.keys())[0] for t in bodies_enviados[0]["tools"]}
+    assert tools_usadas == {"url_context"}
+
+
+def test_consultar_inclui_google_search_quando_falta_link(monkeypatch):
+    bodies_enviados = []
+
+    def _chamar_api_falso(url, body, **k):
+        bodies_enviados.append(body)
+
+        class _RespostaFalsa:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"candidates": [{"content": {"parts": [{"text": '{"salario": 5000, "confianca": "alta", "eh_vaga_de_emprego": true, "fonte_usada": "x"}'}]}}]}
+
+        return _RespostaFalsa()
+
+    monkeypatch.setattr(completude_gemini.gemini_util, "chamar_api", _chamar_api_falso)
+    vaga = _vaga_base(url=None)
+
+    completude_gemini.consultar(vaga, ["salario"], api_key="chave-falsa", modelo="gemini-3.5-flash-lite")
+
+    tools_usadas = {list(t.keys())[0] for t in bodies_enviados[0]["tools"]}
+    assert tools_usadas == {"google_search"}
+
+
+def test_consultar_inclui_google_search_quando_precisa_achar_link_pdf(monkeypatch):
+    bodies_enviados = []
+
+    def _chamar_api_falso(url, body, **k):
+        bodies_enviados.append(body)
+
+        class _RespostaFalsa:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"candidates": [{"content": {"parts": [{"text": '{"salario": 5000, "confianca": "alta", "eh_vaga_de_emprego": true, "fonte_usada": "x"}'}]}}]}
+
+        return _RespostaFalsa()
+
+    monkeypatch.setattr(completude_gemini.gemini_util, "chamar_api", _chamar_api_falso)
+    vaga = _vaga_base(url="https://exemplo.com/noticia", tipo_documento="pagina_html")
+
+    completude_gemini.consultar(vaga, ["salario"], api_key="chave-falsa", modelo="gemini-3.5-flash-lite")
+
+    tools_usadas = {list(t.keys())[0] for t in bodies_enviados[0]["tools"]}
+    assert tools_usadas == {"google_search", "url_context"}
+
+
 def test_filtrar_campos_aceitos_rejeita_confianca_baixa():
     resultado = {"salario": 5000, "confianca": "baixa"}
     assert completude_gemini.filtrar_campos_aceitos(resultado, ["salario"]) == {}

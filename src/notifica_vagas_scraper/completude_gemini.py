@@ -9,10 +9,15 @@ igual.
 
 Diferença pra `auditoria_completude.py` (só relê o link já salvo, mesmo
 Gemini da coleta): esta camada chama o Gemini com as tools nativas
-`google_search` (busca real no Google) e `url_context` (busca e lê o
-conteúdo de uma URL) na mesma chamada — cobre tanto "pesquisar a vaga na
-internet" quanto "abrir o link/site do concurso e ler o edital", sem
-precisar do Codex CLI.
+`google_search` (busca real no Google) e/ou `url_context` (busca e lê o
+conteúdo de uma URL) — cobre tanto "pesquisar a vaga na internet" quanto
+"abrir o link/site do concurso e ler o edital", sem precisar do Codex
+CLI. **`google_search` só entra quando falta link pra reler ou quando
+estamos atrás do link do PDF do edital** (`consultar`, achado real
+2026-09-23: essa tool tem cota própria, separada e bem mais escassa que
+`generateContent`/`url_context` — 429 específico dela mesmo com a cota
+geral do modelo ainda de boa) — relendo um link que já existe, só
+`url_context` já resolve, sem gastar essa cota à toa.
 
 Segunda função, além de completar campo faltando: confirmar que a vaga é
 de fato concurso público/PSS de emprego, não residência médica/fellowship/
@@ -206,11 +211,26 @@ def consultar(vaga: dict[str, Any], campos: list[str], *, api_key: str | None, m
         raise ErroCompletudeGemini("GEMINI_API_KEY não configurada.")
     modelo = modelo or quota_gemini.proximo_modelo()
     link = vaga.get("url")
-    prompt = montar_prompt(vaga, campos, link=link, pedir_link_pdf=precisa_link_pdf(vaga))
+    pedir_pdf = precisa_link_pdf(vaga)
+    prompt = montar_prompt(vaga, campos, link=link, pedir_link_pdf=pedir_pdf)
+
+    # `google_search` (busca real no Google) tem cota própria, separada e
+    # bem mais apertada que `generateContent`/`url_context` (achado real,
+    # 2026-09-23: 429 "RESOURCE_EXHAUSTED" específico dessa tool com a
+    # cota geral do modelo ainda de boa) — só vale o custo quando não temos
+    # link pra reler (`link` nulo) ou quando estamos atrás de um link novo
+    # (PDF do edital, `pedir_pdf`); relendo um link que já existe,
+    # `url_context` sozinho já cobre ("abrir e ler a página"), sem tocar
+    # na cota escassa de busca.
+    tools: list[dict[str, dict]] = []
+    if link is None or pedir_pdf:
+        tools.append({"google_search": {}})
+    if link is not None:
+        tools.append({"url_context": {}})
 
     body = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "tools": [{"google_search": {}}, {"url_context": {}}],
+        "tools": tools,
         "generationConfig": {"temperature": 0},
     }
 
