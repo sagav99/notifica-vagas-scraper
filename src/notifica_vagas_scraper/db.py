@@ -761,7 +761,15 @@ def listar_vagas_medicas_para_completude_gemini(conn: psycopg.Connection, *, lim
     Cada vaga é conferida no máximo 1x por este módulo (registra em
     `vagas_conferencias` mesmo quando `resultado='sem_alteracao'`) —
     nunca reprocessa a mesma vaga em execução seguinte, pra não gastar
-    cota do Gemini de novo sem necessidade."""
+    cota do Gemini de novo sem necessidade.
+
+    Ordena vaga com evidência já em PDF primeiro (achado real,
+    2026-09-23: `completude_gemini.consultar` só precisa da tool
+    `google_search` — cota própria, separada e bem mais escassa que o
+    resto — quando a evidência NÃO é PDF, ver `precisa_link_pdf`; vaga
+    com PDF resolve só com `url_context`). Processa o máximo de vaga
+    "barata" antes de esbarrar na cota de busca, em vez de travar o lote
+    inteiro logo na 1ª vaga que exige busca."""
     with conn.cursor() as cur:
         cur.execute(
             """
@@ -785,7 +793,7 @@ def listar_vagas_medicas_para_completude_gemini(conn: psycopg.Connection, *, lim
                 select 1 from public.vagas_conferencias vc
                 where vc.vaga_id = v.id and vc.conferido_por = 'completude_gemini'
               )
-            order by v.detectada_em desc
+            order by (ev.tipo_documento = 'pdf') desc, v.detectada_em desc
             limit %(limite)s
             """,
             {"limite": limite},
