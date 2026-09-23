@@ -237,6 +237,14 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_institutoconsulplan.py
 
+      - name: Rodar coleta (Prefeitura de São Sebastião do Oeste/MG)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        # sem GEMINI_API_KEY: extração de cargo/salário 100% determinística
+        # (pdfplumber.extract_tables()), ver fontes/sao_sebastiao_do_oeste_mg.py.
+        run: python scripts/rodar_sao_sebastiao_do_oeste_mg.py
+
       - name: Registrar timeout/cancelamento em execucoes_scraper
         # Só roda quando o job inteiro foi cancelado (timeout-minutes
         # estourado, ou cancelamento manual) ou falhou de um jeito que
