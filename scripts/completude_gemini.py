@@ -17,9 +17,16 @@ Requer:
 
 Compartilha a cota diária do Gemini com `gemini_pdf`/`gemini_texto`/
 `revisao_ia` (mesmo `quota_gemini.proximo_modelo()`) — por isso roda em
-lote pequeno e para (não em loop contínuo como `completude_codex.py`,
-que tinha cota própria da assinatura ChatGPT). Rode várias vezes ao dia
-(cron ou manual) em vez de deixar rodando.
+lote e para (não em loop contínuo como `completude_codex.py`, que tinha
+cota própria da assinatura ChatGPT). Rode várias vezes ao dia (cron ou
+manual) em vez de deixar rodando.
+
+`TAMANHO_LOTE` subido de 15 pra 150 (2026-09-23, decisão do usuário):
+cota gratuita do Gemini Flash-Lite é ~1000 requisições/dia, resto do
+pipeline usa ~450/dia no pico — sobra folga real. Com 15/execução e
+cron 1x/dia, o backlog de vaga médica nunca conferida (~900+) levaria
+mais de 2 meses pra passar 1x — muito lento pro objetivo de não deixar
+vaga incompleta parada.
 
 `CotaGeminiEsgotadaError` (HTTP 429) interrompe o lote inteiro na hora —
 mesmo critério de `revisar_vagas.py`/`auditar_completude_vagas.py`, nunca
@@ -36,7 +43,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from notifica_vagas_scraper import completude_gemini, db
 from notifica_vagas_scraper.revisao_ia import CotaGeminiEsgotadaError
 
-TAMANHO_LOTE = 15
+TAMANHO_LOTE = 150
 
 
 def main() -> None:
