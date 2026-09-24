@@ -1,6 +1,7 @@
 from datetime import date
 
 import rodar_dom_amm_mg_busca as script
+from notifica_vagas_scraper.fontes.sigpub_busca import ResultadoBusca
 
 
 def _entidades_fake(n):
@@ -42,3 +43,57 @@ def test_lote_nunca_ultrapassa_o_total():
         lote = script.selecionar_lote_do_dia(entidades, hoje=date(2026, 1, dia))
         assert len(lote) <= len(entidades)
         assert len(lote) > 0
+
+
+def _resultado_fake(codigo: str) -> ResultadoBusca:
+    return ResultadoBusca(
+        entidade="X", titulo="Y", orgao="Z", data_circulacao=None,
+        codigo=codigo, url_load=f"https://exemplo/materia/{codigo}",
+    )
+
+
+class _RespostaFalsa:
+    text = "<html></html>"
+    url = "https://exemplo/materia/final"
+
+    def raise_for_status(self):
+        pass
+
+
+def test_verificar_canario_tenta_todos_resultados_ate_achar_vaga(monkeypatch):
+    """Achado real 2026-09-24: o resultado mais recente (posição 0) pode
+    ser legitimamente uma retificação sem tabela de cargo (0 vagas
+    correto) — o canário não pode declarar falha só por causa disso
+    quando outro resultado da mesma busca tem vaga de verdade."""
+    resultados = [_resultado_fake("AAA"), _resultado_fake("BBB")]
+    monkeypatch.setattr(script.sigpub_busca, "buscar", lambda *a, **k: "<html></html>")
+    monkeypatch.setattr(script.sigpub_busca, "parsear_resultados", lambda html: resultados)
+    monkeypatch.setattr(script.sigpub_busca, "resolver_url_materia", lambda sessao, url: url)
+    monkeypatch.setattr(script.requests, "get", lambda *a, **k: _RespostaFalsa())
+
+    # 1º resultado (AAA) não tem vaga, 2º (BBB) tem — canário deve
+    # continuar tentando em vez de parar no primeiro.
+    monkeypatch.setattr(
+        script.dom_amm_mg, "parsear_materia",
+        lambda texto, url: [] if "AAA" in url else [object()],
+    )
+
+    assert script.verificar_canario() is True
+
+
+def test_verificar_canario_falha_quando_nenhum_resultado_tem_vaga(monkeypatch):
+    resultados = [_resultado_fake("AAA"), _resultado_fake("BBB")]
+    monkeypatch.setattr(script.sigpub_busca, "buscar", lambda *a, **k: "<html></html>")
+    monkeypatch.setattr(script.sigpub_busca, "parsear_resultados", lambda html: resultados)
+    monkeypatch.setattr(script.sigpub_busca, "resolver_url_materia", lambda sessao, url: url)
+    monkeypatch.setattr(script.requests, "get", lambda *a, **k: _RespostaFalsa())
+    monkeypatch.setattr(script.dom_amm_mg, "parsear_materia", lambda texto, url: [])
+
+    assert script.verificar_canario() is False
+
+
+def test_verificar_canario_falha_sem_nenhum_resultado(monkeypatch):
+    monkeypatch.setattr(script.sigpub_busca, "buscar", lambda *a, **k: "<html></html>")
+    monkeypatch.setattr(script.sigpub_busca, "parsear_resultados", lambda html: [])
+
+    assert script.verificar_canario() is False

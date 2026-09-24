@@ -10,49 +10,55 @@ def _ler(nome: str) -> str:
     return (FIXTURES / nome).read_text(encoding="utf-8")
 
 
-def test_obter_token_encontra_campo_hidden():
-    html = _ler("busca_resultado_pedra_dourada_processo_seletivo.html")
-    # obter_token faz o GET sozinho; aqui testamos só a extração, direto
-    # do HTML já baixado (fixture tem o form completo com o campo hidden).
+def test_obter_token_no_html_atual_devolve_none():
+    """O site removeu o campo de token CSRF do form (achado 2026-09-24,
+    ver docstring do módulo) — `obter_token` não deve mais achar nada."""
+    html = _ler("busca_resultado_pedra_dourada_lista_nova_2026-09-24.html")
     from bs4 import BeautifulSoup
 
     soup = BeautifulSoup(html, "html.parser")
     campo = soup.find("input", {"name": "busca_avancada[_token]"})
-    assert campo is not None
-    assert campo.get("value")
+    assert campo is None
 
 
-def test_parsear_resultados_pedra_dourada_duas_materias():
-    html = _ler("busca_resultado_pedra_dourada_processo_seletivo.html")
+def test_parsear_resultados_pedra_dourada_estrutura_de_lista_nova():
+    """Achado 2026-09-24: o site trocou `table#datatable` por
+    `ul.lista-materias > li.materia-card` — fixture real, 25 cartões
+    (1ª página de 88 matérias no total pra essa entidade)."""
+    html = _ler("busca_resultado_pedra_dourada_lista_nova_2026-09-24.html")
     resultados = sigpub_busca.parsear_resultados(html)
-    assert len(resultados) == 2
-    codigos = {r.codigo for r in resultados}
-    assert codigos == {"1F85EB05", "FFF2867C"}
+    assert len(resultados) == 25
     primeiro = resultados[0]
     assert primeiro.entidade == "Prefeitura Municipal de Pedra Dourada"
-    assert primeiro.data_circulacao == date(2026, 7, 8)
-    assert primeiro.url_load == f"{sigpub_busca.BASE_URL}/amm-mg/load/1F85EB05"
+    assert primeiro.orgao == "Prefeitura Municipal de Pedra Dourada"
+    assert primeiro.codigo == "9578A4C5"
+    assert primeiro.data_circulacao == date(2026, 9, 22)
+    assert primeiro.url_load == f"{sigpub_busca.BASE_URL}/amm-mg/materia/9578A4C5"
 
 
-def test_parsear_resultados_abaete_multiplas_linhas():
-    html = _ler("busca_resultado_abaete_processo_seletivo.html")
+def test_parsear_resultados_perdoes_acha_vaga_medico_real():
+    """Achado real da auditoria de cobertura 2026-09-24: vaga de Médico
+    de PSF (Edital 011/2026, Perdões/MG) que tinha ficado de fora do
+    banco por causa deste mesmo bug de parsing — confirma que o parser
+    corrigido acha o documento real."""
+    html = _ler("busca_resultado_perdoes_processo_seletivo_2026-09-24.html")
     resultados = sigpub_busca.parsear_resultados(html)
-    assert len(resultados) >= 3
-    assert all(r.entidade == "Prefeitura Municipal de Abaeté" for r in resultados)
+    assert len(resultados) == 25
+    titulos = [r.titulo for r in resultados]
+    assert any("MÉDICO DE PSF" in t for t in titulos)
+    assert all(r.entidade == "Prefeitura de Perdões" for r in resultados)
 
 
-def test_parsear_resultados_sem_resultado_devolve_lista_vazia():
-    html = _ler("busca_resultado_sem_resultado.html")
-    assert sigpub_busca.parsear_resultados(html) == []
-
-
-def test_parsear_resultados_sem_tabela_devolve_lista_vazia():
-    # Simula token/sessão inválidos: a página normal volta sem
-    # table#datatable nenhuma, sem erro visível.
-    assert sigpub_busca.parsear_resultados("<html><body>sem tabela aqui</body></html>") == []
+def test_parsear_resultados_sem_lista_devolve_lista_vazia():
+    # Qualquer HTML sem `ul.lista-materias` (ex.: "nenhuma matéria
+    # encontrada", ou página de erro) — nada aproveitável, sem exceção.
+    assert sigpub_busca.parsear_resultados("<html><body>sem lista aqui</body></html>") == []
 
 
 def test_buscar_monta_parametros_e_usa_mesma_sessao(monkeypatch):
+    """Achado real 2026-09-24: o site renomeou `entidadeUsuaria`->`entidade`
+    e `page`->`pagina`, mudou o formato de data pra ISO (`aaaa-mm-dd`) e
+    removeu o campo de token — confirmado contra o form real do site."""
     capturado = {}
 
     class _RespostaFalsa:
@@ -71,18 +77,18 @@ def test_buscar_monta_parametros_e_usa_mesma_sessao(monkeypatch):
     resultado = sigpub_busca.buscar(
         session,
         caminho_pesquisar="/amm-mg/pesquisar",
-        token="token-123",
         entidade_id="1913769",
         termo="processo seletivo",
         data_inicio=date(2026, 6, 1),
         data_fim=date(2026, 9, 1),
     )
     assert "datatable" in resultado
-    assert capturado["params"]["busca_avancada[entidadeUsuaria]"] == "1913769"
+    assert capturado["params"]["busca_avancada[entidade]"] == "1913769"
     assert capturado["params"]["busca_avancada[texto]"] == "processo seletivo"
-    assert capturado["params"]["busca_avancada[dataInicio]"] == "01/06/2026"
-    assert capturado["params"]["busca_avancada[dataFim]"] == "01/09/2026"
-    assert capturado["params"]["busca_avancada[_token]"] == "token-123"
+    assert capturado["params"]["busca_avancada[dataInicio]"] == "2026-06-01"
+    assert capturado["params"]["busca_avancada[dataFim]"] == "2026-09-01"
+    assert "busca_avancada[_token]" not in capturado["params"]
+    assert capturado["params"]["busca_avancada[pagina]"] == "1"
 
 
 def test_resolver_url_materia_segue_redirect(monkeypatch):

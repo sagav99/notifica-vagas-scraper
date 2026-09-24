@@ -3,8 +3,9 @@
 processo seletivo no Diário Oficial dos Municípios do Estado de São Paulo
 (SIGPub, `/apm/`), pelos 7 municípios reais confirmados (ver
 `fontes/apm_sp.py`) — mesmo mecanismo já validado no DOM/AMM-MG de MG
-(token CSRF de sessão nova por entidade, busca avançada, resolve
-`/load/<codigo>` -> matéria real).
+(busca avançada, resolve `/load/<codigo>` -> matéria real; não depende
+mais de token CSRF, ver docstring de `fontes/sigpub_busca.py`, achado
+2026-09-24).
 
 Sem processamento em lote/canário periódico feito o AMM-MG: só 7
 entidades no total, volume baixo demais pra bater no limiar de
@@ -83,12 +84,10 @@ def processar_materia(conn, fonte_id: int, codigo_ibge: int, url_materia: str) -
 
 
 def processar_entidade(conn, fonte_id: int, entidade: dom_amm_mg.EntidadeAmmMg) -> int:
+    """**Não depende mais de token** (ver docstring de `sigpub_busca`,
+    achado 2026-09-24 — o site removeu o form-token, mesma plataforma do
+    AMM-MG)."""
     session = requests.Session()
-    token = sigpub_busca.obter_token(session, apm_sp.CAMINHO_PESQUISAR)
-    if not token:
-        print("    aviso: não obteve token pra esta entidade, pulando.")
-        return 0
-
     hoje = date.today()
     total = 0
     codigos_ja_processados: set[str] = set()
@@ -98,7 +97,6 @@ def processar_entidade(conn, fonte_id: int, entidade: dom_amm_mg.EntidadeAmmMg) 
         html = sigpub_busca.buscar(
             session,
             caminho_pesquisar=apm_sp.CAMINHO_PESQUISAR,
-            token=token,
             entidade_id=entidade.entidade_id,
             termo=termo,
             data_inicio=hoje - timedelta(days=JANELA_DIAS),
@@ -121,16 +119,13 @@ def processar_entidade(conn, fonte_id: int, entidade: dom_amm_mg.EntidadeAmmMg) 
 def verificar_canario() -> bool:
     """Ver docstring de rodar_dom_amm_mg_busca.verificar_canario — mesmo
     papel, aqui só rodado 1x no início (volume baixo demais pra precisar
-    de checagem periódica no meio do lote)."""
+    de checagem periódica no meio do lote). Não depende mais de token
+    (achado 2026-09-24, ver docstring de `sigpub_busca`)."""
     hoje = date.today()
     sessao = requests.Session()
-    token = sigpub_busca.obter_token(sessao, apm_sp.CAMINHO_PESQUISAR)
-    if not token:
-        return False
     html = sigpub_busca.buscar(
         sessao,
         caminho_pesquisar=apm_sp.CAMINHO_PESQUISAR,
-        token=token,
         entidade_id=CANARIO_ENTIDADE_ID,
         termo=CANARIO_TERMO,
         data_inicio=hoje - timedelta(days=JANELA_DIAS),

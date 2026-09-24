@@ -98,21 +98,16 @@ def processar_materia(conn, fonte_id: int, codigo_ibge: int, url_materia: str) -
 
 
 def processar_entidade(conn, fonte_id: int, entidade: dom_amm_mg.EntidadeAmmMg) -> int:
-    """Sessão e token novos por entidade — achado real rodando o backfill
-    completo em produção (2026-09-01): um token/sessão único reaproveitado
-    pra todas as 161 entidades funcionou nas primeiras (smoke test com 3)
-    mas, no lote inteiro (~15-20min de execução real), passou a devolver
-    0 resultado silenciosamente a partir de um certo ponto — mesmo pra
-    Pedra Dourada, que tinha resultado real confirmado minutos antes.
-    Sessão/token têm validade por tempo (não só por sessão em si, ver
-    docstring de sigpub_busca.obter_token) — pedir de novo por entidade é
-    mais requisições, mas elimina essa classe de falha silenciosa."""
+    """Sessão nova por entidade — achado real rodando o backfill completo
+    em produção (2026-09-01): uma sessão única reaproveitada pra todas as
+    161 entidades funcionou nas primeiras (smoke test com 3) mas, no lote
+    inteiro (~15-20min de execução real), passou a devolver 0 resultado
+    silenciosamente a partir de um certo ponto — mesmo pra Pedra Dourada,
+    que tinha resultado real confirmado minutos antes. Pedir sessão nova
+    por entidade é mais requisições, mas elimina essa classe de falha
+    silenciosa. **Não depende mais de token** (ver docstring de
+    `sigpub_busca`, achado 2026-09-24 — o site removeu o form-token)."""
     session = requests.Session()
-    token = sigpub_busca.obter_token(session, dom_amm_mg.CAMINHO_PESQUISAR)
-    if not token:
-        print("    aviso: não obteve token pra esta entidade, pulando.")
-        return 0
-
     hoje = date.today()
     total = 0
     codigos_ja_processados: set[str] = set()
@@ -122,7 +117,6 @@ def processar_entidade(conn, fonte_id: int, entidade: dom_amm_mg.EntidadeAmmMg) 
         html = sigpub_busca.buscar(
             session,
             caminho_pesquisar=dom_amm_mg.CAMINHO_PESQUISAR,
-            token=token,
             entidade_id=entidade.entidade_id,
             termo=termo,
             data_inicio=hoje - timedelta(days=JANELA_DIAS),
@@ -169,16 +163,19 @@ def verificar_canario() -> bool:
     sozinhos depois de um tempo sem carga — sinal de throttling/anti-bot
     do servidor por IP/sessão, não token expirado (testado: mesmo
     token/sessão aguentou 16min de uso espaçado sem falhar) nem bloqueio
-    permanente (recuperou sozinho depois de pausar)."""
+    permanente (recuperou sozinho depois de pausar).
+
+    **Achado real 2026-09-24**: essa checagem falhou 3 dias seguidos
+    (21-23/09) por um motivo NOVO, não throttling — o site removeu o
+    form-token e renomeou campos do formulário (ver docstring de
+    `sigpub_busca`), fazendo `buscar` devolver 0 resultado sempre,
+    silenciosamente. Corrigido lá; esta função não depende mais de
+    token."""
     hoje = date.today()
     sessao = requests.Session()
-    token = sigpub_busca.obter_token(sessao, dom_amm_mg.CAMINHO_PESQUISAR)
-    if not token:
-        return False
     html = sigpub_busca.buscar(
         sessao,
         caminho_pesquisar=dom_amm_mg.CAMINHO_PESQUISAR,
-        token=token,
         entidade_id=CANARIO_ENTIDADE_ID,
         termo=CANARIO_TERMO,
         data_inicio=hoje - timedelta(days=JANELA_DIAS),
@@ -188,13 +185,22 @@ def verificar_canario() -> bool:
     if not resultados:
         return False
 
-    try:
-        url_materia = sigpub_busca.resolver_url_materia(sessao, resultados[0].url_load)
-        resposta = requests.get(url_materia, headers={"User-Agent": USER_AGENT}, timeout=20)
-        resposta.raise_for_status()
-    except requests.exceptions.RequestException:
-        return False
-    return len(dom_amm_mg.parsear_materia(resposta.text, url=url_materia)) > 0
+    # Tenta cada resultado até achar 1 com vaga real, não só o mais
+    # recente (resultados[0]) — achado real 2026-09-24: o mais recente
+    # pode legitimamente ser uma retificação/matéria sem tabela de cargo
+    # (0 vagas correto, não indica pipeline quebrado), enquanto outro
+    # resultado da mesma busca tem vaga de verdade. Confiar só na
+    # posição 0 gerava falso negativo do canário.
+    for resultado in resultados:
+        try:
+            url_materia = sigpub_busca.resolver_url_materia(sessao, resultado.url_load)
+            resposta = requests.get(url_materia, headers={"User-Agent": USER_AGENT}, timeout=20)
+            resposta.raise_for_status()
+        except requests.exceptions.RequestException:
+            continue
+        if len(dom_amm_mg.parsear_materia(resposta.text, url=url_materia)) > 0:
+            return True
+    return False
 
 
 def selecionar_lote_do_dia(
