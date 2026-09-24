@@ -34,6 +34,32 @@ def test_json_genuinamente_invalido_ainda_levanta_erro():
         gemini_util.parsear_json_resposta("isso não é json")
 
 
+def test_limpa_artefato_de_escape_unicode_malformado():
+    # Achado real 2026-09-24 (auditoria de UX pré-lançamento): Gemini às
+    # vezes emite \u seguido de MENOS de 4 dígitos hex válidos (escape
+    # malformado, não um \uXXXX de verdade) — "Bocai\u00úva" vazava
+    # literalmente na tela em produção (25 vagas afetadas). O \u00 tem
+    # que sumir, nunca aparecer no valor final.
+    resultado = gemini_util.parsear_json_resposta(r'{"orgao": "Bocai\u00istika"}')
+    assert "\\u00" not in resultado["orgao"]
+    assert resultado["orgao"] == "Bocaiistika"
+
+
+def test_limpa_artefato_de_escape_em_dict_e_lista_aninhados():
+    resultado = gemini_util.parsear_json_resposta(r'{"vagas": [{"cargo": "Farmac\u00eutico"}, {"cargo": "Educador F\u00isico"}]}')
+    assert all("\\u00" not in v["cargo"] for v in resultado["vagas"])
+    assert resultado["vagas"][0]["cargo"] == "Farmaceutico"
+    assert resultado["vagas"][1]["cargo"] == "Educador Fisico"
+
+
+def test_nao_mexe_em_escape_unicode_valido_de_4_digitos_hex():
+    # ê (ê) já é um escape JSON válido, decodificado normalmente
+    # pelo json.loads antes de chegar na limpeza — não deve sobrar
+    # artefato nem perder o caractere.
+    resultado = gemini_util.parsear_json_resposta(r'{"cargo": "Farmacêtico"}')
+    assert resultado["cargo"] == "Farmacêtico"
+
+
 # --- campos estruturados novos (migration 018, 2026-09-10) ---
 
 

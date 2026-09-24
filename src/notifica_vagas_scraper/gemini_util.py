@@ -56,6 +56,19 @@ from . import quota_gemini
 _CERCA_MARKDOWN = re.compile(r"^```(?:json)?\s*|\s*```$")
 _ESCAPE_INVALIDO = re.compile(r'\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})')
 
+#: Achado real 2026-09-24 (auditoria de UX pré-lançamento, "Bocai\u00úva"
+#: vazando literalmente numa tela): às vezes o Gemini emite `\u` seguido
+#: de MENOS de 4 dígitos hex válidos (ex: `\u00istika`, não `\u00XX` de
+#: verdade) — um escape Unicode malformado, não um backslash solto comum.
+#: `_ESCAPE_INVALIDO` corretamente identifica isso como escape inválido e
+#: dobra a barra (`\\u00istika`) pra `json.loads` não quebrar, mas o
+#: resultado String final fica com o artefato literal `\u00` visível —
+#: nunca é um valor legítimo depois do parse (qualquer `\uXXXX` válido já
+#: foi decodificado de verdade pelo `json.loads`), então é seguro remover
+#: sempre. 25 vagas afetadas em produção antes desta correção (3 órgãos +
+#: 8 cargos distintos, ver `docs/auditoria_lancamento_2026-09-24_ux.md`).
+_ARTEFATO_ESCAPE_MALFORMADO = re.compile(r"\\u00")
+
 #: só casa carga horária semanal simples ("40h", "20 horas", "40h
 #: semanais") — rejeita de propósito escala tipo "12x36"/"24x72" e texto
 #: composto ("20h, com plantões aos sábados"), onde converter pra
@@ -164,14 +177,29 @@ def chamar_api(
     return resposta
 
 
+def _limpar_artefatos_de_escape(valor: Any) -> Any:
+    """Remove `\\u00` literal que sobrou de escape Unicode malformado do
+    Gemini (ver `_ARTEFATO_ESCAPE_MALFORMADO`) — percorre dict/list
+    recursivamente, só mexe em `str`."""
+    if isinstance(valor, str):
+        return _ARTEFATO_ESCAPE_MALFORMADO.sub("", valor)
+    if isinstance(valor, dict):
+        return {chave: _limpar_artefatos_de_escape(v) for chave, v in valor.items()}
+    if isinstance(valor, list):
+        return [_limpar_artefatos_de_escape(v) for v in valor]
+    return valor
+
+
 def parsear_json_resposta(texto: str) -> dict:
     """Remove cerca de markdown (```json ... ```), se presente, escapa
     qualquer backslash que não inicie um escape JSON válido e faz o
     parse. Levanta json.JSONDecodeError se o resultado ainda assim não
-    for JSON válido (deixa o chamador decidir o que fazer)."""
+    for JSON válido (deixa o chamador decidir o que fazer). Limpa
+    `\\u00` residual de escape malformado (ver
+    `_limpar_artefatos_de_escape`) antes de devolver."""
     limpo = _CERCA_MARKDOWN.sub("", texto.strip())
     sanitizado = _ESCAPE_INVALIDO.sub(r"\\\\", limpo)
-    return json.loads(sanitizado)
+    return _limpar_artefatos_de_escape(json.loads(sanitizado))
 
 
 def parsear_data_iso(texto: str | None) -> date | None:
