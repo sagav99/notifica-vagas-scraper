@@ -12,6 +12,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+instagram = ["playwright>=1.47"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

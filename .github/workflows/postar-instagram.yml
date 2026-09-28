@@ -1,0 +1,59 @@
+name: Postar vaga do dia no Instagram
+
+# 1 post por dia útil (~12h Brasília). Não usa Gemini (legenda é template),
+# então não conflita com a regra de 1 workflow Gemini-pesado por vez.
+# Ver docs/roadmap_instagram_diario.md no repo notifica-vagas.
+
+on:
+  schedule:
+    - cron: "0 15 * * 1-5" # 12h Brasília
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Só gerar card e legenda (não publica)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write # sobe o PNG na branch instagram-cards
+
+jobs:
+  postar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: |
+          pip install -e ".[dev,instagram]"
+          playwright install --with-deps chromium
+
+      - name: Rodar testes
+        run: pytest tests/test_instagram_*.py
+
+      - name: Gerar card e (se não for dry-run) publicar
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            python scripts/postar_instagram.py --dry-run
+          else
+            python scripts/postar_instagram.py
+          fi
+
+      - name: Guardar card gerado (dry-run)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: card-instagram
+          path: saida_instagram/
+          if-no-files-found: ignore
