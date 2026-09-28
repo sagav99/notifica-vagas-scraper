@@ -951,8 +951,17 @@ def registrar_execucao_interrompida(script: str, *, motivo: str) -> None:
     _gravar_execucao(script, iniciado_em=datetime.now(timezone.utc), status="falha", detalhe=motivo)
 
 
+class ContextoExecucao:
+    """Devolvido por `rastrear_execucao` pra quem quiser anotar um
+    resumo (ex: "avaliadas=200 alteradas=5") no `detalhe` gravado em
+    caso de sucesso — opcional, `detalhe` fica `None` se ninguém setar."""
+
+    def __init__(self) -> None:
+        self.detalhe: str | None = None
+
+
 @contextmanager
-def rastrear_execucao(script: str) -> Iterator[None]:
+def rastrear_execucao(script: str) -> Iterator[ContextoExecucao]:
     """Registra em `public.execucoes_scraper` o resultado de rodar um
     `scripts/rodar_*.py`/`revisar_vagas.py` inteiro — resolve item
     pendente do TAREFAS.md ("Acompanhar falhas de monitoramento"): antes
@@ -964,12 +973,19 @@ def rastrear_execucao(script: str) -> Iterator[None]:
     main()...`. Grava "sucesso" se o bloco terminar sem levantar,
     "falha" com o traceback (truncado) se levantar — e sempre relança a
     exceção original, nunca a engole (quem chama continua decidindo o
-    que fazer com a falha, ex: não derrubar os outros steps do cron)."""
+    que fazer com a falha, ex: não derrubar os outros steps do cron).
+
+    O objeto cedido (`as execucao`) deixa quem chama setar
+    `execucao.detalhe` antes do bloco terminar, pra gravar um resumo
+    junto do `status='sucesso'` — sem isso, "rodou e não achou nada pra
+    fazer" e "rodou e não conseguiu nada silenciosamente" ficam
+    indistinguíveis só olhando `execucoes_scraper`."""
     inicio = datetime.now(timezone.utc)
+    contexto = ContextoExecucao()
     try:
-        yield
+        yield contexto
     except Exception:
         _gravar_execucao(script, iniciado_em=inicio, status="falha", detalhe=traceback.format_exc()[-4000:])
         raise
     else:
-        _gravar_execucao(script, iniciado_em=inicio, status="sucesso", detalhe=None)
+        _gravar_execucao(script, iniciado_em=inicio, status="sucesso", detalhe=contexto.detalhe)

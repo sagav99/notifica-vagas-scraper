@@ -18,6 +18,23 @@ def test_sucesso_grava_status_sucesso(monkeypatch):
     assert gravados[0]["detalhe"] is None
 
 
+def test_sucesso_grava_detalhe_setado_pelo_chamador(monkeypatch):
+    # achado real: `auditar_completude_vagas.py` rodou 58min sem
+    # nenhuma escrita visível em `vagas.atualizado_em` — sem isso, não
+    # dava pra distinguir "rodou e não achou nada pra fazer" de "rodou
+    # e falhou silenciosamente" só olhando `execucoes_scraper`.
+    gravados = []
+    monkeypatch.setattr(
+        db, "_gravar_execucao", lambda script, **kw: gravados.append({"script": script, **kw})
+    )
+
+    with db.rastrear_execucao("auditar_completude_vagas.py") as execucao:
+        execucao.detalhe = "avaliadas=200 completadas=5"
+
+    assert gravados[0]["status"] == "sucesso"
+    assert gravados[0]["detalhe"] == "avaliadas=200 completadas=5"
+
+
 def test_falha_grava_status_falha_com_detalhe_e_relanca(monkeypatch):
     gravados = []
     monkeypatch.setattr(

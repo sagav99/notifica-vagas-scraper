@@ -52,7 +52,7 @@ LIMITE_VAGAS_POR_EXECUCAO = 200
 MINIMO_CAMPOS_FALTANDO = 1
 
 
-def main() -> None:
+def main(execucao: db.ContextoExecucao | None = None) -> None:
     conn = db.conectar()
     linhas_relatorio: list[str] = []
     campos_preenchidos_total = 0
@@ -169,8 +169,10 @@ def main() -> None:
     finally:
         conn.close()
 
+    candidatas_verificadas = len(candidatas) if "candidatas" in locals() else 0
+
     _escrever_relatorio(
-        candidatas_verificadas=len(candidatas) if "candidatas" in locals() else 0,
+        candidatas_verificadas=candidatas_verificadas,
         vagas_completadas=vagas_completadas,
         campos_preenchidos_total=campos_preenchidos_total,
         links_quebrados=links_quebrados,
@@ -178,6 +180,13 @@ def main() -> None:
         sem_solucao=sem_solucao,
         linhas_detalhe=linhas_relatorio,
     )
+
+    if execucao is not None:
+        execucao.detalhe = (
+            f"avaliadas={candidatas_verificadas} completadas={vagas_completadas} "
+            f"campos_preenchidos={campos_preenchidos_total} links_quebrados={links_quebrados} "
+            f"links_repostos={links_repostos} sem_solucao={len(sem_solucao)}"
+        )
 
 
 def _escrever_relatorio(
@@ -222,5 +231,5 @@ def _escrever_relatorio(
 
 
 if __name__ == "__main__":
-    with db.rastrear_execucao("auditar_completude_vagas.py"):
-        main()
+    with db.rastrear_execucao("auditar_completude_vagas.py") as execucao:
+        main(execucao)
