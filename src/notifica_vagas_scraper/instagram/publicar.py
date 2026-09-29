@@ -84,31 +84,55 @@ def hospedar_imagem(png: Path, nome: str) -> str:
     return f"https://raw.githubusercontent.com/{repo}/{BRANCH_IMAGENS}/{nome}"
 
 
-def publicar_no_instagram(imagem_url: str, legenda: str) -> str:
-    """Cria o container, espera ficar pronto e publica. Devolve o id da mídia."""
-    ig_user = os.environ["IG_USER_ID"]
-    token = os.environ["IG_ACCESS_TOKEN"]
-
-    criar = requests.post(
-        f"{GRAPH}/{ig_user}/media",
-        data={"image_url": imagem_url, "caption": legenda, "access_token": token},
-        timeout=TIMEOUT,
-    )
-    if criar.status_code != 200:
-        raise ErroPublicacao(f"Falha ao criar container ({criar.status_code}): {criar.text[:300]}")
-    container = criar.json()["id"]
-
+def _aguardar_pronto(container: str, token: str) -> None:
     for _ in range(20):
         status = requests.get(
             f"{GRAPH}/{container}", params={"fields": "status_code", "access_token": token}, timeout=TIMEOUT
         ).json().get("status_code")
         if status == "FINISHED":
-            break
+            return
         if status in ("ERROR", "EXPIRED"):
             raise ErroPublicacao(f"Container em estado {status}")
         time.sleep(3)
-    else:
-        raise ErroPublicacao("Container não ficou pronto a tempo")
+    raise ErroPublicacao("Container não ficou pronto a tempo")
+
+
+def publicar_carrossel_no_instagram(imagens_url: list[str], legenda: str) -> str:
+    """Cria 1 container por imagem (item do carrossel), depois o container CAROUSEL e publica.
+    Devolve o id da mídia publicada."""
+    if not 2 <= len(imagens_url) <= 10:
+        raise ErroPublicacao(f"Carrossel precisa de 2 a 10 imagens, recebeu {len(imagens_url)}")
+
+    ig_user = os.environ["IG_USER_ID"]
+    token = os.environ["IG_ACCESS_TOKEN"]
+
+    filhos: list[str] = []
+    for url in imagens_url:
+        criar = requests.post(
+            f"{GRAPH}/{ig_user}/media",
+            data={"image_url": url, "is_carousel_item": "true", "access_token": token},
+            timeout=TIMEOUT,
+        )
+        if criar.status_code != 200:
+            raise ErroPublicacao(f"Falha ao criar item do carrossel ({criar.status_code}): {criar.text[:300]}")
+        item_id = criar.json()["id"]
+        _aguardar_pronto(item_id, token)
+        filhos.append(item_id)
+
+    criar_carrossel = requests.post(
+        f"{GRAPH}/{ig_user}/media",
+        data={
+            "media_type": "CAROUSEL",
+            "children": ",".join(filhos),
+            "caption": legenda,
+            "access_token": token,
+        },
+        timeout=TIMEOUT,
+    )
+    if criar_carrossel.status_code != 200:
+        raise ErroPublicacao(f"Falha ao criar container do carrossel ({criar_carrossel.status_code}): {criar_carrossel.text[:300]}")
+    container = criar_carrossel.json()["id"]
+    _aguardar_pronto(container, token)
 
     publicar = requests.post(
         f"{GRAPH}/{ig_user}/media_publish",

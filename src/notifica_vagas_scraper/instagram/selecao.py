@@ -100,3 +100,28 @@ def selecionar_vaga(conn: psycopg.Connection, hoje: date) -> tuple[str, dict[str
         cur.execute(_BASE, {"tipo": "nova"})
         nova = cur.fetchall()
     return escolher(fim_prazo, nova, hoje)
+
+
+_PREVIEW = f"""
+    select {_COLUNAS}
+    from public.vagas v
+    join public.municipios m on m.codigo_ibge = v.municipio_id
+    where v.revisao_status = 'aprovada'
+      and v.categoria_saude = 'medico'
+      and v.status = 'aberta'
+      and v.id != %(excluir_id)s
+      and exists (
+        select 1 from public.vaga_evidencias ve
+        where ve.vaga_id = v.id and ve.verificado_por_ia = true
+      )
+    order by v.inscricoes_fim nulls last, v.detectada_em desc
+    limit %(limite)s
+"""
+
+
+def vagas_preview(conn: psycopg.Connection, excluir_id: Any, limite: int = 2) -> list[dict[str, Any]]:
+    """Até `limite` outras vagas médicas publicáveis (slide 4 do carrossel), diferentes de `excluir_id`."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(_PREVIEW, {"excluir_id": excluir_id, "limite": limite})
+        candidatas = cur.fetchall()
+    return [v for v in candidatas if vaga_publicavel(v)][:limite]
