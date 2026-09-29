@@ -102,3 +102,31 @@ def test_buscar_link_alternativo_acha_item(monkeypatch):
     )
     assert resultado is not None
     assert resultado.link == "https://exemplo.org/novo"
+
+
+def test_buscar_link_alternativo_preferir_pdf_muda_a_busca(monkeypatch):
+    """`preferir_pdf=True` (usado quando a única evidência é de fonte
+    índice, sem o edital oficial ainda) busca por 'edital pdf' em vez de
+    'edital concurso' — não muda nada além do termo de busca."""
+    chamadas = []
+
+    class _Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"organic": [{"title": "Edital PDF", "link": "https://exemplo.org/edital.pdf", "snippet": "..."}]}
+
+    def _post(url, json, **kwargs):
+        chamadas.append(json)
+        return _Resp()
+
+    monkeypatch.setattr(ac.requests, "post", _post)
+    resultado = ac.buscar_link_alternativo(
+        cargo="Médico", orgao="Prefeitura", municipio="Cidade", uf="MG", api_key="chave-fake", preferir_pdf=True,
+    )
+    assert resultado is not None
+    assert resultado.link == "https://exemplo.org/edital.pdf"
+    assert len(chamadas) == 1
+    assert "edital pdf" in chamadas[0]["q"]
+    assert "edital concurso" not in chamadas[0]["q"]

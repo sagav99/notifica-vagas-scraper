@@ -750,6 +750,53 @@ def listar_vagas_medicas_incompletas(
         return [dict(zip(colunas, row)) for row in cur.fetchall()]
 
 
+def listar_vagas_medicas_so_fonte_indice(conn: psycopg.Connection, *, limite: int) -> list[dict[str, Any]]:
+    """Vaga médica já aprovada cuja ÚNICA evidência salva vem de fonte
+    `tipo = 'indice'` (Vigia/Serper, Google News RSS — descoberta ampla,
+    não a banca/prefeitura de verdade) — nunca achamos o link do edital
+    oficial em si, só a notícia/índice que apontou pra existência da
+    vaga. Pedido do usuário (2026-09-28): mostrar um 2º link "edital
+    oficial" ao lado do link da fonte sempre que possível — esta função
+    seleciona quem ainda não tem esse 2º link pra `auditar_completude_
+    vagas.py` tentar achar via busca (mesmo orçamento de Serper já usado
+    pra reparar link quebrado, ver `LIMITE_SERPER_POR_EXECUCAO`).
+    `not exists` evidência de fonte oficial = nunca achamos o edital
+    ainda (não reprocessa vaga que já tem as duas)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            select v.id, v.cargo, v.orgao, v.numero_edital, v.municipio_id, m.nome, m.uf,
+                   ev.id as evidencia_id, ev.fonte_id, ev.url, ev.tipo_documento
+            from public.vagas v
+            join public.municipios m on m.codigo_ibge = v.municipio_id
+            join lateral (
+                select ve.id, ve.fonte_id, ve.url, ve.tipo_documento
+                from public.vaga_evidencias ve
+                where ve.vaga_id = v.id
+                order by ve.detectada_em asc
+                limit 1
+            ) ev on true
+            where v.revisao_status = 'aprovada'
+              and v.categoria_saude = 'medico'
+              and exists (
+                select 1 from public.vaga_evidencias ve2
+                join public.fontes f on f.id = ve2.fonte_id
+                where ve2.vaga_id = v.id and f.tipo = 'indice'
+              )
+              and not exists (
+                select 1 from public.vaga_evidencias ve3
+                join public.fontes f on f.id = ve3.fonte_id
+                where ve3.vaga_id = v.id and f.tipo = 'oficial'
+              )
+            order by v.detectada_em desc
+            limit %(limite)s
+            """,
+            {"limite": limite},
+        )
+        colunas = [coluna.name for coluna in cur.description]
+        return [dict(zip(colunas, row)) for row in cur.fetchall()]
+
+
 def listar_vagas_medicas_para_completude_gemini(conn: psycopg.Connection, *, limite: int) -> list[dict[str, Any]]:
     """Vaga médica já aprovada que `completude_gemini.py` ainda NUNCA
     conferiu (`not exists` em `vagas_conferencias` com

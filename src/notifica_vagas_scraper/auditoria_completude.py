@@ -162,16 +162,20 @@ def montar_campos_a_atualizar(
 
 
 def buscar_link_alternativo(
-    *, cargo: str, orgao: str | None, municipio: str, uf: str, api_key: str | None = None
+    *, cargo: str, orgao: str | None, municipio: str, uf: str, api_key: str | None = None, preferir_pdf: bool = False
 ) -> "google_search.ItemBusca | None":
     """Usa a Serper (mesmo cliente da descoberta ampla) pra tentar achar
-    um link atual do mesmo edital quando o salvo está quebrado. `None` se
-    a chave não estiver configurada, a busca falhar, ou não achar nada —
-    nunca levanta, essa busca é best-effort."""
+    um link atual do mesmo edital quando o salvo está quebrado — ou,
+    com `preferir_pdf=True`, pra tentar achar o PDF do edital oficial em
+    si quando a única evidência salva é de fonte índice (notícia/Vigia,
+    nunca o documento oficial; ver `db.listar_vagas_medicas_so_fonte_
+    indice`). `None` se a chave não estiver configurada, a busca falhar,
+    ou não achar nada — nunca levanta, essa busca é best-effort."""
     chave = api_key or os.environ.get("SERPER_API_KEY")
     if not chave:
         return None
-    partes = [p for p in [cargo, orgao, municipio, uf, "edital concurso"] if p]
+    termo_documento = "edital pdf" if preferir_pdf else "edital concurso"
+    partes = [p for p in [cargo, orgao, municipio, uf, termo_documento] if p]
     query = " ".join(partes)
     parametros = google_search.montar_parametros(query, backfill=False)
     try:
