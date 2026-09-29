@@ -130,16 +130,19 @@ def main(execucao: db.ContextoExecucao | None = None) -> None:
                 continue
 
             try:
-                extraido = extrair_dados_do_link(vaga["url"], vaga["tipo_documento"])
+                extraido, motivo_falha = extrair_dados_do_link(vaga["url"], vaga["tipo_documento"])
             except CotaGeminiEsgotadaError:
                 print(f"  Cota do Gemini esgotada — parando aqui.")
                 linhas_relatorio.append("- Execução interrompida por cota do Gemini esgotada — resto fica pra próxima.")
                 break
 
             if extraido is None:
-                sem_solucao.append(f"{vaga['cargo']} ({local}): link acessível mas releitura falhou")
+                motivo_curto = (motivo_falha or "motivo desconhecido")[:500]
+                sem_solucao.append(f"{vaga['cargo']} ({local}): link acessível mas releitura falhou ({motivo_curto})")
+                print(f"  releitura falhou: {motivo_curto}")
                 db.registrar_conferencia(
                     conn, vaga_id=vaga["id"], conferido_por="auditoria_completude", resultado="releitura_falhou",
+                    detalhe=motivo_curto,
                 )
                 conn.commit()
                 continue

@@ -79,26 +79,29 @@ def _tratar_erro_gemini(exc: Exception) -> None:
         raise CotaGeminiEsgotadaError(str(exc)) from exc
 
 
-def extrair_dados_do_link(url: str, tipo_documento: str) -> dict[str, Any] | None:
+def extrair_dados_do_link(url: str, tipo_documento: str) -> tuple[dict[str, Any] | None, str | None]:
     """Rebaixa o link já salvo como evidência e roda a extração via
-    Gemini de novo (mesmo módulo usado na coleta original) — devolve o
-    dict bruto (campos de edital + lista `vagas`) ou `None` em falha de
-    rede/parsing (não propaga, só cota esgotada propaga)."""
+    Gemini de novo (mesmo módulo usado na coleta original) — devolve
+    `(dict, None)` em sucesso ou `(None, motivo)` em falha de rede/parsing
+    (não propaga, só cota esgotada propaga). `motivo` existe pra
+    `auditar_completude_vagas.py` gravar em `vagas_conferencias.detalhe`
+    em vez de descartar a causa real (achado 2026-09-28: 660 falhas em 10
+    dias sem nenhum registro do porquê)."""
     try:
         resposta = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT_HTTP_S)
         resposta.raise_for_status()
-    except requests.RequestException:
-        return None
+    except requests.RequestException as exc:
+        return None, f"GET falhou: {type(exc).__name__}: {exc}"
 
     try:
         if tipo_documento == "pdf":
-            return gemini_pdf.extrair_vagas_de_pdf(resposta.content)
-        return gemini_texto.extrair_vagas_de_texto(titulo=url, texto=resposta.text)
+            return gemini_pdf.extrair_vagas_de_pdf(resposta.content), None
+        return gemini_texto.extrair_vagas_de_texto(titulo=url, texto=resposta.text), None
     except requests.exceptions.HTTPError as exc:
         _tratar_erro_gemini(exc)
-        return None
-    except Exception:
-        return None
+        return None, f"Gemini HTTP {exc.response.status_code if exc.response is not None else '?'}: {exc}"
+    except Exception as exc:
+        return None, f"{type(exc).__name__}: {exc}"
 
 
 def encontrar_dados_cargo(extraido: dict[str, Any], cargo: str) -> dict[str, Any] | None:
