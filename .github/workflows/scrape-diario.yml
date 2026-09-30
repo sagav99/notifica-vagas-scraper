@@ -43,6 +43,10 @@ jobs:
     # revisão automática (ver revisar-vagas.yml) nem Instar (maior
     # consumidora de tempo/cota, isolada em scrape-instar.yml).
     timeout-minutes: 90
+    # Fontes bloqueadas por Cloudflare/403 (JCM, ACCESS, Avança SP, FUNDEP,
+    # IBAM-SP, Consulplan, Guiricema) saíram do workflow em 2026-09-30 (decisão
+    # do usuário): falhavam todo dia e deixavam o job sempre vermelho. Os
+    # scripts continuam em scripts/rodar_*.py pra religar se o bloqueio cair.
     steps:
       - uses: actions/checkout@v4
 
@@ -101,20 +105,6 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_imam.py
 
-      - name: Rodar coleta (JCM Concursos)
-        if: always()
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/rodar_jcm.py
-
-      - name: Rodar coleta (ACCESS)
-        if: always()
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/rodar_access.py
-
       - name: Rodar coleta (Ache Concursos)
         if: always()
         timeout-minutes: 20
@@ -122,19 +112,6 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_ache_concursos.py
-
-      - name: Rodar coleta (Avança SP)
-        if: always()
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python scripts/rodar_avancasp.py
-
-      - name: Rodar coleta (FUNDEP)
-        if: always()
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/rodar_fundep.py
 
       - name: Rodar coleta (IBGP)
         if: always()
@@ -189,12 +166,6 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python scripts/rodar_nosso_rumo.py
 
-      - name: Rodar coleta (IBAM-SP)
-        if: always()
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: python scripts/rodar_ibamsp.py
-
       - name: Rodar coleta (Mauá/SP — Processo Seletivo Saúde)
         if: always()
         env:
@@ -216,13 +187,6 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/rodar_bocaiuva_mg.py
 
-      - name: Rodar coleta (Prefeitura de Guiricema/MG)
-        if: always()
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/rodar_guiricema.py
-
       - name: Rodar coleta (Prefeitura de Sorocaba/SP)
         if: always()
         env:
@@ -230,13 +194,6 @@ jobs:
         # sem GEMINI_API_KEY: extração de cargo/salário 100% determinística
         # (pdfplumber.extract_tables()), ver fontes/sorocaba_sp.py.
         run: python scripts/rodar_sorocaba.py
-
-      - name: Rodar coleta (Instituto Consulplan)
-        if: always()
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/rodar_institutoconsulplan.py
 
       - name: Rodar coleta (Prefeitura de São Sebastião do Oeste/MG)
         if: always()
