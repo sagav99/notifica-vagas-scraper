@@ -17,6 +17,8 @@ from html import escape
 from pathlib import Path
 from typing import Any
 
+from .logo import marca
+
 LARGURA = 1080
 ALTURA = 1350
 NAO_INFORMADO = "Não informado"
@@ -39,6 +41,12 @@ def formatar_data(valor: date | None) -> str:
 
 def _brl(valor: Any) -> str:
     return f"R$ {float(valor):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _brl_titulo(valor: Any) -> str:
+    """9833.0 -> "9.833" (headline); com centavos reais mantém "9.833,50"."""
+    v = float(valor)
+    return f"{v:,.0f}".replace(",", ".") if v == int(v) else _brl(v).replace("R$ ", "")
 
 
 def formatar_salario(vaga: dict[str, Any]) -> str:
@@ -122,13 +130,8 @@ def formatar_valor_hora(vaga: dict[str, Any]) -> str:
 
 def _tamanho_titulo(texto: str) -> int:
     n = len(texto)
-    return 76 if n <= 18 else 62 if n <= 28 else 50 if n <= 40 else 40
+    return 128 if n <= 14 else 110 if n <= 18 else 92 if n <= 24 else 78 if n <= 30 else 64 if n <= 40 else 52
 
-
-_LOGO_M = (
-    '<svg width="46" height="38" viewBox="0 0 74 60"><path d="M4 56V8l18-4 15 26L52 4l18 4v48H56V26L41 52H33L18 26v30z" fill="#0f1e3d"/>'
-    '<path d="M4 8l18-4 15 26-4 8L18 26z" fill="#2f6fed"/></svg>'
-)
 
 _ICONES = {
     "doc": '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9.5 12h5M9.5 16h5"/>',
@@ -147,21 +150,27 @@ def _icone(nome: str, cor: str = "#2f6fed", tamanho: int = 26) -> str:
 
 def _estilo_base() -> str:
     return f"""*{{box-sizing:border-box}}body{{margin:0;width:{LARGURA}px;height:{ALTURA}px;overflow:hidden;
-background:#eef2fb;font-family:'Montserrat','Helvetica Neue',Arial,sans-serif;color:#0f1e3d;position:relative}}
-.canto1{{position:absolute;top:0;right:0;width:340px;height:160px;
-background:linear-gradient(200deg,#8fb6fb 0 38%,transparent 38%),linear-gradient(200deg,#2f6fed 0 22%,transparent 22%)}}
-.canto2{{position:absolute;bottom:0;right:0;width:280px;height:130px;
-background:linear-gradient(20deg,#0f1e3d 0 42%,#2f6fed 42% 64%,transparent 64%);clip-path:polygon(100% 0,100% 100%,0 100%,0 64%)}}
+background:linear-gradient(180deg,#f7faff,#e9f0fc);font-family:'Montserrat','Helvetica Neue',Arial,sans-serif;color:#0f1e3d;position:relative}}
+.canto1{{position:absolute;top:0;right:0;width:460px;height:330px;
+background:linear-gradient(135deg,#9ccbff,#58b6fd 60%,#4a90f0);clip-path:polygon(38% 0,100% 0,100% 62%);opacity:.9}}
+.canto1b{{position:absolute;top:0;right:0;width:250px;height:190px;
+background:linear-gradient(135deg,#215dca,#012566);clip-path:polygon(55% 0,100% 0,100% 74%)}}
+.canto1c{{position:absolute;top:150px;right:0;width:230px;height:520px;
+background:linear-gradient(180deg,rgba(88,182,253,.22),rgba(88,182,253,.05));clip-path:polygon(100% 0,100% 100%,0 50%)}}
+.canto2{{position:absolute;bottom:0;right:0;width:400px;height:170px;
+background:linear-gradient(90deg,#215dca,#58b6fd);clip-path:polygon(100% 0,100% 100%,20% 100%)}}
+.canto2b{{position:absolute;bottom:0;right:0;width:330px;height:120px;
+background:linear-gradient(90deg,#011951,#012a6e);clip-path:polygon(100% 45%,100% 100%,0 100%)}}
 .wrap{{position:relative;padding:56px 70px 60px;height:100%;display:flex;flex-direction:column}}
 .empurra{{margin-top:auto}}
 .topo{{display:flex;justify-content:space-between;align-items:center}}
 .logo{{display:flex;align-items:center;gap:12px;font-weight:800;font-size:36px;letter-spacing:-.5px}}
 .logo .a{{color:#0f1e3d}}.logo .b{{color:#2f6fed}}
-.badge-n{{padding:10px 22px;border-radius:999px;font-size:22px;font-weight:700;color:#fff;background:rgba(15,30,61,.82)}}
-.eyebrow{{margin-top:40px;font-size:24px;font-weight:800;letter-spacing:1.5px;color:#2f6fed;text-transform:uppercase}}
-h1{{font-family:'Archivo Black','Montserrat',sans-serif;margin:14px 0 0;line-height:1.04;font-weight:400;
+.badge-n{{padding:10px 22px;border-radius:999px;font-size:22px;font-weight:700;color:#fff;background:rgba(1,25,81,.88);position:relative}}
+.eyebrow{{margin-top:46px;font-size:24px;font-weight:800;letter-spacing:1.5px;color:#4a9ae8;text-transform:uppercase}}
+h1{{font-family:'Barlow Condensed','Arial Narrow',sans-serif;margin:10px 0 0;line-height:.96;font-weight:800;
 letter-spacing:-1px;text-transform:uppercase}}
-h1 .navy{{color:#0f1e3d}}h1 .azul{{color:#2f6fed}}
+h1 .navy{{color:#0f1e3d}}h1 .azul{{color:#2f6fed}}h1{{margin-bottom:0}}
 .divisor{{margin-top:22px;width:190px;height:5px;border-radius:3px;background:#8fb6fb}}
 .rodape-num{{display:flex;align-items:center;gap:16px}}
 .rodape-num .n{{font-size:26px;font-weight:800;color:#2f6fed}}
@@ -172,17 +181,16 @@ h1 .navy{{color:#0f1e3d}}h1 .azul{{color:#2f6fed}}
 
 def _cabecalho(numero: int) -> str:
     return (
-        f'<div class="topo"><div class="logo">{_LOGO_M}<span><span class="a">Med</span>'
-        f'<span class="b">Vagas</span></span></div><div class="badge-n">{numero}/4</div></div>'
+        f'<div class="topo">{marca()}<div class="badge-n">{numero}/4</div></div>'
     )
 
 
 def _html(corpo_estilo: str, corpo_html: str) -> str:
     return f"""<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Archivo+Black&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Barlow+Condensed:wght@700;800&display=swap" rel="stylesheet">
 <style>{_estilo_base()}{corpo_estilo}</style></head><body>
-<div class="canto1"></div><div class="canto2"></div>
+<div class="canto1c"></div><div class="canto1"></div><div class="canto1b"></div><div class="canto2"></div><div class="canto2b"></div>
 <div class="wrap">{corpo_html}</div>
 </body></html>"""
 
@@ -200,7 +208,7 @@ def _slide1(vaga: dict[str, Any], tipo: str, hoje: date) -> str:
     titulo = especialidade_curta(vaga["cargo"]).upper()
     if vaga.get("salario") is not None:
         sufixo = ROTULOS_SALARIO.get(vaga.get("salario_tipo") or "mensal", "MÊS")
-        linha1, linha2 = f"{titulo} COM", f"R$ {_brl(vaga['salario']).replace('R$ ', '')}/{sufixo}"
+        linha1, linha2 = f"{titulo} COM", f"R$ {_brl_titulo(vaga['salario'])}/{sufixo}"
     else:
         linha1, linha2 = titulo, "INSCRIÇÕES ABERTAS"
     tam = _tamanho_titulo(max(linha1, linha2, key=len))
@@ -209,7 +217,7 @@ def _slide1(vaga: dict[str, Any], tipo: str, hoje: date) -> str:
     edital = f" · Edital {vaga['numero_edital']}" if vaga.get("numero_edital") else ""
 
     campos = [
-        ("REMUNERAÇÃO", formatar_salario(vaga)),
+        ("REMUNERAÇÃO", formatar_salario(vaga).replace("/mensal", "/mês")),
         ("INSCRIÇÕES ATÉ", formatar_data(vaga.get("inscricoes_fim"))),
         ("CARGA HORÁRIA", vaga.get("carga_horaria") or NAO_INFORMADO),
         ("VALOR-HORA", formatar_valor_hora(vaga)),
@@ -226,19 +234,19 @@ def _slide1(vaga: dict[str, Any], tipo: str, hoje: date) -> str:
         rodape_card += f" · {escape(requisitos)}"
 
     estilo = """
-.card{margin-top:32px;background:#fff;border-radius:18px;border:1px solid #e2e8f8;
+.card{margin-top:34px;flex:1;display:flex;flex-direction:column;margin-bottom:34px;background:#fff;border-radius:18px;border:1px solid #e2e8f8;
 border-left:8px solid var(--cor);padding:30px 34px;box-shadow:0 14px 30px rgba(15,30,61,.06)}
 .card .linha1{display:flex;justify-content:space-between;align-items:center}
 .card .local{font-size:22px;font-weight:800;color:#2f6fed}
 .card .selo{padding:9px 20px;border-radius:999px;font-size:17px;font-weight:800;letter-spacing:.3px;color:var(--cor);background:var(--fundo)}
-.card h2{margin:14px 0 2px;font-size:36px;font-weight:800;color:#0f1e3d}
-.card .sub{font-size:19px;font-weight:500;color:#5a6789}
-.gradec{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
-.gradec .c{background:#f3f6fd;border-radius:12px;padding:14px 18px}
-.gradec .r{font-size:13px;font-weight:700;letter-spacing:.4px;color:#5a6789}
-.gradec .v{margin-top:3px;font-size:21px;font-weight:800;color:#0f1e3d}
-.rodapec{margin-top:16px;font-size:16px;font-weight:600;color:#5a6789}
-.deslize{margin-top:30px;font-size:23px;font-weight:800;color:#2f6fed;display:flex;align-items:center;gap:10px}
+.card h2{margin:14px 0 2px;font-family:'Barlow Condensed',sans-serif;font-size:58px;line-height:1;font-weight:800;color:#0f1e3d}
+.card .sub{margin-top:8px;font-size:21px;font-weight:500;color:#5a6789}
+.gradec{margin-top:24px;flex:1;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:14px 16px}
+.gradec .c{background:#f0f5fd;border-radius:14px;padding:16px 20px;display:flex;flex-direction:column;justify-content:center}
+.gradec .r{font-size:15px;font-weight:700;letter-spacing:.5px;color:#5a6789}
+.gradec .v{margin-top:4px;font-family:'Barlow Condensed',sans-serif;font-size:40px;line-height:1.05;font-weight:700;color:#0f1e3d}
+.rodapec{margin-top:18px;font-size:18px;font-weight:600;color:#5a6789}
+.deslize{margin-top:0;font-size:23px;font-weight:800;color:#2f6fed;display:flex;align-items:center;gap:10px}
 .deslize .barra{margin-top:6px;width:210px;height:5px;border-radius:3px;background:#8fb6fb}
 """
     corpo = f"""{_cabecalho(1)}
@@ -271,17 +279,18 @@ def _slide2(vaga: dict[str, Any]) -> str:
         f'<div class="c"><div class="r">{escape(r)}</div><div class="v">{escape(v)}</div></div>' for r, v in campos
     )
     estilo = """
-.gradec{margin-top:38px;display:grid;grid-template-columns:1fr 1fr;gap:16px 20px}
-.gradec .c{background:#fff;border:1px solid #e2e8f8;border-radius:14px;padding:20px 24px}
-.gradec .r{font-size:15px;font-weight:700;letter-spacing:.4px;color:#5a6789}
-.gradec .v{margin-top:5px;font-size:28px;font-weight:800;color:#0f1e3d}
-.box{margin-top:26px;background:#e3ecfd;border-radius:16px;padding:26px 30px}
+.gradec{margin-top:38px;flex:1;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:18px 20px}
+.gradec .c{background:#fff;border:1px solid #dfe8f8;border-radius:16px;padding:22px 26px;display:flex;flex-direction:column;justify-content:center;box-shadow:0 10px 24px rgba(1,25,81,.05)}
+.gradec .c:first-child{border-left:8px solid #2f6fed}
+.gradec .r{font-size:17px;font-weight:700;letter-spacing:.5px;color:#5a6789}
+.gradec .v{margin-top:6px;font-family:'Barlow Condensed',sans-serif;font-size:56px;line-height:1;font-weight:800;color:#0f1e3d}
+.box{margin-top:26px;margin-bottom:30px;background:#e3ecfd;border-radius:16px;padding:26px 30px}
 .box h3{margin:0 0 10px;font-size:23px;font-weight:800;color:#0f1e3d}
-.box p{margin:0;font-size:19px;line-height:1.5;color:#33436f;font-weight:500}
+.box p{margin:0;font-size:21px;line-height:1.5;color:#33436f;font-weight:500}
 """
     corpo = f"""{_cabecalho(2)}
 <div class="eyebrow">O QUE PESA NA DECISÃO</div>
-<h1 style="font-size:56px"><span class="navy">VALE MAIS QUE</span><br><span class="navy">PARECE </span><span class="azul">À PRIMEIRA VISTA</span></h1>
+<h1 style="font-size:96px"><span class="navy">VALE MAIS QUE PARECE</span><br><span class="azul">À PRIMEIRA VISTA</span></h1>
 <div class="divisor"></div>
 <div class="gradec">{grade}</div>
 <div class="box"><h3>POR QUE REPARAR NO VALOR-HORA</h3>
@@ -301,22 +310,23 @@ def _slide3() -> str:
         ("escudo", "Toda vaga no MedVagas traz o <b>link da fonte oficial</b>"),
     ]
     lista = "".join(
-        f'<div class="item"><div class="ic">{_icone(ic)}</div><div class="tx">{tx}</div></div>' for ic, tx in itens
+        f'<div class="item"><div class="ic">{_icone(ic, "#2f6fed", 40)}</div><div class="tx">{tx}</div></div>' for ic, tx in itens
     )
     estilo = """
-.item{margin-top:26px;display:flex;align-items:flex-start;gap:20px}
-.item .ic{flex:none;width:52px;height:52px;border-radius:14px;background:#e3ecfd;display:flex;align-items:center;justify-content:center}
-.item .tx{font-size:24px;font-weight:500;line-height:1.35;color:#0f1e3d;padding-top:6px}
+.lista{margin-top:34px;flex:1;display:flex;flex-direction:column;justify-content:space-evenly}
+.item{display:flex;align-items:center;gap:26px;background:#fff;border:1px solid #dfe8f8;border-radius:18px;padding:26px 30px;box-shadow:0 10px 24px rgba(1,25,81,.05)}
+.item .ic{flex:none;width:76px;height:76px;border-radius:20px;background:#e3ecfd;display:flex;align-items:center;justify-content:center}
+.item .tx{font-size:30px;font-weight:500;line-height:1.3;color:#0f1e3d}
 .item .tx b{font-weight:800}
-.box{margin-top:38px;background:#e3ecfd;border-radius:16px;padding:26px 30px}
+.box{margin-top:26px;margin-bottom:30px;background:#e3ecfd;border-radius:16px;padding:26px 30px}
 .box h3{margin:0 0 10px;font-size:23px;font-weight:800;color:#0f1e3d}
-.box p{margin:0;font-size:19px;line-height:1.5;color:#33436f;font-weight:500}
+.box p{margin:0;font-size:21px;line-height:1.5;color:#33436f;font-weight:500}
 """
     corpo = f"""{_cabecalho(3)}
 <div class="eyebrow">ANTES DE SE INSCREVER</div>
-<h1 style="font-size:60px"><span class="navy">CONFIRA SEMPRE O</span><br><span class="azul">EDITAL OFICIAL</span></h1>
+<h1 style="font-size:116px"><span class="navy">CONFIRA SEMPRE O</span><br><span class="azul">EDITAL OFICIAL</span></h1>
 <div class="divisor"></div>
-{lista}
+<div class="lista">{lista}</div>
 <div class="box"><h3>INFORMAÇÃO PÚBLICA</h3>
 <p>Dados do edital conferidos na data da publicação. Valores e prazos podem mudar por retificação.</p></div>
 <div class="rodape-num empurra"><div class="n">03</div><div class="barra"></div></div>"""
@@ -334,7 +344,9 @@ def _mini_card(vaga: dict[str, Any]) -> str:
     partes = []
     if vaga.get("numero_edital"):
         partes.append(f"Edital {escape(vaga['numero_edital'])}")
-    partes.append(escape(formatar_salario(vaga)))
+    salario = formatar_salario(vaga)
+    if salario != NAO_INFORMADO:
+        partes.append(escape(salario.replace("/mensal", "/mês")))
     if vaga.get("numero_vagas"):
         partes.append(f"{vaga['numero_vagas']} vaga(s)")
     partes.append(f"Inscrições até {escape(formatar_data(vaga.get('inscricoes_fim')))}")
@@ -350,32 +362,32 @@ def _mini_card(vaga: dict[str, Any]) -> str:
 def _slide4(vagas_extra: list[dict[str, Any]]) -> str:
     minis = "".join(_mini_card(v) for v in vagas_extra[:2])
     estilo = """
-.browser{margin-top:34px;background:#fff;border-radius:16px;border:1px solid #e2e8f8;overflow:hidden;box-shadow:0 14px 30px rgba(15,30,61,.06)}
+.browser{margin-top:34px;flex:1;display:flex;flex-direction:column;background:#fff;border-radius:16px;border:1px solid #e2e8f8;overflow:hidden;box-shadow:0 14px 30px rgba(15,30,61,.06)}
 .browser .barra-topo{padding:14px 18px;display:flex;gap:8px;background:#f3f6fd;border-bottom:1px solid #e2e8f8}
 .browser .bolha{width:13px;height:13px;border-radius:50%}
-.mini{padding:20px 26px;border-bottom:1px solid #eef1fa}
+.mini{flex:1;display:flex;flex-direction:column;justify-content:center;padding:20px 30px;border-bottom:1px solid #eef1fa}
 .mini:last-child{border-bottom:none}
 .mlinha1{display:flex;justify-content:space-between;align-items:center}
-.mlocal{font-size:15px;font-weight:800;letter-spacing:.4px;color:#2f6fed;text-transform:uppercase}
-.mselo{font-size:13px;font-weight:800;color:#1d7a46;background:#e2f4e8;border-radius:999px;padding:5px 14px}
-.mcargo{margin-top:6px;font-size:21px;font-weight:800;color:#0f1e3d}
-.morgao{font-size:16px;font-weight:500;color:#5a6789}
-.mdados{margin-top:6px;font-size:15px;font-weight:600;color:#41507f}
-.chamada{margin-top:26px;font-size:19px;line-height:1.5;font-weight:500;color:#33436f}
-.cta{margin-top:24px;background:#0f1e3d;color:#fff;border-radius:16px;padding:24px;text-align:center;
+.mlocal{font-size:19px;font-weight:800;letter-spacing:.4px;color:#2f6fed;text-transform:uppercase}
+.mselo{font-size:16px;font-weight:800;color:#1d7a46;background:#e2f4e8;border-radius:999px;padding:5px 14px}
+.mcargo{margin-top:8px;font-family:'Barlow Condensed',sans-serif;font-size:46px;line-height:1;font-weight:800;color:#0f1e3d}
+.morgao{margin-top:4px;font-size:19px;font-weight:500;color:#5a6789}
+.mdados{margin-top:10px;font-size:18px;font-weight:600;color:#41507f}
+.chamada{margin-top:26px;font-size:22px;line-height:1.5;font-weight:500;color:#33436f}
+.cta{margin-top:24px;background:#011951;color:#fff;border-radius:16px;padding:24px;text-align:center;
 font-size:26px;font-weight:800;letter-spacing:.3px}
 .preco{margin-top:16px;text-align:center;font-size:19px;font-weight:700;color:#41507f}
 """
     corpo = f"""{_cabecalho(4)}
 <div class="eyebrow">TODA SEMANA TEM UMA NOVA</div>
-<h1 style="font-size:60px"><span class="navy">ESSA É SÓ</span><br><span class="azul">UMA DAS VAGAS</span></h1>
+<h1 style="font-size:120px"><span class="navy">ESSA É SÓ</span><br><span class="azul">UMA DAS VAGAS</span></h1>
 <div class="divisor"></div>
 <div class="browser">
   <div class="barra-topo"><div class="bolha" style="background:#f36457"></div><div class="bolha" style="background:#f4bd4f"></div><div class="bolha" style="background:#3fca63"></div></div>
   {minis}
 </div>
 <div class="chamada">Todo dia útil entram vagas novas de médico em MG e SP. Configure seus filtros e não perca a próxima.</div>
-<div class="empurra">
+<div>
   <div class="cta">VER TODAS AS VAGAS &nbsp;→&nbsp; LINK NA BIO</div>
   <div class="preco">{escape(PRECO_INICIAL)}</div>
 </div>"""
