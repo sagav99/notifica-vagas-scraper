@@ -201,7 +201,7 @@ def _chamar_gemini(body: dict, *, chave: str, modelo: str) -> dict:
                 por_minuto = "perminute" in corpo_erro.replace(" ", "").replace("_", "") or "per minute" in corpo_erro
                 por_dia = "perday" in corpo_erro.replace(" ", "").replace("_", "")
                 if por_dia or not por_minuto or tentativas_429 >= TENTATIVAS_429_POR_MINUTO:
-                    raise CotaGeminiEsgotadaError(str(exc)) from exc
+                    raise CotaGeminiEsgotadaError(f"{exc} | corpo: {corpo_erro[:400]}") from exc
                 tentativas_429 += 1
                 time.sleep(ESPERA_429_POR_MINUTO_S)
                 ultimo_erro = exc
