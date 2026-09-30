@@ -213,7 +213,9 @@ def buscar_itens_layer2(url_prefeitura: str, itens_layer1: list[dict]) -> list[i
     return encontrados
 
 
-def processar_municipio(conn, municipio: instar.MunicipioInstar, fonte_id: str, itens: list[dict]) -> int:
+def processar_municipio(
+    conn, municipio: instar.MunicipioInstar, fonte_id: str, itens: list[dict], ja_processados: set[str] | None = None
+) -> int:
     codigo_ibge = municipio.codigo_ibge
     url_evidencia = municipio.url_prefeitura.rstrip("/") + "/portal/editais"
 
@@ -222,6 +224,8 @@ def processar_municipio(conn, municipio: instar.MunicipioInstar, fonte_id: str, 
         titulo = item.get("titulo") or ""
         descricao = (item.get("descricao") or "")[:DESCRICAO_MAX_CHARS]
         if not descricao:
+            continue
+        if db.item_ja_processado(f"{item.get('numeroProcesso')}-{_slug(titulo)}-", ja_processados or set()):
             continue
 
         try:
@@ -282,7 +286,11 @@ def processar_municipio(conn, municipio: instar.MunicipioInstar, fonte_id: str, 
 
 
 def processar_item_layer2(
-    conn, municipio: instar.MunicipioInstar, fonte_id: str, item: instar.ItemPortal
+    conn,
+    municipio: instar.MunicipioInstar,
+    fonte_id: str,
+    item: instar.ItemPortal,
+    ja_processados: set[str] | None = None,
 ) -> int:
     """Mesmo fluxo de `processar_municipio`, pro item vindo de
     `/portal/editais`/`/portal/noticias` (2ª camada) — sem `numeroEdital`/
@@ -294,6 +302,8 @@ def processar_item_layer2(
 
     descricao = item.descricao[:DESCRICAO_MAX_CHARS]
     if not descricao:
+        return 0
+    if db.item_ja_processado(f"portal2-{_extrair_id_portal(item.url)}-", ja_processados or set()):
         return 0
 
     try:
@@ -417,6 +427,12 @@ def main() -> None:
             f"{com_2a_camada} com achado só na 2ª camada de varredura)."
         )
 
+        # Commit ao fim da 1ª passada (cobertura) e a cada município: antes o
+        # único commit ficava depois do laço, e o cancelamento por timeout
+        # (45 min) desfazia tudo — a Instar não gravava nada desde 16/09.
+        conn.commit()
+        ja_processados = db.listar_identificadores_por_fonte_nome(conn, "% (Instar)")
+
         total_geral = 0
         for municipio, itens_layer1, itens_layer2 in trabalho:
             print(f"Processando {municipio.nome}/{municipio.uf}...")
@@ -431,9 +447,10 @@ def main() -> None:
                         tipo=FONTE_TIPO,
                         uf=municipio.uf,
                     )
-                    total_geral += processar_municipio(conn, municipio, fonte_id, itens_layer1)
+                    total_geral += processar_municipio(conn, municipio, fonte_id, itens_layer1, ja_processados)
                     for item in itens_layer2:
-                        total_geral += processar_item_layer2(conn, municipio, fonte_id, item)
+                        total_geral += processar_item_layer2(conn, municipio, fonte_id, item, ja_processados)
+                conn.commit()
             except Exception as exc:  # nunca deixar 1 município derrubar o lote inteiro
                 print(f"  ERRO processando {municipio.nome}/{municipio.uf}: {exc}")
 

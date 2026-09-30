@@ -35,18 +35,7 @@ def slug_do_item(item: ache.ItemListagem) -> str:
 
 
 def item_ja_processado(item: ache.ItemListagem, identificadores: set[str]) -> bool:
-    prefixo = f"ache-{slug_do_item(item)}-"
-    return any(i.startswith(prefixo) for i in identificadores)
-
-
-def listar_identificadores_ache(conn) -> set[str]:
-    with conn.cursor() as cur:
-        cur.execute(
-            "select e.identificador_externo from public.vaga_evidencias e "
-            "join public.fontes f on f.id = e.fonte_id where f.nome = %(nome)s",
-            {"nome": FONTE_NOME},
-        )
-        return {row[0] for row in cur.fetchall()}
+    return db.item_ja_processado(f"ache-{slug_do_item(item)}-", identificadores)
 
 
 def processar_item(conn, item: ache.ItemListagem, municipio: str, uf: str, codigo_ibge: int) -> int:
@@ -136,7 +125,7 @@ def main() -> None:
         hoje = date.today()
         # Pula edital já gravado: sem isso toda noite rebaixava cada PDF e
         # rechamava o Gemini (42-60 min, estourava o timeout do workflow).
-        ja_processados = listar_identificadores_ache(conn)
+        ja_processados = db.listar_identificadores_por_fonte_nome(conn, FONTE_NOME)
         total_geral = 0
         for uf, caminho in LISTAGENS.items():
             try:

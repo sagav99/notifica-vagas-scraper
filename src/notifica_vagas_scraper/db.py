@@ -141,6 +141,23 @@ def listar_identificadores_processados(conn: psycopg.Connection, fonte_id: str) 
         return {row[0] for row in cur.fetchall()}
 
 
+def listar_identificadores_por_fonte_nome(conn: psycopg.Connection, nome_like: str) -> set[str]:
+    """`identificador_externo` já gravado por qualquer fonte cujo nome case com
+    `nome_like` (padrão SQL LIKE) — pra pular item já processado antes de
+    baixar PDF/chamar Gemini (fontes com uma `fonte` por município)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "select e.identificador_externo from public.vaga_evidencias e "
+            "join public.fontes f on f.id = e.fonte_id where f.nome like %(nome)s",
+            {"nome": nome_like},
+        )
+        return {row[0] for row in cur.fetchall()}
+
+
+def item_ja_processado(prefixo: str, identificadores: set[str]) -> bool:
+    return any(i.startswith(prefixo) for i in identificadores)
+
+
 def registrar_sinal_descoberta(
     conn: psycopg.Connection,
     *,

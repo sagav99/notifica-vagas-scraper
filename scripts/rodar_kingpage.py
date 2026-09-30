@@ -113,6 +113,10 @@ def main() -> None:
         municipios = kingpage.listar_municipios_kingpage()
         print(f"{len(municipios)} município(s) Kingpage confirmado(s).")
 
+        # Pula processo já gravado: sem isso toda noite rebaixava cada PDF e
+        # rechamava o Gemini (14-30 min por execução).
+        ja_processados = db.listar_identificadores_por_fonte_nome(conn, "% (Kingpage)")
+
         total_geral = 0
         for municipio in municipios:
             print(f"Processando {municipio.nome}/{municipio.uf}...")
@@ -145,6 +149,8 @@ def main() -> None:
 
             print(f"  {len(itens)} processo(s) encontrado(s).")
             for item in itens:
+                if db.item_ja_processado(f"kingpage-{item.processo_id}-", ja_processados):
+                    continue
                 print(f"  {item.objeto} ({item.numero_ano})")
                 try:
                     with conn.transaction():

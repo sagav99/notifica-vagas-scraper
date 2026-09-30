@@ -17,3 +17,13 @@ def test_item_ja_processado_pelo_prefixo_do_slug():
     assert not r.item_ja_processado(_item("prefeitura-de-y"), ids)
     # limitação conhecida: slug que é prefixo de outro já gravado também é pulado
     # (o identificador guarda slug+cargo, sem separador único); slugs reais têm cidade+ano.
+
+
+def test_db_item_ja_processado_prefixo_exato():
+    from notifica_vagas_scraper import db
+
+    ids = {"kingpage-123-medico", "portal2-9-clinico"}
+    assert db.item_ja_processado("kingpage-123-", ids)
+    assert db.item_ja_processado("portal2-9-", ids)
+    assert not db.item_ja_processado("kingpage-124-", ids)
+    assert not db.item_ja_processado("portal2-", set())
