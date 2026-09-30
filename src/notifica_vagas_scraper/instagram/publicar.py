@@ -69,16 +69,16 @@ def hospedar_imagem(png: Path, nome: str) -> str:
     """Sobe o PNG para a branch de imagens e devolve a URL pública."""
     repo = os.environ["GITHUB_REPOSITORY"]
     _garantir_branch(repo)
-    resposta = requests.put(
-        f"https://api.github.com/repos/{repo}/contents/{nome}",
-        headers=_gh_headers(),
-        json={
-            "message": f"chore: card do post {nome}",
-            "content": base64.b64encode(png.read_bytes()).decode(),
-            "branch": BRANCH_IMAGENS,
-        },
-        timeout=TIMEOUT,
-    )
+    url = f"https://api.github.com/repos/{repo}/contents/{nome}"
+    corpo = {
+        "message": f"chore: card do post {nome}",
+        "content": base64.b64encode(png.read_bytes()).decode(),
+        "branch": BRANCH_IMAGENS,
+    }
+    existente = requests.get(url, headers=_gh_headers(), params={"ref": BRANCH_IMAGENS}, timeout=TIMEOUT)
+    if existente.status_code == 200:
+        corpo["sha"] = existente.json()["sha"]
+    resposta = requests.put(url, headers=_gh_headers(), json=corpo, timeout=TIMEOUT)
     if resposta.status_code not in (200, 201):
         raise ErroPublicacao(f"Falha ao hospedar imagem ({resposta.status_code}): {resposta.text[:200]}")
     return f"https://raw.githubusercontent.com/{repo}/{BRANCH_IMAGENS}/{nome}"
