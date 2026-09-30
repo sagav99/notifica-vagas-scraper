@@ -57,7 +57,12 @@ BACKOFF_INICIAL_S = 5.0
 #: chamada com google_search/url_context pode buscar e ler página(s)
 #: inteira(s) — bem mais cara que revisao_ia (só campo estruturado, sem
 #: tool), na mesma ordem de grandeza de gemini_pdf (documento inteiro).
-ESTIMATIVA_TOKENS_COMPLETUDE = 20_000
+ESTIMATIVA_TOKENS_COMPLETUDE = 60_000
+
+#: 429 por minuto (TPM/RPM) não é cota esgotada: espera a janela zerar e tenta
+#: de novo. 429 diário (RPD) continua encerrando o lote.
+ESPERA_429_POR_MINUTO_S = 65.0
+TENTATIVAS_429_POR_MINUTO = 3
 
 TIMEOUT_S = 90
 
@@ -172,6 +177,7 @@ def _chamar_gemini(body: dict, *, chave: str, modelo: str) -> dict:
     aceito no resto do repo (cada módulo Gemini tem seu próprio retry
     pequeno)."""
     ultimo_erro: Exception | None = None
+    tentativas_429 = 0
     for tentativa in range(TENTATIVAS_MAX):
         if tentativa > 0:
             time.sleep(BACKOFF_INICIAL_S * tentativa)
@@ -191,7 +197,15 @@ def _chamar_gemini(body: dict, *, chave: str, modelo: str) -> dict:
         except requests.exceptions.HTTPError as exc:
             status = exc.response.status_code if exc.response is not None else None
             if status == 429:
-                raise CotaGeminiEsgotadaError(str(exc)) from exc
+                corpo_erro = (exc.response.text if exc.response is not None else "").lower()
+                por_minuto = "perminute" in corpo_erro.replace(" ", "").replace("_", "") or "per minute" in corpo_erro
+                por_dia = "perday" in corpo_erro.replace(" ", "").replace("_", "")
+                if por_dia or not por_minuto or tentativas_429 >= TENTATIVAS_429_POR_MINUTO:
+                    raise CotaGeminiEsgotadaError(str(exc)) from exc
+                tentativas_429 += 1
+                time.sleep(ESPERA_429_POR_MINUTO_S)
+                ultimo_erro = exc
+                continue
             if status is None or status < 500:
                 raise
             ultimo_erro = exc

@@ -184,9 +184,11 @@ def _limpa_estado_global_do_limiter():
     # próximo e os tempos de espera calculados ficam imprevisíveis.
     gemini_util._ultima_chamada_por_modelo.clear()
     gemini_util._janela_tokens_por_modelo.clear()
+    gemini_util._ultimos_tokens_por_modelo.clear()
     yield
     gemini_util._ultima_chamada_por_modelo.clear()
     gemini_util._janela_tokens_por_modelo.clear()
+    gemini_util._ultimos_tokens_por_modelo.clear()
 
 
 def test_esperar_rate_limit_e_por_modelo_independente(monkeypatch):
@@ -215,11 +217,29 @@ def test_esperar_rate_limit_espera_no_mesmo_modelo(monkeypatch):
 def test_aguardar_orcamento_tpm_nao_espera_dentro_do_teto(monkeypatch):
     chamadas_sleep = []
     monkeypatch.setattr(time, "sleep", lambda s: chamadas_sleep.append(s))
-    gemini_util.registrar_tokens_usados(quota_gemini.MODELO_PADRAO, 100_000)
+    gemini_util.registrar_tokens_usados(quota_gemini.MODELO_PADRAO, 60_000)
 
     gemini_util.aguardar_orcamento_tpm(quota_gemini.MODELO_PADRAO, 50_000)
 
     assert chamadas_sleep == []
+
+
+def test_aguardar_orcamento_tpm_usa_maior_uso_real_recente_como_estimativa(monkeypatch):
+    agora = [1000.0]
+    monkeypatch.setattr(time, "monotonic", lambda: agora[0])
+    chamadas_sleep = []
+
+    def _sleep(segundos):
+        chamadas_sleep.append(segundos)
+        agora[0] += segundos
+
+    monkeypatch.setattr(time, "sleep", _sleep)
+    gemini_util.registrar_tokens_usados(quota_gemini.MODELO_PADRAO, 90_000)
+
+    # estimativa baixa (2k), mas a última chamada real gastou 90k: 90k+90k > teto efetivo
+    gemini_util.aguardar_orcamento_tpm(quota_gemini.MODELO_PADRAO, 2_000)
+
+    assert len(chamadas_sleep) >= 1
 
 
 def test_aguardar_orcamento_tpm_espera_quando_estouraria(monkeypatch):

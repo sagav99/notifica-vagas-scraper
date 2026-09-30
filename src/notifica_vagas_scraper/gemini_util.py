@@ -79,6 +79,10 @@ _RE_CARGA_HORARIA_SEMANAL = re.compile(
 
 RPM_LIMITE = 15
 TPM_LIMITE = 250_000
+#: teto efetivo com folga — o Google conta tokens de ferramenta (url_context/
+#: google_search) e de entrada de um jeito que o `usageMetadata` nem sempre
+#: reflete; 2026-09-30: 301k/250k medidos com o limitador em 250k cravado.
+TPM_LIMITE_EFETIVO = 160_000
 INTERVALO_MINIMO_ENTRE_CHAMADAS_S = 4.5  # 15 RPM = 1 a cada 4s; margem de segurança, por modelo
 
 #: estimativas conservadoras de tokens só pra decidir se vale ESPERAR
@@ -116,6 +120,16 @@ def _purgar_janela_tpm(modelo: str) -> deque[tuple[float, int]]:
     return janela
 
 
+_ultimos_tokens_por_modelo: dict[str, deque[int]] = {}
+
+
+def _media_recente(modelo: str) -> int:
+    """Maior uso real entre as últimas chamadas do modelo — a estimativa
+    fixa subestima chamada com url_context (página inteira)."""
+    recentes = _ultimos_tokens_por_modelo.get(modelo)
+    return max(recentes) if recentes else 0
+
+
 def aguardar_orcamento_tpm(modelo: str, tokens_estimados: int) -> None:
     """Espera o quanto for preciso pra que mandar mais `tokens_estimados`
     tokens pro `modelo` não estoure as 250k TPM da janela móvel de 60s
@@ -126,7 +140,7 @@ def aguardar_orcamento_tpm(modelo: str, tokens_estimados: int) -> None:
     while True:
         janela = _purgar_janela_tpm(modelo)
         usado = sum(tokens for _, tokens in janela)
-        if usado + tokens_estimados <= TPM_LIMITE:
+        if not janela or usado + max(tokens_estimados, _media_recente(modelo)) <= TPM_LIMITE_EFETIVO:
             return
         # +0.01 pra nunca acordar bem na borda dos 60s e o item mais
         # antigo ainda contar como "dentro da janela" na próxima purga
@@ -144,6 +158,7 @@ def registrar_tokens_usados(modelo: str, tokens: int) -> None:
     antes de gerar conteúdo) na janela de TPM do modelo."""
     janela = _janela_tokens_por_modelo.setdefault(modelo, deque())
     janela.append((time.monotonic(), tokens))
+    _ultimos_tokens_por_modelo.setdefault(modelo, deque(maxlen=8)).append(tokens)
 
 
 def chamar_api(
@@ -170,9 +185,15 @@ def chamar_api(
     quota_gemini.registrar_chamada(modelo)
     tokens_usados = tokens_estimados
     try:
-        tokens_usados = resposta.json().get("usageMetadata", {}).get("totalTokenCount", tokens_estimados)
+        uso = resposta.json().get("usageMetadata", {})
+        tokens_usados = max(
+            uso.get("totalTokenCount", tokens_estimados),
+            uso.get("promptTokenCount", 0) + uso.get("toolUsePromptTokenCount", 0) + uso.get("candidatesTokenCount", 0),
+        )
     except ValueError:
         pass
+    if getattr(resposta, "status_code", None) == 429:
+        tokens_usados = max(tokens_usados, tokens_estimados)
     registrar_tokens_usados(modelo, tokens_usados)
     return resposta
 
