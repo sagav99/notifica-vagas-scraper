@@ -117,6 +117,7 @@ jobs:
 
       - name: Rodar coleta (Ache Concursos)
         if: always()
+        timeout-minutes: 20
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
