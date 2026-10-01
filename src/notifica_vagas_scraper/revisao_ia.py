@@ -108,6 +108,7 @@ from datetime import date
 import requests
 
 from . import gemini_util, quota_gemini
+from .quota_gemini import CotaGeminiEsgotadaError
 
 MODELO_PADRAO = quota_gemini.MODELO_PADRAO
 URL_API = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
@@ -288,16 +289,6 @@ class ErroRevisaoGemini(Exception):
     pass
 
 
-class CotaGeminiEsgotadaError(Exception):
-    """HTTP 429 (cota diária esgotada) — diferente de erro isolado numa
-    vaga: TODA chamada seguinte vai falhar igual, então quem chama
-    (`scripts/revisar_vagas.py`) deve parar o lote inteiro, não continuar
-    rejeitando vaga por vaga sem revisão real. Achado em produção,
-    2026-09-08: sem essa distinção, 1566 vagas (de um backlog de 2624)
-    viraram "rejeitada" só porque a cota do Gemini acabou no meio do lote
-    — incluindo vaga médica real (ex: Médico Cardiologista, Médico
-    Ginecologista-Obstetra em Dores do Indaiá/MG), violando a prioridade
-    do produto de nunca deixar passar vaga médica batido."""
 
 
 def _montar_bloco_contexto_irmas(contexto_irmas: str | None) -> str:

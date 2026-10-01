@@ -83,7 +83,7 @@ TPM_LIMITE = 250_000
 #: google_search) e de entrada de um jeito que o `usageMetadata` nem sempre
 #: reflete; 2026-09-30: 301k/250k medidos com o limitador em 250k cravado.
 TPM_LIMITE_EFETIVO = 160_000
-INTERVALO_MINIMO_ENTRE_CHAMADAS_S = 4.5  # 15 RPM = 1 a cada 4s; margem de segurança, por modelo
+INTERVALO_MINIMO_ENTRE_CHAMADAS_S = 5.0  # 12 RPM = 80% dos 15 RPM, por modelo
 
 #: estimativas conservadoras de tokens só pra decidir se vale ESPERAR
 #: antes da 1ª chamada de uma janela nova (sem uso real medido ainda) —
@@ -179,6 +179,7 @@ def chamar_api(
     `tokens_estimados` se a resposta não vier em JSON) na janela de TPM
     depois. Não faz retry nem `raise_for_status` — isso fica com quem
     chama (ver `revisao_ia._chamar_gemini` pro retry com backoff)."""
+    quota_gemini.garantir_folga_diaria(modelo)
     esperar_rate_limit(modelo)
     aguardar_orcamento_tpm(modelo, tokens_estimados)
     resposta = requests.post(url, params={"key": chave}, json=body, timeout=timeout)

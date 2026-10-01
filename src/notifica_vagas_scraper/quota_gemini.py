@@ -30,6 +30,17 @@ import psycopg
 
 LIMITE_ANTES_DE_TROCAR = 470  # mantido só como referência histórica/testes; não usado no despacho
 
+#: Regra do usuário (2026-10-01): nunca exceder o limite, sempre deixar folga.
+#: 500 RPD por modelo no AI Studio; paramos em 80%.
+LIMITE_RPD = 500
+TETO_RPD = 400
+
+
+class CotaGeminiEsgotadaError(Exception):
+    """Cota do Gemini esgotada (429 real) ou teto de folga atingido — quem
+    chama deve parar o lote inteiro, não continuar vaga por vaga."""
+
+
 MODELO_PADRAO = "gemini-3.5-flash-lite"
 MODELO_FALLBACK = "gemini-3.1-flash-lite"
 
@@ -100,7 +111,22 @@ def proximo_modelo() -> str:
         return forcado
     contagem_padrao = _ler_contagem_hoje(MODELO_PADRAO)
     contagem_fallback = _ler_contagem_hoje(MODELO_FALLBACK)
+    if contagem_padrao >= TETO_RPD and contagem_fallback < TETO_RPD:
+        return MODELO_FALLBACK
+    if contagem_fallback >= TETO_RPD:
+        return MODELO_PADRAO
     return MODELO_FALLBACK if contagem_fallback < contagem_padrao else MODELO_PADRAO
+
+
+def garantir_folga_diaria(modelo: str) -> None:
+    """Levanta `CotaGeminiEsgotadaError` ANTES de chamar a API se o modelo
+    já chegou em `TETO_RPD` hoje (a contagem inclui retries e chamadas com
+    erro, ver `registrar_chamada`)."""
+    contagem = _ler_contagem_hoje(modelo)
+    if contagem >= TETO_RPD:
+        raise CotaGeminiEsgotadaError(
+            f"Teto de folga atingido: {modelo} com {contagem}/{LIMITE_RPD} chamadas hoje (teto {TETO_RPD})."
+        )
 
 
 def registrar_chamada(modelo: str) -> None:

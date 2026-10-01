@@ -146,3 +146,19 @@ def test_incremento_e_atomico_via_upsert_concorrente(monkeypatch):
     for _ in range(5):
         quota_gemini.registrar_chamada(quota_gemini.MODELO_PADRAO)
     assert tabela[(quota_gemini._hoje(), quota_gemini.MODELO_PADRAO)] == 5
+
+
+def test_garantir_folga_bloqueia_no_teto(monkeypatch):
+    tabela = _instalar_tabela_falsa(monkeypatch)
+    tabela[(quota_gemini._hoje(), quota_gemini.MODELO_PADRAO)] = quota_gemini.TETO_RPD
+    import pytest
+
+    with pytest.raises(quota_gemini.CotaGeminiEsgotadaError):
+        quota_gemini.garantir_folga_diaria(quota_gemini.MODELO_PADRAO)
+
+
+def test_proximo_modelo_foge_do_modelo_no_teto(monkeypatch):
+    tabela = _instalar_tabela_falsa(monkeypatch)
+    tabela[(quota_gemini._hoje(), quota_gemini.MODELO_PADRAO)] = quota_gemini.TETO_RPD
+    tabela[(quota_gemini._hoje(), quota_gemini.MODELO_FALLBACK)] = quota_gemini.TETO_RPD - 1
+    assert quota_gemini.proximo_modelo() == quota_gemini.MODELO_FALLBACK
