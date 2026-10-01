@@ -53,6 +53,7 @@ class ItemBusca:
     link: str
     resumo: str | None
     publicado_em: datetime | None
+    consulta: str | None = None
 
 
 def montar_parametros(

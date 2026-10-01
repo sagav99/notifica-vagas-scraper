@@ -94,6 +94,10 @@ def main(execucao: db.ContextoExecucao | None = None) -> None:
 
                 buscas_serper_usadas += 1
                 item = buscar_link_alternativo(cargo=vaga["cargo"], orgao=vaga["orgao"], municipio=vaga["nome"], uf=vaga["uf"])
+                db.registrar_consulta_serper(
+                    conn, origem="completude", consulta="substituto de link quebrado",
+                    resultados=int(item is not None and item.link != vaga["url"]),
+                )
                 if item is None or item.link == vaga["url"]:
                     linhas_relatorio.append(
                         f"- **{vaga['cargo']}** ({local}) — link quebrado ({resultado_link.motivo}), "
@@ -200,6 +204,10 @@ def main(execucao: db.ContextoExecucao | None = None) -> None:
             buscas_serper_usadas += 1
             item = buscar_link_alternativo(
                 cargo=vaga["cargo"], orgao=vaga["orgao"], municipio=vaga["nome"], uf=vaga["uf"], preferir_pdf=True,
+            )
+            db.registrar_consulta_serper(
+                conn, origem="completude", consulta="edital oficial (pdf) de vaga só com fonte índice",
+                resultados=int(item is not None and item.link != vaga["url"]),
             )
             if item is None or item.link == vaga["url"]:
                 linhas_relatorio.append(

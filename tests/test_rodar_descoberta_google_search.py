@@ -740,3 +740,31 @@ def test_bloqueio_marca_problema_conferencia_sem_chamar_gemini_de_novo(monkeypat
 
     assert inserido["atualizar_problema_conferencia"] is True
     assert inserido["problema_conferencia"]["tipo"] == "documento_ilegivel"
+
+
+def test_buscar_itens_atribui_link_repetido_a_primeira_consulta(monkeypatch):
+    monkeypatch.setattr(script.google_search, "QUERIES", ("a", "b", "falha"))
+
+    class Resposta:
+        def __init__(self, links):
+            self.links = links
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"organic": [{"title": f"Concurso {i}", "link": link} for i, link in enumerate(self.links)]}
+
+    def fake_post(url, *, json, headers, timeout):
+        if json["q"] == "falha":
+            raise requests.RequestException("x")
+        return Resposta(["https://x.test/1", "https://x.test/2"] if json["q"] == "a" else ["https://x.test/2", "https://x.test/3"])
+
+    monkeypatch.setattr(script.requests, "post", fake_post)
+    estatisticas = {}
+    itens = script.buscar_itens(api_key="chave", estatisticas=estatisticas)
+
+    assert [i.consulta for i in itens] == ["a", "a", "b"]
+    assert estatisticas["a"] == {"resultados": 2, "novos": 2, "erro": None}
+    assert estatisticas["b"] == {"resultados": 2, "novos": 1, "erro": None}
+    assert estatisticas["falha"]["erro"] == "RequestException"

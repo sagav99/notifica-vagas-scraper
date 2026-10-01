@@ -9,6 +9,7 @@ necessário aqui, só psycopg.
 from __future__ import annotations
 
 import os
+import sys
 import re
 import traceback
 import unicodedata
@@ -956,6 +957,34 @@ def registrar_evidencia_adicional(
         )
         row = cur.fetchone()
         return row[0] if row else None
+
+
+def registrar_consulta_serper(
+    conn: psycopg.Connection,
+    *,
+    origem: str,
+    consulta: str,
+    resultados: int,
+    links_novos_na_execucao: int = 0,
+    casados: int = 0,
+    sinais_novos: int = 0,
+    vagas_extraidas: int = 0,
+    vagas_criadas: int = 0,
+    erro: str | None = None,
+) -> None:
+    """1 linha em `public.serper_consultas_log` (migration 071, repo principal)
+    por consulta paga à Serper. Best-effort: falha de log nunca derruba a coleta."""
+    try:
+        with conn.transaction():
+            conn.execute(
+                "insert into public.serper_consultas_log (origem, consulta, resultados, links_novos_na_execucao,"
+                " casados, sinais_novos, vagas_extraidas, vagas_criadas, erro)"
+                " values (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (origem, consulta, resultados, links_novos_na_execucao, casados, sinais_novos,
+                 vagas_extraidas, vagas_criadas, erro),
+            )
+    except Exception as exc:
+        print(f"aviso: não consegui registrar consulta Serper no log: {exc}", file=sys.stderr)
 
 
 def registrar_conferencia(

@@ -69,8 +69,12 @@ def _parsear_data_iso(texto: str | None) -> date | None:
         return None
 
 
-def buscar_itens(*, api_key: str, backfill: bool = False, janela: str | None = None) -> list[google_search.ItemBusca]:
-    """Faz no máximo uma consulta por query, nunca excedendo o limite por execução."""
+def buscar_itens(
+    *, api_key: str, backfill: bool = False, janela: str | None = None,
+    estatisticas: dict[str, dict] | None = None,
+) -> list[google_search.ItemBusca]:
+    """Faz no máximo uma consulta por query, nunca excedendo o limite por execução.
+    Se `estatisticas` for passado, recebe por consulta {resultados, novos, erro}."""
     queries = google_search.QUERIES[: google_search.QUERIES_POR_EXECUCAO]
     if len(google_search.QUERIES) > len(queries):
         print(
@@ -95,6 +99,8 @@ def buscar_itens(*, api_key: str, backfill: bool = False, janela: str | None = N
             status = getattr(getattr(exc, "response", None), "status_code", None)
             detalhe = f"HTTP {status}" if status else type(exc).__name__
             print(f"  aviso: falha buscando na Serper para '{query}': {detalhe}", file=sys.stderr)
+            if estatisticas is not None:
+                estatisticas[query] = {"resultados": 0, "novos": 0, "erro": detalhe}
             falhas_consecutivas += 1
             if falhas_consecutivas >= MAX_FALHAS_CONSECUTIVAS_API:
                 print(
@@ -105,10 +111,20 @@ def buscar_itens(*, api_key: str, backfill: bool = False, janela: str | None = N
                 break
             continue
         falhas_consecutivas = 0
-        todos.extend(google_search.listar_itens(dados))
+        itens_query = google_search.listar_itens(dados)
+        for item in itens_query:
+            item.consulta = query
+        if estatisticas is not None:
+            estatisticas[query] = {"resultados": len(itens_query), "novos": 0, "erro": None}
+        todos.extend(itens_query)
 
     vistos: set[str] = set()
-    return [item for item in todos if not (item.link in vistos or vistos.add(item.link))]
+    unicos = [item for item in todos if not (item.link in vistos or vistos.add(item.link))]
+    if estatisticas is not None:
+        for item in unicos:
+            if item.consulta in estatisticas:
+                estatisticas[item.consulta]["novos"] += 1
+    return unicos
 
 
 def buscar_pagina_html(url: str) -> str | None:
@@ -249,7 +265,8 @@ def _conferir_documento(
 
 def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str, codigo_ibge: int,
                    dominios_conhecidos: set[str], gemini_api_key: str,
-                   supabase_url: str | None = None, service_role_key: str | None = None) -> tuple[int, int]:
+                   supabase_url: str | None = None, service_role_key: str | None = None,
+                   vagas_criadas_out: list[int] | None = None) -> tuple[int, int]:
     """Registra sempre o sinal e devolve ``(sinais_novos, vagas_extraidas)``."""
     dominio = normalizar_dominio(item.link)
     dominios_normalizados = {normalizar_dominio(f"//{host}") for host in dominios_conhecidos}
@@ -427,6 +444,8 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
             atualizar_problema_conferencia=cargo.strip().casefold() in problemas_por_cargo,
             problema_conferencia=problemas_por_cargo.get(cargo.strip().casefold()),
         )
+        if vagas_criadas_out is not None and resultado["vaga_criada"]:
+            vagas_criadas_out.append(1)
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         if coberto and resultado["vaga_criada"]:
             print(f"    ALERTA cobertura: {cargo}: vaga_id={resultado['vaga_id']} é NOVA mesmo com domínio '{dominio}' coberto por fonte oficial ({novo})")
@@ -471,7 +490,9 @@ def main(argv: list[str] | None = None) -> None:
         print("aviso: NEXT_PUBLIC_SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY não definidas; "
               "print de página do PDF desativado nesta execução.", file=sys.stderr)
 
-    itens = buscar_itens(api_key=api_key, backfill=args.backfill, janela=args.janela if args.backfill else None)
+    estatisticas: dict[str, dict] = {}
+    itens = buscar_itens(api_key=api_key, backfill=args.backfill, janela=args.janela if args.backfill else None,
+                         estatisticas=estatisticas)
     print(f"{len(itens)} resultado(s) único(s) da Serper.")
     conn = db.conectar()
     try:
@@ -480,22 +501,41 @@ def main(argv: list[str] | None = None) -> None:
         codigos = {(nome, uf): codigo for codigo, nome, uf in municipios_completos}
         dominios_conhecidos = db.listar_dominios_fontes_conhecidas(conn)
         casados = sinais_novos = vagas = 0
+        por_consulta = {q: {"casados": 0, "sinais_novos": 0, "extraidas": 0, "criadas": 0} for q in estatisticas}
         for item in itens:
             match = fgv.casar_municipio_com_guarda_de_uf(item.titulo, "", municipios, link=item.link)
             if match is None or (codigo_ibge := codigos.get(match)) is None:
                 continue
             casados += 1
+            acum = por_consulta.get(item.consulta)
+            if acum is not None:
+                acum["casados"] += 1
             print(f"Processando '{item.titulo[:80]}' -> {match[0]}/{match[1]}...")
+            criadas: list[int] = []
             try:
                 with conn.transaction():
                     novos, extraidas = processar_item(conn, item, match[0], match[1], codigo_ibge,
                                                        dominios_conhecidos, gemini_api_key,
-                                                       supabase_url, service_role_key)
+                                                       supabase_url, service_role_key,
+                                                       vagas_criadas_out=criadas)
                 conn.commit()
                 sinais_novos += novos
                 vagas += extraidas
+                if acum is not None:
+                    acum["sinais_novos"] += novos
+                    acum["extraidas"] += extraidas
+                    acum["criadas"] += len(criadas)
             except Exception as exc:
                 print(f"  ERRO processando '{item.titulo[:80]}': {exc}", file=sys.stderr)
+        if not args.backfill:
+            for query, est in estatisticas.items():
+                acum = por_consulta[query]
+                db.registrar_consulta_serper(
+                    conn, origem="descoberta", consulta=query, resultados=est["resultados"],
+                    links_novos_na_execucao=est["novos"], casados=acum["casados"],
+                    sinais_novos=acum["sinais_novos"], vagas_extraidas=acum["extraidas"],
+                    vagas_criadas=acum["criadas"], erro=est["erro"],
+                )
         print(f"\nOk. {casados} casado(s), {sinais_novos} sinal(is) novo(s), {vagas} vaga(s) processada(s).")
         if args.backfill:
             print(f"Relatório do backfill: {escrever_relatorio_backfill(janela=args.janela, itens=len(itens), casados=casados, sinais_novos=sinais_novos, vagas=vagas)}")
