@@ -82,7 +82,9 @@ def _normalizar_texto_dedup(texto: str | None) -> str:
         return ""
     sem_acento = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("ascii")
     sem_espaco_na_barra = re.sub(r"\s*/\s*", "/", sem_acento)
-    return " ".join(sem_espaco_na_barra.strip().lower().split())
+    colapsado = " ".join(sem_espaco_na_barra.strip().lower().split())
+    # "Prefeitura do Município de X" e "Prefeitura Municipal de X" são o mesmo órgão (Corumbataí/SP, 2026-09).
+    return re.sub(r"\bprefeitura (?:do municipio|municipal) de\b", "prefeitura de", colapsado)
 
 
 _cache_local_codigo_por_uf: dict[str, list[tuple[int, str]]] = {}
