@@ -7,7 +7,7 @@ from typing import Any
 
 from .card import formatar_data, formatar_salario, rotulo_prazo
 
-SITE = "med-vagas.vercel.app"
+SITE = "medvagasapp.com.br"
 
 
 def _hashtags(vaga: dict[str, Any]) -> str:

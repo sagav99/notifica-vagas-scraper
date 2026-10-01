@@ -23,7 +23,7 @@ LARGURA = 1080
 ALTURA = 1350
 NAO_INFORMADO = "Não informado"
 PRECO_INICIAL = "A partir de R$29,99/mês · Sem fidelidade"  # lib/planos.ts (repo do site) — basic_mensal, conferir antes de mudar
-SITE = "med-vagas.vercel.app"
+SITE = "medvagasapp.com.br"
 
 ROTULOS_TIPO = {
     "concurso_efetivo": "Concurso efetivo",
