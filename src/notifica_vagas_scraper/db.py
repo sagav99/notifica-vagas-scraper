@@ -87,6 +87,15 @@ def _normalizar_texto_dedup(texto: str | None) -> str:
     return re.sub(r"\bprefeitura (?:do municipio|municipal) de\b", "prefeitura de", colapsado)
 
 
+def _normalizar_orgao_dedup(orgao: str | None) -> str:
+    """Só para `orgao` (nunca `cargo`, onde " - " é parte do nome): remove
+    sufixo de secretaria/sigla ("Prefeitura de BH - SMSA") e trata
+    "Secretaria Municipal de Saúde de X" como a prefeitura (BH, 2026-09)."""
+    base = _normalizar_texto_dedup(orgao)
+    base = re.sub(r"\s+[-–]\s+.*$", "", base)
+    return re.sub(r"^secretaria municipal de saude de\b", "prefeitura de", base)
+
+
 _cache_local_codigo_por_uf: dict[str, list[tuple[int, str]]] = {}
 
 
@@ -387,11 +396,11 @@ def inserir_vaga_com_evidencia(
                 """,
                 {"municipio_id": municipio_id, "numero_edital": numero_edital},
             )
-            alvo_orgao = _normalizar_texto_dedup(orgao)
+            alvo_orgao = _normalizar_orgao_dedup(orgao)
             alvo_cargo = _normalizar_texto_dedup(cargo)
             for row_id, row_orgao, row_cargo in cur.fetchall():
                 if (
-                    _normalizar_texto_dedup(row_orgao) == alvo_orgao
+                    _normalizar_orgao_dedup(row_orgao) == alvo_orgao
                     and _normalizar_texto_dedup(row_cargo) == alvo_cargo
                 ):
                     vaga_id = row_id
