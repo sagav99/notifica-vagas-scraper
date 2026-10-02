@@ -13,8 +13,18 @@ name: Revisar vagas pendentes (Gemini, automático)
 
 on:
   schedule:
-    - cron: "0 23 * * *" # ~2h depois do início da coleta diária (21h UTC = 18h Brasília, 2026-09-12)
+    - cron: "15 0 * * *" # ~2h depois do início da coleta diária (21h UTC = 18h Brasília, 2026-09-12)
   workflow_dispatch: {}
+
+# Trava global: no máximo 1 workflow pesado de Gemini por vez (RPM/TPM são
+# por processo, não compartilhados — decisão do usuário, 2026-10-02). Se um
+# atrasar e invadir o horário do próximo, o seguinte ESPERA na fila em vez de
+# rodar junto. Horários (UTC) espaçados com folga: 15:00 auditar, 17:30
+# instar, 21:00 coleta diária, 23:30 descoberta, 00:15 revisar, 01:30 backfill,
+# 03:30 completude.
+concurrency:
+  group: gemini-pesado
+  cancel-in-progress: false
 
 jobs:
   revisar:

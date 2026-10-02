@@ -19,8 +19,18 @@ on:
     # verdade — isso é "todo dia-do-mês múltiplo de 3", então o intervalo
     # pode encurtar na virada do mês (ex: dia 31 -> dia 1). Aceitável pra
     # cadência-alvo do projeto (ver CLAUDE.md).
-    - cron: "0 21 */3 * *"
+    - cron: "30 17 */3 * *"
   workflow_dispatch: {}
+
+# Trava global: no máximo 1 workflow pesado de Gemini por vez (RPM/TPM são
+# por processo, não compartilhados — decisão do usuário, 2026-10-02). Se um
+# atrasar e invadir o horário do próximo, o seguinte ESPERA na fila em vez de
+# rodar junto. Horários (UTC) espaçados com folga: 15:00 auditar, 17:30
+# instar, 21:00 coleta diária, 23:30 descoberta, 00:15 revisar, 01:30 backfill,
+# 03:30 completude.
+concurrency:
+  group: gemini-pesado
+  cancel-in-progress: false
 
 jobs:
   coletar:
