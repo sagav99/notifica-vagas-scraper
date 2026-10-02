@@ -155,6 +155,8 @@ _DESCRICOES_CAMPOS = {
     "carga_horaria": "carga horária semanal do cargo (texto, ex: '40h semanais')",
     "valor_hora": "valor por hora/plantão em reais, se a remuneração for por hora (número)",
     "data_prova": "data da prova objetiva/escrita principal (AAAA-MM-DD)",
+    "data_pagamento_taxa": "último dia para pagar a taxa de inscrição / vencimento do boleto (AAAA-MM-DD), só se o documento informar de forma explícita",
+    "data_resultado": "data prevista para divulgação do resultado (final ou da prova objetiva) (AAAA-MM-DD), só se o documento informar",
     "requisitos": "requisito de escolaridade/formação exigido pro cargo (texto curto)",
     "banca_organizadora": "nome da banca/instituto organizador, ou 'própria' se for a própria prefeitura/órgão",
     "tem_prova": "o processo seletivo exige prova objetiva/escrita? (true/false)",

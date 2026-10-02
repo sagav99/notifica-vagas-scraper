@@ -888,6 +888,65 @@ def listar_vagas_medicas_para_completude_gemini(conn: psycopg.Connection, *, lim
         return [dict(zip(colunas, row)) for row in cur.fetchall()]
 
 
+#: Datas extraídas só em rotina separada (`scripts/completude_datas_extras.py`),
+#: fora de `CAMPOS_COMPLETUDE` de propósito: edital sem essas datas é normal e
+#: não pode contar como "vaga incompleta" (senão a completude reprocessaria
+#: todas as vagas pra sempre e gastaria cota do Gemini).
+CAMPOS_DATAS_EXTRAS = ("data_pagamento_taxa", "data_resultado")
+
+
+def listar_vagas_abertas_para_datas_extras(conn: psycopg.Connection, *, limite: int) -> list[dict[str, Any]]:
+    """Vaga médica aprovada, aberta hoje, com evidência em PDF e sem nenhuma
+    das duas datas extras, que `completude_datas_extras.py` ainda NUNCA
+    conferiu (`vagas_conferencias.conferido_por = 'datas_extras_gemini'`).
+    Só PDF de propósito: `completude_gemini.consultar` então usa só
+    `url_context` (sem `google_search`, cota escassa)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            select v.id, v.cargo, v.orgao, v.numero_edital, m.nome, m.uf,
+                   v.data_pagamento_taxa, v.data_resultado,
+                   ev.url, ev.tipo_documento
+            from public.vagas v
+            join public.municipios m on m.codigo_ibge = v.municipio_id
+            join lateral (
+                select ve.url, ve.tipo_documento
+                from public.vaga_evidencias ve
+                where ve.vaga_id = v.id and ve.tipo_documento = 'pdf' and ve.url is not null
+                order by ve.detectada_em asc
+                limit 1
+            ) ev on true
+            where v.revisao_status = 'aprovada'
+              and v.categoria_saude = 'medico'
+              and (v.inscricoes_inicio is not null or v.inscricoes_fim is not null)
+              and (v.inscricoes_fim is null or v.inscricoes_fim >= current_date)
+              and (v.inscricoes_inicio is null or v.inscricoes_inicio <= current_date)
+              and v.data_pagamento_taxa is null and v.data_resultado is null
+              and not exists (
+                select 1 from public.vagas_conferencias vc
+                where vc.vaga_id = v.id and vc.conferido_por = 'datas_extras_gemini'
+              )
+            order by v.inscricoes_fim asc nulls last, v.detectada_em desc
+            limit %(limite)s
+            """,
+            {"limite": limite},
+        )
+        colunas = [coluna.name for coluna in cur.description]
+        return [dict(zip(colunas, row)) for row in cur.fetchall()]
+
+
+def atualizar_datas_extras(conn: psycopg.Connection, *, vaga_id: str, campos: dict[str, Any]) -> None:
+    """Grava só `data_pagamento_taxa`/`data_resultado` (nunca sobrescreve valor existente)."""
+    invalidos = set(campos) - set(CAMPOS_DATAS_EXTRAS)
+    if invalidos:
+        raise ValueError(f"Campo não permitido em atualizar_datas_extras: {sorted(invalidos)}")
+    if not campos:
+        return
+    atribuicoes = ", ".join(f"{coluna} = coalesce({coluna}, %({coluna})s)" for coluna in campos)
+    with conn.cursor() as cur:
+        cur.execute(f"update public.vagas set {atribuicoes} where id = %(vaga_id)s", {**campos, "vaga_id": vaga_id})
+
+
 def atualizar_campos_vaga(conn: psycopg.Connection, *, vaga_id: str, campos: dict[str, Any]) -> None:
     """Preenche só os campos passados em `campos` (subconjunto de
     `CAMPOS_COMPLETUDE`) — usado por `scripts/auditar_completude_vagas.py`

@@ -68,7 +68,7 @@ TIMEOUT_S = 90
 
 CONFIANCAS_ACEITAS = {"alta", "media"}
 
-_CAMPOS_DATA = {"data_prova", "inscricoes_inicio", "inscricoes_fim"}
+_CAMPOS_DATA = {"data_prova", "inscricoes_inicio", "inscricoes_fim", "data_pagamento_taxa", "data_resultado"}
 
 
 class ErroCompletudeGemini(Exception):

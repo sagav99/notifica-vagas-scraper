@@ -1,0 +1,40 @@
+name: Preencher datas de pagamento da taxa e resultado (Gemini, lote pequeno)
+
+# Preenche vagas.data_pagamento_taxa / data_resultado das vagas médicas ABERTAS
+# que já existiam antes dessas colunas (migration 094, repo principal). Só vaga
+# com evidência em PDF (url_context, sem google_search), 10 por execução, cada
+# vaga conferida no máximo 1x. Decisão do usuário (2026-10-02): lotes pequenos,
+# respeitando a cota do Gemini.
+
+on:
+  schedule:
+    - cron: "30 5 * * *"
+  workflow_dispatch: {}
+
+# Mesma trava global dos outros workflows pesados de Gemini (1 por vez).
+concurrency:
+  group: gemini-pesado
+  cancel-in-progress: false
+
+jobs:
+  datas-extras:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install -e ".[dev]"
+
+      - name: Rodar testes
+        run: pytest
+
+      - name: Preencher datas extras via Gemini
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/completude_datas_extras.py
