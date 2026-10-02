@@ -2,13 +2,13 @@ name: Preencher datas de pagamento da taxa e resultado (Gemini, lote pequeno)
 
 # Preenche vagas.data_pagamento_taxa / data_resultado das vagas médicas ABERTAS
 # que já existiam antes dessas colunas (migration 094, repo principal). Só vaga
-# com evidência em PDF (url_context, sem google_search), 10 por execução, cada
+# com evidência em PDF (url_context, sem google_search), 20 editais por execução, cada
 # vaga conferida no máximo 1x. Decisão do usuário (2026-10-02): lotes pequenos,
 # respeitando a cota do Gemini.
 
 on:
   schedule:
-    - cron: "30 5 * * *"
+    - cron: "0 6 * * *"
   workflow_dispatch: {}
 
 # Mesma trava global dos outros workflows pesados de Gemini (1 por vez).

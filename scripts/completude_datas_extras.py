@@ -21,8 +21,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from notifica_vagas_scraper import completude_gemini, db
 from notifica_vagas_scraper.revisao_ia import CotaGeminiEsgotadaError
 
-MAX_CHAMADAS = 10  # chamadas ao Gemini por execução (1 por edital/PDF distinto)
-LINHAS_BUSCADAS = 60
+MAX_CHAMADAS = 20  # chamadas ao Gemini por execução (1 por edital/PDF distinto)
+LINHAS_BUSCADAS = 150
 CONFERIDO_POR = "datas_extras_gemini"
 
 
