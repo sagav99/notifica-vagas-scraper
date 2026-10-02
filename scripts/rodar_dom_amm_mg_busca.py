@@ -32,7 +32,8 @@ from __future__ import annotations
 
 import sys
 import time
-from datetime import date, timedelta
+from zoneinfo import ZoneInfo
+from datetime import datetime, date, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -59,6 +60,11 @@ BATCH_SIZE = 35  # margem abaixo do limiar observado (~45 entidades) antes do th
 CANARIO_ENTIDADE_ID = "273955"
 CANARIO_TERMO = "processo seletivo"
 CANARIO_A_CADA_N_ENTIDADES = 15
+
+
+def hoje_brasilia() -> date:
+    # O runner roda em UTC: após 21h BRT date.today() já é "amanhã" e o SIGPUB rejeita data futura.
+    return datetime.now(ZoneInfo("America/Sao_Paulo")).date()
 
 
 def processar_materia(conn, fonte_id: int, codigo_ibge: int, url_materia: str) -> int:
@@ -108,7 +114,7 @@ def processar_entidade(conn, fonte_id: int, entidade: dom_amm_mg.EntidadeAmmMg) 
     silenciosa. **Não depende mais de token** (ver docstring de
     `sigpub_busca`, achado 2026-09-24 — o site removeu o form-token)."""
     session = requests.Session()
-    hoje = date.today()
+    hoje = hoje_brasilia()
     total = 0
     codigos_ja_processados: set[str] = set()
 
@@ -171,7 +177,7 @@ def verificar_canario() -> bool:
     `sigpub_busca`), fazendo `buscar` devolver 0 resultado sempre,
     silenciosamente. Corrigido lá; esta função não depende mais de
     token."""
-    hoje = date.today()
+    hoje = hoje_brasilia()
     sessao = requests.Session()
     html = sigpub_busca.buscar(
         sessao,
@@ -211,7 +217,7 @@ def selecionar_lote_do_dia(
     persistente em banco. Mesma entrada + mesma data sempre devolve o
     mesmo lote, então rodar de novo no mesmo dia (ex: workflow_dispatch
     manual depois de uma falha) repete o lote, não pula pro próximo."""
-    hoje = hoje or date.today()
+    hoje = hoje or hoje_brasilia()
     total_lotes = -(-len(entidades) // BATCH_SIZE)  # ceil division
     indice_lote = hoje.timetuple().tm_yday % total_lotes
     inicio = indice_lote * BATCH_SIZE

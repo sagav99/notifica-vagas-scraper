@@ -21,7 +21,8 @@ from __future__ import annotations
 
 import sys
 import time
-from datetime import date, timedelta
+from zoneinfo import ZoneInfo
+from datetime import datetime, date, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -45,6 +46,11 @@ INTERVALO_ENTRE_BUSCAS_S = 3.0
 # essa portaria estiver dentro de JANELA_DIAS a partir de hoje.
 CANARIO_ENTIDADE_ID = "17868"
 CANARIO_TERMO = "concurso público"
+
+
+def hoje_brasilia() -> date:
+    # O runner roda em UTC: após 21h BRT date.today() já é "amanhã" e o SIGPUB rejeita data futura.
+    return datetime.now(ZoneInfo("America/Sao_Paulo")).date()
 
 
 def processar_materia(conn, fonte_id: int, codigo_ibge: int, url_materia: str) -> int:
@@ -88,7 +94,7 @@ def processar_entidade(conn, fonte_id: int, entidade: dom_amm_mg.EntidadeAmmMg) 
     achado 2026-09-24 — o site removeu o form-token, mesma plataforma do
     AMM-MG)."""
     session = requests.Session()
-    hoje = date.today()
+    hoje = hoje_brasilia()
     total = 0
     codigos_ja_processados: set[str] = set()
 
@@ -121,7 +127,7 @@ def verificar_canario() -> bool:
     papel, aqui só rodado 1x no início (volume baixo demais pra precisar
     de checagem periódica no meio do lote). Não depende mais de token
     (achado 2026-09-24, ver docstring de `sigpub_busca`)."""
-    hoje = date.today()
+    hoje = hoje_brasilia()
     sessao = requests.Session()
     html = sigpub_busca.buscar(
         sessao,
