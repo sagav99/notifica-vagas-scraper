@@ -44,6 +44,13 @@ Extraia um objeto JSON com:
   concurso, ou null se não informada ou se ainda "a definir" — se houver
   provas em datas diferentes por cargo, use a data da prova objetiva
   comum a todos, se existir, senão null)
+- data_pagamento_taxa (data "AAAA-MM-DD" do último dia para pagar a taxa de
+  inscrição — vencimento do boleto/Pix, que muitas vezes é depois do fim das
+  inscrições — ou null se o documento não informar essa data de forma
+  explícita; não deduza a partir do fim das inscrições)
+- data_resultado (data "AAAA-MM-DD" prevista para divulgação do resultado
+  (final ou da prova objetiva, a mais relevante), ou null se não informada ou
+  "a definir"; não invente)
 - tipo_oportunidade (classifique o processo como um destes valores fixos,
   baseado no que o edital diz sobre o vínculo — use null só se genuinamente
   não der pra determinar):
@@ -99,6 +106,7 @@ def extrair_vagas_de_pdf(
 ) -> dict:
     """Retorna {"numero_edital", "orgao", "data_publicacao",
     "inscricoes_inicio", "inscricoes_fim", "taxa_inscricao", "data_prova",
+    "data_pagamento_taxa", "data_resultado",
     "tipo_oportunidade", "banca_organizadora", "tem_prova",
     "exige_curriculo", "vagas": [{"cargo", "pagina", "vagas_qtd",
     "salario", "salario_tipo", "requisitos", "carga_horaria"}, ...]} —

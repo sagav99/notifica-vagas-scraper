@@ -111,6 +111,8 @@ def test_campos_estruturados_extras_mapeia_e_calcula():
         "carga_horaria": "40h semanais",
         "valor_hora": pytest.approx(28.85, abs=0.01),
         "data_prova": date(2026, 11, 15),
+        "data_pagamento_taxa": None,
+        "data_resultado": None,
         "requisitos": "Ensino superior completo",
         "banca_organizadora": "IBFC",
         "tem_prova": True,
@@ -167,6 +169,8 @@ def test_campos_estruturados_extras_tudo_ausente_vira_none():
         "carga_horaria": None,
         "valor_hora": None,
         "data_prova": None,
+        "data_pagamento_taxa": None,
+        "data_resultado": None,
         "requisitos": None,
         "banca_organizadora": None,
         "tem_prova": None,
@@ -310,3 +314,12 @@ def test_chamar_api_registra_uso_real_da_resposta(monkeypatch):
 
     janela = gemini_util._purgar_janela_tpm(quota_gemini.MODELO_PADRAO)
     assert sum(tokens for _, tokens in janela) == 12345  # uso real, não a estimativa
+
+
+def test_campos_estruturados_extras_mapeia_pagamento_e_resultado():
+    extraido = {"data_pagamento_taxa": "2026-11-20", "data_resultado": "2026-12-15"}
+    resultado = gemini_util.campos_estruturados_extras(extraido, {})
+    assert resultado["data_pagamento_taxa"] == date(2026, 11, 20)
+    assert resultado["data_resultado"] == date(2026, 12, 15)
+    # data mal formada não derruba: vira None
+    assert gemini_util.campos_estruturados_extras({"data_resultado": "a definir"}, {})["data_resultado"] is None

@@ -315,6 +315,8 @@ def campos_estruturados_extras(extraido: dict[str, Any], vaga: dict[str, Any]) -
         "carga_horaria": carga_horaria,
         "valor_hora": calcular_valor_hora(salario, salario_tipo, carga_horaria),
         "data_prova": parsear_data_iso(extraido.get("data_prova")),
+        "data_pagamento_taxa": parsear_data_iso(extraido.get("data_pagamento_taxa")),
+        "data_resultado": parsear_data_iso(extraido.get("data_resultado")),
         "requisitos": vaga.get("requisitos"),
         "banca_organizadora": extraido.get("banca_organizadora"),
         "tem_prova": extraido.get("tem_prova"),
