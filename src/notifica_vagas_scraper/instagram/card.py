@@ -2,7 +2,7 @@
 
 Layout aprovado pelo usuário em 2026-09-29, cópia de referência em
 `docs/referencia_visual_instagram/` (não reabrir sem motivo novo):
-slide 1 "VAGA DA SEMANA" (resumo da vaga), slide 2 "O QUE PESA NA DECISÃO"
+slide 1 "VAGA ABERTA" (resumo da vaga), slide 2 "O QUE PESA NA DECISÃO"
 (valor-hora), slide 3 "ANTES DE SE INSCREVER" (checklist fixo do edital) e
 slide 4 "ESSA É SÓ UMA DAS VAGAS" (CTA + preview de outras 2 vagas).
 
@@ -22,7 +22,6 @@ from .logo import marca
 LARGURA = 1080
 ALTURA = 1350
 NAO_INFORMADO = "Não informado"
-PRECO_INICIAL = "A partir de R$29,99/mês · Sem fidelidade"  # lib/planos.ts (repo do site) — basic_mensal, conferir antes de mudar
 SITE = "medvagasapp.com.br"
 
 ROTULOS_TIPO = {
@@ -201,7 +200,7 @@ def _html(corpo_estilo: str, corpo_html: str) -> str:
 
 def _slide1(vaga: dict[str, Any], tipo: str, hoje: date) -> str:
     urgente = tipo == "fim_prazo"
-    eyebrow = "VAGA COM PRAZO ACABANDO" if urgente else "VAGA DA SEMANA"
+    eyebrow = "VAGA COM PRAZO ACABANDO" if urgente else "VAGA ABERTA"
     cor, fundo = ("#b3261e", "#fde8e6") if urgente else ("#1d7a46", "#e2f4e8")
     selo = rotulo_prazo(vaga.get("inscricoes_fim"), hoje).upper() if urgente else "INSCRIÇÕES ABERTAS"
 
@@ -289,8 +288,8 @@ def _slide2(vaga: dict[str, Any]) -> str:
 .box p{margin:0;font-size:21px;line-height:1.5;color:#33436f;font-weight:500}
 """
     corpo = f"""{_cabecalho(2)}
-<div class="eyebrow">O QUE PESA NA DECISÃO</div>
-<h1 style="font-size:96px"><span class="navy">VALE MAIS QUE PARECE</span><br><span class="azul">À PRIMEIRA VISTA</span></h1>
+<div class="eyebrow">INFORMAÇÕES</div>
+<h1 style="font-size:116px"><span class="navy">TODOS OS DETALHES</span><br><span class="azul">DA VAGA</span></h1>
 <div class="divisor"></div>
 <div class="gradec">{grade}</div>
 <div class="box"><h3>POR QUE REPARAR NO VALOR-HORA</h3>
@@ -307,28 +306,23 @@ def _slide3() -> str:
     itens = [
         ("doc", "Leia os <b>requisitos</b>: especialização e registro no CRM"),
         ("agenda", "Anote <b>prazo, taxa e data da prova</b>"),
-        ("escudo", "Toda vaga no MedVagas traz o <b>link da fonte oficial</b>"),
+        ("escudo", "Toda vaga no Med Vagas traz o <b>link da fonte oficial</b> com todas as informações, sem ler o PDF inteiro"),
     ]
     lista = "".join(
         f'<div class="item"><div class="ic">{_icone(ic, "#2f6fed", 40)}</div><div class="tx">{tx}</div></div>' for ic, tx in itens
     )
     estilo = """
-.lista{margin-top:34px;flex:1;display:flex;flex-direction:column;justify-content:space-evenly}
+.lista{margin-top:34px;margin-bottom:30px;flex:1;display:flex;flex-direction:column;justify-content:space-evenly}
 .item{display:flex;align-items:center;gap:26px;background:#fff;border:1px solid #dfe8f8;border-radius:18px;padding:26px 30px;box-shadow:0 10px 24px rgba(1,25,81,.05)}
 .item .ic{flex:none;width:76px;height:76px;border-radius:20px;background:#e3ecfd;display:flex;align-items:center;justify-content:center}
 .item .tx{font-size:30px;font-weight:500;line-height:1.3;color:#0f1e3d}
 .item .tx b{font-weight:800}
-.box{margin-top:26px;margin-bottom:30px;background:#e3ecfd;border-radius:16px;padding:26px 30px}
-.box h3{margin:0 0 10px;font-size:23px;font-weight:800;color:#0f1e3d}
-.box p{margin:0;font-size:21px;line-height:1.5;color:#33436f;font-weight:500}
 """
     corpo = f"""{_cabecalho(3)}
 <div class="eyebrow">ANTES DE SE INSCREVER</div>
 <h1 style="font-size:116px"><span class="navy">CONFIRA SEMPRE O</span><br><span class="azul">EDITAL OFICIAL</span></h1>
 <div class="divisor"></div>
 <div class="lista">{lista}</div>
-<div class="box"><h3>INFORMAÇÃO PÚBLICA</h3>
-<p>Dados do edital conferidos na data da publicação. Valores e prazos podem mudar por retificação.</p></div>
 <div class="rodape-num empurra"><div class="n">03</div><div class="barra"></div></div>"""
     return _html(estilo, corpo)
 
@@ -376,7 +370,6 @@ def _slide4(vagas_extra: list[dict[str, Any]]) -> str:
 .chamada{margin-top:26px;font-size:22px;line-height:1.5;font-weight:500;color:#33436f}
 .cta{margin-top:24px;background:#011951;color:#fff;border-radius:16px;padding:24px;text-align:center;
 font-size:26px;font-weight:800;letter-spacing:.3px}
-.preco{margin-top:16px;text-align:center;font-size:19px;font-weight:700;color:#41507f}
 """
     corpo = f"""{_cabecalho(4)}
 <div class="eyebrow">TODA SEMANA TEM UMA NOVA</div>
@@ -386,10 +379,9 @@ font-size:26px;font-weight:800;letter-spacing:.3px}
   <div class="barra-topo"><div class="bolha" style="background:#f36457"></div><div class="bolha" style="background:#f4bd4f"></div><div class="bolha" style="background:#3fca63"></div></div>
   {minis}
 </div>
-<div class="chamada">Todo dia útil entram vagas novas de médico em MG e SP. Configure seus filtros e não perca a próxima.</div>
+<div class="chamada">Todo dia útil entram vagas novas de médico em MG e SP. Configure seus filtros e receba alertas por e-mail.</div>
 <div>
-  <div class="cta">VER TODAS AS VAGAS &nbsp;→&nbsp; LINK NA BIO</div>
-  <div class="preco">{escape(PRECO_INICIAL)}</div>
+  <div class="cta">CONHEÇA O MED VAGAS &nbsp;→&nbsp; LINK NA BIO</div>
 </div>"""
     return _html(estilo, corpo)
 

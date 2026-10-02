@@ -1,21 +1,21 @@
 """Escolha da vaga do dia: 1 post por dia.
 
-Prioridade: vaga com inscrição acabando (`fim_prazo`, até 3 dias) que ainda
-não foi postada assim; senão vaga nova dos últimos 7 dias (`nova`). Só vaga
-aprovada, médica, aberta e verificada pela IA — mesmo critério do catálogo
-do site. Sem candidata, não posta (não repete, não inventa).
+Sorteia (estável por dia) uma vaga aberta e com todos os dados (variedade: prazo
+longo ou curto, recém-publicada ou não), ainda não postada. Só vaga aprovada,
+médica e verificada pela IA — mesmo critério do catálogo do site. Sem candidata,
+não posta (não repete, não inventa).
 """
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+import random
+from datetime import date, datetime, timedelta
 from typing import Any
 
 import psycopg
 from psycopg.rows import dict_row
 
 DIAS_FIM_PRAZO = 3
-DIAS_NOVA = 7
 
 _COLUNAS = """
     v.id, v.cargo, v.orgao, v.salario, v.salario_tipo, v.tipo_oportunidade,
@@ -44,20 +44,9 @@ _BASE = f"""
 
 
 def vaga_publicavel(vaga: dict[str, Any]) -> bool:
-    """Evita card vazio: precisa de cargo, órgão, município e ao menos
-    remuneração ou fim de inscrição."""
-    if not (vaga.get("cargo") and vaga.get("orgao") and vaga.get("municipio")):
-        return False
-    return vaga.get("salario") is not None or vaga.get("inscricoes_fim") is not None
-
-
-def _chave_fim_prazo(vaga: dict[str, Any]) -> tuple:
-    return (vaga["inscricoes_fim"], -(float(vaga["salario"]) if vaga.get("salario") is not None else 0.0))
-
-
-def _chave_nova(vaga: dict[str, Any]) -> tuple:
-    fim = vaga.get("inscricoes_fim") or date.max
-    return (fim, -(float(vaga["salario"]) if vaga.get("salario") is not None else 0.0))
+    """Só vaga com todos os dados que o card e a página de divulgação mostram."""
+    obrigatorios = ("cargo", "orgao", "municipio", "salario", "inscricoes_fim", "carga_horaria", "banca_organizadora", "requisitos", "tipo_oportunidade")
+    return all(vaga.get(campo) not in (None, "") for campo in obrigatorios)
 
 
 def escolher(
@@ -66,31 +55,25 @@ def escolher(
     hoje: date,
     agora: datetime | None = None,
 ) -> tuple[str, dict[str, Any]] | None:
-    """Puro (testável): devolve ("fim_prazo"|"nova", vaga) ou None."""
-    agora = agora or datetime.now(timezone.utc)
+    """Puro (testável): sorteia, de forma estável por dia, uma vaga aberta e completa.
 
-    fim_prazo = [
-        v
-        for v in candidatas_fim_prazo
-        if vaga_publicavel(v)
-        and v.get("inscricoes_fim") is not None
-        and hoje <= v["inscricoes_fim"] <= hoje + timedelta(days=DIAS_FIM_PRAZO)
-    ]
-    if fim_prazo:
-        return "fim_prazo", min(fim_prazo, key=_chave_fim_prazo)
-
-    limite = agora - timedelta(days=DIAS_NOVA)
-    novas = [
-        v
-        for v in candidatas_nova
-        if vaga_publicavel(v)
-        and v.get("detectada_em") is not None
-        and v["detectada_em"] >= limite
-        and (v.get("inscricoes_fim") is None or v["inscricoes_fim"] >= hoje)
-    ]
-    if novas:
-        return "nova", min(novas, key=_chave_nova)
-    return None
+    Devolve ("fim_prazo"|"nova", vaga) ou None. "fim_prazo" só descreve o selo do
+    card (prazo em até DIAS_FIM_PRAZO dias); não tem mais prioridade na escolha.
+    """
+    por_id: dict[Any, dict[str, Any]] = {}
+    for v in candidatas_fim_prazo:
+        por_id[v["id"]] = v
+    for v in candidatas_nova:
+        por_id.setdefault(v["id"], v)
+    abertas = sorted(
+        (v for v in por_id.values() if vaga_publicavel(v) and v["inscricoes_fim"] >= hoje),
+        key=lambda v: str(v["id"]),
+    )
+    if not abertas:
+        return None
+    vaga = random.Random(hoje.toordinal()).choice(abertas)
+    tipo = "fim_prazo" if vaga["inscricoes_fim"] <= hoje + timedelta(days=DIAS_FIM_PRAZO) else "nova"
+    return tipo, vaga
 
 
 def selecionar_vaga(conn: psycopg.Connection, hoje: date) -> tuple[str, dict[str, Any]] | None:

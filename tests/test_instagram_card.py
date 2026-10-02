@@ -70,19 +70,19 @@ def test_montar_htmls_gera_4_slides_com_conteudo_esperado():
     assert "&lt;b&gt;" in slide1 and "<b>com registro" not in slide1  # requisitos escapados
     assert "Não informado" in slide1
 
-    assert "2/4" in slide2 and "O QUE PESA NA DECISÃO" in slide2 and "R$ 71,45" in slide2
+    assert "2/4" in slide2 and "TODOS OS DETALHES" in slide2 and "R$ 71,45" in slide2
 
     assert "3/4" in slide3 and "EDITAL OFICIAL" in slide3
     assert "registro no CRM" in slide3  # checklist fixo, não muda por vaga
 
     assert "4/4" in slide4 and "ESSA É SÓ" in slide4
     assert "Jarinu" in slide4 and "São Carlos" in slide4
-    assert "R$29,99/mês" in slide4  # preço real do plano basic_mensal (lib/planos.ts no repo do site)
+    assert "R$29,99" not in slide4 and "alertas por e-mail" in slide4 and "CONHEÇA O MED VAGAS" in slide4
 
 
 def test_montar_htmls_tipo_nova_usa_eyebrow_diferente():
     htmls = montar_htmls(VAGA, "nova", HOJE, [])
-    assert "VAGA DA SEMANA" in htmls[0]
+    assert "VAGA ABERTA" in htmls[0]
     assert "VAGA COM PRAZO ACABANDO" not in htmls[0]
 
 
@@ -92,4 +92,4 @@ def test_legenda_menciona_prazos_e_hashtags():
     assert "Início das inscrições: Não informado" in legenda
     assert "Fim das inscrições: 30/09/2026" in legenda
     assert "#concursosmg" in legenda and "link na bio" in legenda
-    assert "Vaga nova" in montar_legenda(VAGA, "nova", HOJE)
+    assert "Vaga aberta" in montar_legenda(VAGA, "nova", HOJE)

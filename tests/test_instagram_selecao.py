@@ -1,46 +1,44 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 
 from notifica_vagas_scraper.instagram.selecao import escolher, vaga_publicavel
 
 HOJE = date(2026, 9, 28)
-AGORA = datetime(2026, 9, 28, 15, tzinfo=timezone.utc)
 
 
 def vaga(**kw):
     base = dict(id=kw.pop("id", "v"), cargo="Médico", orgao="Prefeitura", municipio="Ipatinga", uf="MG",
-                salario=6000, inscricoes_fim=None, inscricoes_inicio=None, detectada_em=AGORA)
+                salario=6000, inscricoes_fim=HOJE + timedelta(days=20), carga_horaria="20h semanais",
+                banca_organizadora="IBGP", requisitos="CRM", tipo_oportunidade="concurso")
     base.update(kw)
     return base
 
 
-def test_prefere_fim_de_prazo_mais_proximo():
-    a = vaga(id="a", inscricoes_fim=HOJE + timedelta(days=3))
-    b = vaga(id="b", inscricoes_fim=HOJE + timedelta(days=1))
-    assert escolher([a, b], [], HOJE, AGORA) == ("fim_prazo", b)
+def test_prazo_curto_vira_tipo_fim_prazo_e_prazo_longo_vira_nova():
+    assert escolher([vaga(id="a", inscricoes_fim=HOJE + timedelta(days=2))], [], HOJE)[0] == "fim_prazo"
+    assert escolher([], [vaga(id="b")], HOJE)[0] == "nova"
 
 
-def test_fim_de_prazo_vence_vaga_nova():
-    fim = vaga(id="f", inscricoes_fim=HOJE)
-    nova = vaga(id="n", inscricoes_fim=HOJE + timedelta(days=20))
-    assert escolher([fim], [nova], HOJE, AGORA)[0] == "fim_prazo"
+def test_prazo_curto_nao_tem_prioridade_e_escolha_varia_com_o_dia():
+    vagas = [vaga(id=f"v{i}", inscricoes_fim=HOJE + timedelta(days=60 + i)) for i in range(10)]
+    escolhidas = {escolher([], vagas, HOJE + timedelta(days=d))[1]["id"] for d in range(30)}
+    assert len(escolhidas) > 3
 
 
-def test_sem_fim_de_prazo_pega_nova_recente_e_ignora_antiga():
-    antiga = vaga(id="o", detectada_em=AGORA - timedelta(days=9))
-    recente = vaga(id="r", detectada_em=AGORA - timedelta(days=2), inscricoes_fim=HOJE + timedelta(days=10))
-    assert escolher([], [antiga, recente], HOJE, AGORA) == ("nova", recente)
+def test_escolha_e_estavel_no_mesmo_dia_e_une_as_duas_listas():
+    a, b = vaga(id="a"), vaga(id="b")
+    assert escolher([a], [a, b], HOJE) == escolher([a], [a, b], HOJE)
 
 
-def test_ignora_prazo_ja_vencido_e_prazo_longe():
-    assert escolher([vaga(inscricoes_fim=HOJE - timedelta(days=1))], [], HOJE, AGORA) is None
-    assert escolher([vaga(inscricoes_fim=HOJE + timedelta(days=10))], [], HOJE, AGORA) is None
+def test_ignora_vaga_encerrada_ou_incompleta():
+    assert escolher([], [vaga(inscricoes_fim=HOJE - timedelta(days=1))], HOJE) is None
+    assert escolher([], [vaga(carga_horaria=None)], HOJE) is None
 
 
 def test_sem_candidata_nao_posta():
-    assert escolher([], [], HOJE, AGORA) is None
+    assert escolher([], [], HOJE) is None
 
 
-def test_card_vazio_nao_e_publicavel():
-    assert not vaga_publicavel(vaga(salario=None, inscricoes_fim=None))
-    assert not vaga_publicavel(vaga(cargo=None))
-    assert vaga_publicavel(vaga(salario=None, inscricoes_fim=HOJE))
+def test_vaga_precisa_de_todos_os_dados():
+    assert vaga_publicavel(vaga())
+    for campo in ("salario", "inscricoes_fim", "banca_organizadora", "requisitos", "cargo"):
+        assert not vaga_publicavel(vaga(**{campo: None}))

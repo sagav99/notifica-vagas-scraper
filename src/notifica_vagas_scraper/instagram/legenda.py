@@ -27,7 +27,7 @@ def montar_legenda(vaga: dict[str, Any], tipo: str, hoje: date) -> str:
     if tipo == "fim_prazo":
         abertura = f"⏰ {rotulo_prazo(vaga.get('inscricoes_fim'), hoje).capitalize()}: {vaga['cargo']} — {local}"
     else:
-        abertura = f"🩺 Vaga nova: {vaga['cargo']} — {local}"
+        abertura = f"🩺 Vaga aberta: {vaga['cargo']} — {local}"
 
     linhas = [abertura, "", f"🏛 {vaga['orgao']}"]
     linhas.append(f"💰 Remuneração: {formatar_salario(vaga)}")
