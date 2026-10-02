@@ -42,6 +42,10 @@ jobs:
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DIVULGACAO_SECRET: ${{ secrets.DIVULGACAO_SECRET }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          BREVO_REMETENTE_EMAIL: ${{ secrets.BREVO_REMETENTE_EMAIL }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
         run: |
           if [ "$DRY_RUN" = "true" ]; then

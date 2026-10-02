@@ -18,6 +18,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from notifica_vagas_scraper.db import conectar
+from notifica_vagas_scraper.instagram.aviso_admin import avisar_admin
 from notifica_vagas_scraper.instagram.card import montar_htmls, renderizar_pngs
 from notifica_vagas_scraper.instagram.legenda import montar_legenda
 from notifica_vagas_scraper.instagram.publicar import ErroPublicacao, hospedar_imagem, publicar_carrossel_no_instagram
@@ -89,6 +90,7 @@ def main() -> int:
             )
         conn.commit()
         print(f"Publicado (carrossel): media {media_id}")
+        avisar_admin(vaga)
         return 0
 
 
