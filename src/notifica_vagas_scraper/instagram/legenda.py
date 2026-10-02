@@ -39,8 +39,9 @@ def montar_legenda(vaga: dict[str, Any], tipo: str, hoje: date) -> str:
         linhas.append(f"📝 Prova: {formatar_data(vaga['data_prova'])}")
     linhas += [
         "",
+        "No Med Vagas toda vaga traz o link da fonte oficial, com todas as informações, sem você precisar ler o PDF inteiro.",
         "Confira sempre o edital oficial antes de se inscrever.",
-        f"Receba alertas de vagas médicas: link na bio ({SITE}).",
+        f"Conheça o Med Vagas e receba alertas de vagas médicas por e-mail: link na bio ({SITE}).",
         "",
         _hashtags(vaga),
     ]

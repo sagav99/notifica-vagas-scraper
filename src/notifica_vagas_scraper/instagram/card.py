@@ -289,7 +289,7 @@ def _slide2(vaga: dict[str, Any]) -> str:
 """
     corpo = f"""{_cabecalho(2)}
 <div class="eyebrow">INFORMAÇÕES</div>
-<h1 style="font-size:116px"><span class="navy">TODOS OS DETALHES</span><br><span class="azul">DA VAGA</span></h1>
+<h1 style="font-size:116px"><span class="navy">DETALHES</span><br><span class="azul">DA VAGA</span></h1>
 <div class="divisor"></div>
 <div class="gradec">{grade}</div>
 <div class="box"><h3>POR QUE REPARAR NO VALOR-HORA</h3>

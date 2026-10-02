@@ -70,7 +70,7 @@ def test_montar_htmls_gera_4_slides_com_conteudo_esperado():
     assert "&lt;b&gt;" in slide1 and "<b>com registro" not in slide1  # requisitos escapados
     assert "Não informado" in slide1
 
-    assert "2/4" in slide2 and "TODOS OS DETALHES" in slide2 and "R$ 71,45" in slide2
+    assert "2/4" in slide2 and "DETALHES" in slide2 and "R$ 71,45" in slide2
 
     assert "3/4" in slide3 and "EDITAL OFICIAL" in slide3
     assert "registro no CRM" in slide3  # checklist fixo, não muda por vaga
