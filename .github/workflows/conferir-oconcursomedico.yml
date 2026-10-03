@@ -1,0 +1,45 @@
+name: Conferência com O Concurso Médico (a cada 3 dias)
+
+# Pedido do usuário (2026-10-03): cruzar nossa base com a lista curada do
+# oconcursomedico.com a cada 3 dias; edital de MG/SP que a gente não tem entra
+# no pipeline normal (Gemini extrai do PDF; revisão e completude seguem).
+# Só 1 requisição ao site deles por rodada; máx. 5 editais novos por rodada
+# (trava de cota). Ver scripts/rodar_oconcursomedico.py.
+
+on:
+  schedule:
+    # 19:00 UTC = 16h Brasília, a cada 3 dias (dia-do-mês múltiplo de 3).
+    # Fica entre 17:30 (instar) e 21:00 (coleta diária) com folga >= 1h.
+    - cron: "0 19 */3 * *"
+  workflow_dispatch: {}
+
+# Mesma trava global dos outros workflows de Gemini: 1 por vez, sempre.
+# Horários (UTC): 15:00 auditar, 17:30 instar, 19:00 esta conferência,
+# 21:00 coleta diária, 23:45 descoberta, 00:45 revisar, 02:00 backfill,
+# 04:00 completude, 06:00 datas extras.
+concurrency:
+  group: gemini-pesado
+  cancel-in-progress: false
+
+jobs:
+  conferir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install -e ".[dev]"
+
+      - name: Rodar testes
+        run: pytest tests/test_oconcursomedico.py
+
+      - name: Conferir e importar editais que faltam
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/rodar_oconcursomedico.py
