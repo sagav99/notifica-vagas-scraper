@@ -151,7 +151,7 @@ se você teve que inferir/estimar em vez de ler o valor direto no documento) e "
 
 _DESCRICOES_CAMPOS = {
     "numero_vagas": "número de vagas oferecidas pra este cargo específico (inteiro)",
-    "taxa_inscricao": "valor da taxa de inscrição em reais, sem 'R$' (número)",
+    "taxa_inscricao": "valor da taxa de inscrição em reais, sem 'R$' (número) — a do NÍVEL SUPERIOR (vaga médica); nunca a do nível fundamental ou médio",
     "carga_horaria": "carga horária semanal do cargo (texto, ex: '40h semanais')",
     "valor_hora": "valor por hora/plantão em reais, se a remuneração for por hora (número)",
     "data_prova": "data da prova objetiva/escrita principal (AAAA-MM-DD)",

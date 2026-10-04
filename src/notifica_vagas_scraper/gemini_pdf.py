@@ -37,8 +37,10 @@ Extraia um objeto JSON com:
 - inscricoes_fim (data "AAAA-MM-DD" de fim das inscrições, ou null)
 - taxa_inscricao (number, valor numérico em reais da taxa de inscrição,
   sem "R$", ou null se não informada ou se houver isenção total sem valor
-  base — se houver valores diferentes por cargo/nível de escolaridade, use
-  o valor mais comum ou o do cargo de nível superior; não invente um
+  base — a taxa depende do nível de escolaridade do cargo (fundamental,
+  médio/técnico, superior): para vaga de MÉDICO use SEMPRE a taxa do nível
+  superior, nunca a mais comum nem a do nível fundamental/médio; se o
+  edital não trouxer a do nível superior, devolva null; não invente um
   número)
 - data_prova (data "AAAA-MM-DD" da prova objetiva/escrita principal do
   concurso, ou null se não informada ou se ainda "a definir" — se houver
