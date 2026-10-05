@@ -108,3 +108,14 @@ def vagas_preview(conn: psycopg.Connection, excluir_id: Any, limite: int = 2) ->
         cur.execute(_PREVIEW, {"excluir_id": excluir_id, "limite": limite})
         candidatas = cur.fetchall()
     return [v for v in candidatas if vaga_publicavel(v)][:limite]
+
+
+def vaga_por_id(conn: psycopg.Connection, vaga_id: str, hoje: date) -> tuple[str, dict[str, Any]] | None:
+    """Vaga escolhida à mão (--vaga-id): mesmos filtros da seleção automática, sem sorteio."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(_BASE + " and v.id = %(vaga_id)s", {"tipo": "fim_prazo", "vaga_id": vaga_id})
+        vaga = cur.fetchone()
+    if not vaga or not vaga_publicavel(vaga) or vaga["inscricoes_fim"] < hoje:
+        return None
+    tipo = "fim_prazo" if vaga["inscricoes_fim"] <= hoje + timedelta(days=DIAS_FIM_PRAZO) else "nova"
+    return tipo, vaga

@@ -247,6 +247,7 @@ border-left:8px solid var(--cor);padding:30px 34px;box-shadow:0 14px 30px rgba(1
 .rodapec{margin-top:18px;font-size:18px;font-weight:600;color:#5a6789}
 .deslize{margin-top:0;font-size:23px;font-weight:800;color:#2f6fed;display:flex;align-items:center;gap:10px}
 .deslize .barra{margin-top:6px;width:210px;height:5px;border-radius:3px;background:#8fb6fb}
+.zap{margin-top:18px;align-self:flex-start;background:#0f1e3d;color:#fff;border-radius:999px;padding:10px 24px;font-size:21px;font-weight:700}
 """
     corpo = f"""{_cabecalho(1)}
 <div class="eyebrow">{escape(eyebrow)}</div>
@@ -259,7 +260,7 @@ border-left:8px solid var(--cor);padding:30px 34px;box-shadow:0 14px 30px rgba(1
   <div class="gradec">{grade}</div>
   <div class="rodapec">{rodape_card}</div>
 </div>
-<div class="empurra"><div class="deslize">DESLIZE PARA O LADO →</div><div class="barra"></div></div>"""
+<div class="empurra"><div class="deslize">DESLIZE PARA O LADO →</div><div class="barra"></div><div class="zap">↓ Grupo de WhatsApp com vagas</div></div>"""
     return _html(estilo, corpo)
 
 

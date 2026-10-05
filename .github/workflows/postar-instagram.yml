@@ -1,18 +1,22 @@
 name: Postar vaga do dia no Instagram
 
-# 1 post por dia útil (~12h Brasília). Não usa Gemini (legenda é template),
+# 1 post por dia útil (19h30 Brasília, decisão do usuário 2026-10-05). Não usa Gemini (legenda é template),
 # então não conflita com a regra de 1 workflow Gemini-pesado por vez.
 # Ver docs/roadmap_instagram_diario.md no repo notifica-vagas.
 
 on:
   schedule:
-    - cron: "0 15 * * 1-5" # 12h Brasília
+    - cron: "30 22 * * 1-5" # 19h30 Brasília (22h30 UTC)
   workflow_dispatch:
     inputs:
       dry_run:
         description: "Só gerar card e legenda (não publica)"
         type: boolean
         default: true
+      vaga_id:
+        description: "Opcional: id da vaga a postar (em vez de sortear)"
+        type: string
+        default: ""
 
 permissions:
   contents: write # sobe o PNG na branch instagram-cards
@@ -46,12 +50,15 @@ jobs:
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           BREVO_REMETENTE_EMAIL: ${{ secrets.BREVO_REMETENTE_EMAIL }}
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          VAGA_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.vaga_id || '' }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
         run: |
+          ARGS=""
+          if [ -n "$VAGA_ID" ]; then ARGS="--vaga-id $VAGA_ID"; fi
           if [ "$DRY_RUN" = "true" ]; then
-            python scripts/postar_instagram.py --dry-run
+            python scripts/postar_instagram.py --dry-run $ARGS
           else
-            python scripts/postar_instagram.py
+            python scripts/postar_instagram.py $ARGS
           fi
 
       - name: Guardar card gerado (dry-run)
