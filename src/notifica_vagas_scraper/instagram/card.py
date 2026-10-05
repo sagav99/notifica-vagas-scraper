@@ -88,13 +88,16 @@ def _resumir(texto: str | None, limite: int = 150) -> str:
 
 
 _PREFIXO_MEDICO = re.compile(r"^m[eé]dic[oa]s?\b[\s\-:]*", re.IGNORECASE)
+_COMECA_COM_PREPOSICAO = re.compile(r"^(d[oae]s?|em|n[oa]s?)\b", re.IGNORECASE)
 
 
 def especialidade_curta(cargo: str) -> str:
     """"Médico Cardiologista" -> "Cardiologista"; sem prefixo reconhecido, devolve o cargo inteiro."""
     txt = " ".join(str(cargo).split())
     resto = _PREFIXO_MEDICO.sub("", txt).strip()
-    return resto if resto else txt
+    if not resto or _COMECA_COM_PREPOSICAO.match(resto):  # "Médico do Programa..." não vira "do Programa..."
+        return txt
+    return resto
 
 
 _NUM_HORAS = re.compile(r"(\d+(?:[.,]\d+)?)")
@@ -247,7 +250,7 @@ border-left:8px solid var(--cor);padding:30px 34px;box-shadow:0 14px 30px rgba(1
 .rodapec{margin-top:18px;font-size:18px;font-weight:600;color:#5a6789}
 .deslize{margin-top:0;font-size:23px;font-weight:800;color:#2f6fed;display:flex;align-items:center;gap:10px}
 .deslize .barra{margin-top:6px;width:210px;height:5px;border-radius:3px;background:#8fb6fb}
-.zap{margin-top:18px;align-self:flex-start;background:#0f1e3d;color:#fff;border-radius:999px;padding:10px 24px;font-size:21px;font-weight:700}
+.zap{margin-top:18px;width:fit-content;background:#0f1e3d;color:#fff;border-radius:999px;padding:10px 24px;font-size:21px;font-weight:700}
 """
     corpo = f"""{_cabecalho(1)}
 <div class="eyebrow">{escape(eyebrow)}</div>

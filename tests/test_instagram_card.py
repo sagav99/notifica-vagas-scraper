@@ -46,6 +46,7 @@ def test_formatos():
 def test_especialidade_curta_remove_prefixo_medico():
     assert especialidade_curta("Médico Cardiologista") == "Cardiologista"
     assert especialidade_curta("MÉDICO GINECOLOGISTA") == "GINECOLOGISTA"
+    assert especialidade_curta("Médico do Programa da Saúde da Família") == "Médico do Programa da Saúde da Família"
     assert especialidade_curta("Enfermeiro") == "Enfermeiro"  # sem prefixo "médico", devolve como está
 
 
