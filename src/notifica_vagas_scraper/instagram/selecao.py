@@ -93,6 +93,7 @@ _PREVIEW = f"""
       and v.categoria_saude = 'medico'
       and v.status = 'aberta'
       and v.id != %(excluir_id)s
+      and v.inscricoes_fim >= (now() at time zone 'America/Sao_Paulo')::date + 7
       and exists (
         select 1 from public.vaga_evidencias ve
         where ve.vaga_id = v.id and ve.verificado_por_ia = true
