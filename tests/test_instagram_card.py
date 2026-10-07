@@ -78,7 +78,7 @@ def test_montar_htmls_gera_4_slides_com_conteudo_esperado():
 
     assert "4/4" in slide4 and "ESSA É SÓ" in slide4
     assert "Jarinu" in slide4 and "São Carlos" in slide4
-    assert "R$29,99" not in slide4 and "alertas por e-mail" in slide4 and "CONHEÇA O MED VAGAS" in slide4
+    assert "R$29,99" not in slide4 and "grupo de WhatsApp" in slide4 and "GRUPO DE WHATSAPP COM VAGAS" in slide4
 
 
 def test_montar_htmls_tipo_nova_usa_eyebrow_diferente():
