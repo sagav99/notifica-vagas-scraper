@@ -7,8 +7,6 @@ from typing import Any
 
 from .card import formatar_data, formatar_salario, rotulo_prazo
 
-SITE = "medvagasapp.com.br"
-
 
 def _hashtags(vaga: dict[str, Any]) -> str:
     cidade = "".join(ch for ch in (vaga.get("municipio") or "").title() if ch.isalnum())
@@ -41,7 +39,7 @@ def montar_legenda(vaga: dict[str, Any], tipo: str, hoje: date) -> str:
         "",
         "No Med Vagas toda vaga traz o link da fonte oficial, com todas as informações, sem você precisar ler o PDF inteiro.",
         "Confira sempre o edital oficial antes de se inscrever.",
-        f"Conheça o Med Vagas e receba alertas de vagas médicas por e-mail: link na bio ({SITE}).",
+        "Entre no grupo de WhatsApp do Med Vagas e receba as vagas de médico de MG e SP: link na bio.",
         "",
         _hashtags(vaga),
     ]

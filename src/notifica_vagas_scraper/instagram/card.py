@@ -308,7 +308,7 @@ def _slide2(vaga: dict[str, Any]) -> str:
 
 def _slide3() -> str:
     itens = [
-        ("doc", "Leia os <b>requisitos</b>: especialização e registro no CRM"),
+        ("doc", "Leia os <b>requisitos</b> do edital: formação, registro no CRM e outras exigências"),
         ("agenda", "Anote <b>prazo, taxa e data da prova</b>"),
         ("escudo", "Toda vaga no Med Vagas traz o <b>link da fonte oficial</b> com todas as informações, sem ler o PDF inteiro"),
     ]
@@ -383,9 +383,9 @@ font-size:26px;font-weight:800;letter-spacing:.3px}
   <div class="barra-topo"><div class="bolha" style="background:#f36457"></div><div class="bolha" style="background:#f4bd4f"></div><div class="bolha" style="background:#3fca63"></div></div>
   {minis}
 </div>
-<div class="chamada">Todo dia útil entram vagas novas de médico em MG e SP. Configure seus filtros e receba alertas por e-mail.</div>
+<div class="chamada">Todo dia útil entram vagas novas de médico em MG e SP. Entre no nosso grupo de WhatsApp e receba as vagas.</div>
 <div>
-  <div class="cta">CONHEÇA O MED VAGAS &nbsp;→&nbsp; LINK NA BIO</div>
+  <div class="cta">GRUPO DE WHATSAPP COM VAGAS &nbsp;→&nbsp; LINK NA BIO</div>
 </div>"""
     return _html(estilo, corpo)
 
