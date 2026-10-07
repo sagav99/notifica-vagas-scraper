@@ -106,7 +106,7 @@ _PREVIEW = f"""
 def vagas_preview(conn: psycopg.Connection, excluir_id: Any, limite: int = 2) -> list[dict[str, Any]]:
     """Até `limite` outras vagas médicas publicáveis (slide 4 do carrossel), diferentes de `excluir_id`."""
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(_PREVIEW, {"excluir_id": excluir_id, "limite": limite})
+        cur.execute(_PREVIEW, {"excluir_id": excluir_id, "limite": limite * 25})  # sobra para o filtro de vaga completa
         candidatas = cur.fetchall()
     return [v for v in candidatas if vaga_publicavel(v)][:limite]
 
