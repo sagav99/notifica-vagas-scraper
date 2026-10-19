@@ -95,6 +95,8 @@ def especialidade_curta(cargo: str) -> str:
     """"Médico Cardiologista" -> "Cardiologista"; sem prefixo reconhecido, devolve o cargo inteiro."""
     txt = " ".join(str(cargo).split())
     resto = _PREFIXO_MEDICO.sub("", txt).strip()
+    if resto.startswith("(") and resto.endswith(")") and resto.count("(") == 1:
+        resto = resto[1:-1].strip()  # "Médico (Intervencionista/Regulador)" -> "Intervencionista/Regulador"
     if not resto or _COMECA_COM_PREPOSICAO.match(resto):  # "Médico do Programa..." não vira "do Programa..."
         return txt
     return resto
@@ -206,6 +208,9 @@ def _slide1(vaga: dict[str, Any], tipo: str, hoje: date) -> str:
     eyebrow = "VAGA COM PRAZO ACABANDO" if urgente else "VAGA ABERTA"
     cor, fundo = ("#b3261e", "#fde8e6") if urgente else ("#1d7a46", "#e2f4e8")
     selo = rotulo_prazo(vaga.get("inscricoes_fim"), hoje).upper() if urgente else "INSCRIÇÕES ABERTAS"
+    fim = vaga.get("inscricoes_fim")
+    dias_fim = (fim - hoje).days if fim else None
+    alerta = {0: "ENCERRA HOJE!", 1: "ENCERRA AMANHÃ!"}.get(dias_fim) if urgente else None
 
     titulo = especialidade_curta(vaga["cargo"]).upper()
     if vaga.get("salario") is not None:
@@ -230,13 +235,16 @@ def _slide1(vaga: dict[str, Any], tipo: str, hoje: date) -> str:
         f'<div class="c"><div class="r">{escape(r)}</div><div class="v">{escape(v)}</div></div>' for r, v in campos
     )
 
-    requisitos = _resumir(vaga.get("requisitos"), 100)
+    requisitos_texto = " ".join((vaga.get("requisitos") or "").split())
+    if len(requisitos_texto) > 100 and ";" in requisitos_texto:
+        requisitos_texto = requisitos_texto.split(";")[0].strip()  # corta na 1ª oração, não no meio de um parêntese
+    requisitos = _resumir(requisitos_texto, 100)
     rodape_card = f"Banca {escape(vaga.get('banca_organizadora') or NAO_INFORMADO)}"
     if requisitos != NAO_INFORMADO:
         rodape_card += f" · {escape(requisitos)}"
 
     estilo = """
-.card{margin-top:34px;flex:1;display:flex;flex-direction:column;margin-bottom:34px;background:#fff;border-radius:18px;border:1px solid #e2e8f8;
+.card{margin-top:30px;flex:1;min-height:0;display:flex;flex-direction:column;margin-bottom:24px;background:#fff;border-radius:18px;border:1px solid #e2e8f8;
 border-left:8px solid var(--cor);padding:30px 34px;box-shadow:0 14px 30px rgba(15,30,61,.06)}
 .card .linha1{display:flex;justify-content:space-between;align-items:center}
 .card .local{font-size:22px;font-weight:800;color:#2f6fed}
@@ -250,10 +258,22 @@ border-left:8px solid var(--cor);padding:30px 34px;box-shadow:0 14px 30px rgba(1
 .rodapec{margin-top:18px;font-size:18px;font-weight:600;color:#5a6789}
 .deslize{margin-top:0;font-size:23px;font-weight:800;color:#2f6fed;display:flex;align-items:center;gap:10px}
 .deslize .barra{margin-top:6px;width:210px;height:5px;border-radius:3px;background:#8fb6fb}
+.alerta{margin-top:26px;width:fit-content;display:flex;align-items:center;gap:16px;padding:12px 28px;border-radius:14px;
+background:linear-gradient(180deg,#e53b32,#c0261f);color:#fff;font-size:46px;font-weight:800;letter-spacing:.5px;box-shadow:0 10px 24px rgba(192,38,31,.35)}
+.alerta svg{flex:none}
 .zap{margin-top:18px;width:fit-content;background:#0f1e3d;color:#fff;border-radius:999px;padding:10px 24px;font-size:21px;font-weight:700}
 """
+    if alerta:
+        tam = int(tam * 0.85)  # o selo de urgência ocupa espaço: título menor para o card caber inteiro
+        triangulo = ('<svg width="48" height="48" viewBox="0 0 24 24" fill="#fff"><path d="M12 2 1 21h22z"/>'
+                     '<path d="M12 9v6" stroke="#c0261f" stroke-width="2.4" stroke-linecap="round"/>'
+                     '<circle cx="12" cy="18" r="1.3" fill="#c0261f"/></svg>')
+        cabecalho_titulo = (f'<div class="alerta">{triangulo}{escape(alerta)}</div>'
+                            f'<div class="eyebrow" style="margin-top:16px">VAGA DESTAQUE DO DIA</div>')
+    else:
+        cabecalho_titulo = f'<div class="eyebrow">{escape(eyebrow)}</div>'
     corpo = f"""{_cabecalho(1)}
-<div class="eyebrow">{escape(eyebrow)}</div>
+{cabecalho_titulo}
 <h1 style="font-size:{tam}px"><span class="navy">{escape(linha1)}</span><br><span class="azul">{escape(linha2)}</span></h1>
 <div class="divisor"></div>
 <div class="card" style="--cor:{cor};--fundo:{fundo}">
