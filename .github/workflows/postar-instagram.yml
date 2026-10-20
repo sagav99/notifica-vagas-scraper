@@ -17,6 +17,10 @@ on:
         description: "Opcional: id da vaga a postar (em vez de sortear)"
         type: string
         default: ""
+      pasta:
+        description: "Opcional: pasta com slide-N.png e legenda.txt prontos (exige vaga_id)"
+        type: string
+        default: ""
 
 permissions:
   contents: write # sobe o PNG na branch instagram-cards
@@ -51,10 +55,12 @@ jobs:
           BREVO_REMETENTE_EMAIL: ${{ secrets.BREVO_REMETENTE_EMAIL }}
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           VAGA_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.vaga_id || '' }}
+          PASTA: ${{ github.event_name == 'workflow_dispatch' && inputs.pasta || '' }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
         run: |
           ARGS=""
           if [ -n "$VAGA_ID" ]; then ARGS="--vaga-id $VAGA_ID"; fi
+          if [ -n "$PASTA" ]; then ARGS="$ARGS --pasta $PASTA"; fi
           if [ "$DRY_RUN" = "true" ]; then
             python scripts/postar_instagram.py --dry-run $ARGS
           else

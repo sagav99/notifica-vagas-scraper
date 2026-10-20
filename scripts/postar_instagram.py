@@ -33,6 +33,7 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--forcar", action="store_true")
     parser.add_argument("--vaga-id", help="posta esta vaga em vez de sortear (mesmos filtros da seleção)")
+    parser.add_argument("--pasta", help="pasta com slide-N.png e legenda.txt já prontos (post montado à mão); exige --vaga-id")
     args = parser.parse_args()
 
     hoje = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
@@ -40,7 +41,7 @@ def main() -> int:
     with conectar() as conn:
         if not args.dry_run and not args.forcar:
             with conn.cursor() as cur:
-                cur.execute("select 1 from public.posts_instagram where dia = %s", (hoje,))
+                cur.execute("select 1 from public.posts_instagram where dia = %s and tipo <> 'manual'", (hoje,))
                 if cur.fetchone():
                     print(f"Já existe post (ou tentativa) em {hoje}; nada a fazer.")
                     return 0
@@ -50,10 +51,18 @@ def main() -> int:
             print("Sem vaga candidata hoje; não posta.")
             return 0
         tipo, vaga = escolha
-        extra = vagas_preview(conn, vaga["id"], limite=2)
-        legenda = montar_legenda(vaga, tipo, hoje)
-        htmls = montar_htmls(vaga, tipo, hoje, extra)
-        pngs = renderizar_pngs(htmls, SAIDA / f"card-{hoje}.png")
+        if args.pasta:
+            pasta = Path(args.pasta)
+            pngs = sorted(pasta.glob("slide-*.png"))
+            legenda = (pasta / "legenda.txt").read_text(encoding="utf-8").strip()
+            if not pngs:
+                print(f"Nenhum slide-*.png em {pasta}", file=sys.stderr)
+                return 1
+        else:
+            extra = vagas_preview(conn, vaga["id"], limite=2)
+            legenda = montar_legenda(vaga, tipo, hoje)
+            htmls = montar_htmls(vaga, tipo, hoje, extra)
+            pngs = renderizar_pngs(htmls, SAIDA / f"card-{hoje}.png")
         print(f"[{tipo}] {vaga['cargo']} — {vaga['municipio']}/{vaga['uf']} -> {len(pngs)} slides ({[p.name for p in pngs]})")
 
         if args.dry_run:
