@@ -210,7 +210,9 @@ def _slide1(vaga: dict[str, Any], tipo: str, hoje: date) -> str:
     selo = rotulo_prazo(vaga.get("inscricoes_fim"), hoje).upper() if urgente else "INSCRIÇÕES ABERTAS"
     fim = vaga.get("inscricoes_fim")
     dias_fim = (fim - hoje).days if fim else None
-    alerta = {0: "ENCERRA HOJE!", 1: "ENCERRA AMANHÃ!"}.get(dias_fim) if urgente else None
+    alerta = None
+    if urgente and dias_fim is not None and 0 <= dias_fim <= 3:
+        alerta = {0: "ENCERRA HOJE!", 1: "ENCERRA AMANHÃ!"}.get(dias_fim, f"ENCERRA EM {dias_fim} DIAS!")
 
     titulo = especialidade_curta(vaga["cargo"]).upper()
     if vaga.get("salario") is not None:
@@ -258,24 +260,27 @@ border-left:8px solid var(--cor);padding:30px 34px;box-shadow:0 14px 30px rgba(1
 .rodapec{margin-top:18px;font-size:18px;font-weight:600;color:#5a6789}
 .deslize{margin-top:0;font-size:23px;font-weight:800;color:#2f6fed;display:flex;align-items:center;gap:10px}
 .deslize .barra{margin-top:6px;width:210px;height:5px;border-radius:3px;background:#8fb6fb}
-.alerta{margin-top:26px;width:fit-content;display:flex;align-items:center;gap:16px;padding:12px 28px;border-radius:14px;
-background:linear-gradient(180deg,#e53b32,#c0261f);color:#fff;font-size:46px;font-weight:800;letter-spacing:.5px;box-shadow:0 10px 24px rgba(192,38,31,.35)}
-.alerta svg{flex:none}
+.alerta{margin-top:26px;width:fit-content;display:flex;align-items:center;gap:16px;padding:14px 30px;border-radius:16px;
+background:linear-gradient(180deg,#e53b32,#c0261f);color:#fff;font-size:54px;line-height:1;font-weight:800;letter-spacing:.5px;box-shadow:0 10px 24px rgba(192,38,31,.35)}
+.selos{margin-top:20px;display:flex;gap:14px;align-items:center;flex-wrap:nowrap}
+.pilula{width:fit-content;border-radius:999px;padding:10px 22px;font-size:27px;font-weight:800;white-space:nowrap}
 .zap{margin-top:18px;width:fit-content;background:#0f1e3d;color:#fff;border-radius:999px;padding:10px 24px;font-size:21px;font-weight:700}
 """
-    if alerta:
-        tam = int(tam * 0.85)  # o selo de urgência ocupa espaço: título menor para o card caber inteiro
-        triangulo = ('<svg width="48" height="48" viewBox="0 0 24 24" fill="#fff"><path d="M12 2 1 21h22z"/>'
-                     '<path d="M12 9v6" stroke="#c0261f" stroke-width="2.4" stroke-linecap="round"/>'
-                     '<circle cx="12" cy="18" r="1.3" fill="#c0261f"/></svg>')
-        cabecalho_titulo = (f'<div class="alerta">{triangulo}{escape(alerta)}</div>'
-                            f'<div class="eyebrow" style="margin-top:16px">VAGA DESTAQUE DO DIA</div>')
-    else:
-        cabecalho_titulo = f'<div class="eyebrow">{escape(eyebrow)}</div>'
+    cabecalho_titulo = f'<div class="eyebrow">{escape(eyebrow)}</div>'
+    pilula_residencia = (
+        '<div class="pilula" style="background:#e2f4e8;color:#1d7a46;border:3px solid #1d7a46">✓ NÃO PRECISA DE RESIDÊNCIA</div>'
+        if vaga.get("sem_residencia") else ""
+    )
+    pilula_alerta = (
+        '<div class="pilula" style="background:linear-gradient(180deg,#e53b32,#c0261f);color:#fff;border:3px solid #c0261f;'
+        f'box-shadow:0 6px 16px rgba(192,38,31,.3)">⚠ {escape(alerta)}</div>'
+        if alerta else ""
+    )
+    faixa_selos = f'<div class="selos">{pilula_alerta}{pilula_residencia}</div>' if (alerta or pilula_residencia) else ""
     corpo = f"""{_cabecalho(1)}
 {cabecalho_titulo}
 <h1 style="font-size:{tam}px"><span class="navy">{escape(linha1)}</span><br><span class="azul">{escape(linha2)}</span></h1>
-<div class="divisor"></div>
+{faixa_selos}<div class="divisor"></div>
 <div class="card" style="--cor:{cor};--fundo:{fundo}">
   <div class="linha1"><div class="local">{escape(vaga['municipio'])}/{escape(vaga['uf'])}</div><div class="selo">{escape(selo)}</div></div>
   <h2>{escape(vaga['cargo'])}</h2>
