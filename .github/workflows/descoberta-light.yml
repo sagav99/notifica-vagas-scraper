@@ -1,0 +1,39 @@
+name: Descoberta leve (enfermagem e engenharia — Instagram)
+
+# Banco leve para posts de Instagram (decisão do usuário, 2026-10-24): 1
+# consulta Serper por área/dia e no máx. 80 chamadas Gemini por área/dia
+# (GEMINI_TETO_ORIGEM_DIA, imposto em quota_gemini). Fora do catálogo do site.
+
+on:
+  schedule:
+    # 10h Brasília, dias úteis; ≥1h de folga dos outros workflows Gemini (15:00 UTC é o mais próximo).
+    - cron: "0 13 * * 1-5"
+  workflow_dispatch: {}
+
+concurrency:
+  group: gemini-pesado
+  cancel-in-progress: false
+
+jobs:
+  light:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install -e ".[dev]"
+
+      - name: Rodar testes
+        run: pytest
+
+      - name: Descoberta leve (Serper + Gemini)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
+        run: python scripts/rodar_descoberta_light.py
