@@ -1,14 +1,20 @@
-name: Descoberta leve (enfermagem e engenharia — Instagram)
+name: Descoberta leve (enfermagem, engenharia e TI — Instagram)
 
-# Banco leve para posts de Instagram (decisão do usuário, 2026-10-24): 1
-# consulta Serper por área/dia e no máx. 80 chamadas Gemini por área/dia
+# Banco leve para posts de Instagram (decisão do usuário, 2026-10-24): seg/qua/sex
+# (economia de Serper), 1 consulta Serper para enfermagem e 2 para engenharia e
+# para TI por execução (5 créditos), e no máx. 80 chamadas Gemini por área/dia
 # (GEMINI_TETO_ORIGEM_DIA, imposto em quota_gemini). Fora do catálogo do site.
 
 on:
   schedule:
-    # 10h Brasília, dias úteis; ≥1h de folga dos outros workflows Gemini (15:00 UTC é o mais próximo).
-    - cron: "0 13 * * 1-5"
-  workflow_dispatch: {}
+    # 10h Brasília, seg/qua/sex; ≥1h de folga dos outros workflows Gemini (15:00 UTC é o mais próximo).
+    - cron: "0 13 * * 1,3,5"
+  workflow_dispatch:
+    inputs:
+      janela:
+        description: "Filtro de data da Serper (tbs): qdr:d7 = 7 dias, qdr:m = 1 mês"
+        default: "qdr:d7"
+
 
 concurrency:
   group: gemini-pesado
@@ -36,4 +42,4 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
-        run: python scripts/rodar_descoberta_light.py
+        run: python scripts/rodar_descoberta_light.py --janela "${{ github.event.inputs.janela || 'qdr:d7' }}"

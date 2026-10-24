@@ -1,4 +1,4 @@
-"""Descoberta "leve" de vagas de enfermagem e engenharia (2026-10-24).
+"""Descoberta "leve" de vagas de enfermagem, engenharia e TI (2026-10-24).
 
 Só alimenta posts de Instagram (tabela `vagas_light`, migration 112) — fora
 do catálogo/alertas do site, que seguem só médico. Orçamento mínimo por
@@ -21,17 +21,42 @@ from . import gemini_util, quota_gemini
 
 TETO_GEMINI_POR_AREA_DIA = 80
 
-#: area -> (query Serper, regex do cargo, descrição pro prompt)
+#: Prazo mínimo de inscrição (pedido do hub, 2026-10-24): vaga que fecha em
+#: menos de 5 dias não rende post. Sem data de fim continua entrando.
+PRAZO_MINIMO_DIAS = 5
+
+#: Cargos que nunca entram (professor, estágio, auxiliar, monitor).
+EXCLUIR_RE = re.compile(r"professor|docente|estagi|monitor|menor aprendiz")
+
+#: area -> queries Serper (1 crédito cada, todas rodam a cada execução), regex
+#: do cargo e descrição pro prompt. `ti` e `engenharia` pedem salário alto
+#: (a partir de ~R$ 6.000, só prioridade: o filtro é do hub, aqui só se grava).
 AREAS: dict[str, dict] = {
     "enfermagem": {
-        "query": "concurso enfermeiro edital inscrições abertas",
+        "queries": ["concurso enfermeiro edital inscrições abertas"],
         "cargo_re": re.compile(r"enfermeir|enfermagem"),
         "descricao": "enfermeiro / técnico ou auxiliar de enfermagem",
     },
-    "engenheiro": {
-        "query": "concurso engenheiro edital inscrições abertas",
+    "engenharia": {
+        "queries": [
+            "concurso engenheiro civil elétrico mecânico edital inscrições abertas salário",
+            "concurso engenheiro ambiental sanitarista agrônomo segurança do trabalho edital inscrições abertas",
+        ],
         "cargo_re": re.compile(r"engenheir"),
-        "descricao": "engenheiro (qualquer especialidade)",
+        "descricao": "engenheiro (civil, elétrico, mecânico, ambiental, químico, sanitarista, segurança do trabalho, agrônomo, controle e automação etc.)",
+    },
+    "ti": {
+        "queries": [
+            "concurso analista de sistemas desenvolvedor analista de TI edital inscrições abertas salário",
+            "concurso tecnologia da informação analista de dados redes segurança da informação edital inscrições abertas",
+        ],
+        "cargo_re": re.compile(
+            r"analista de (sistemas|ti\b|tecnologia|dados|redes|infraestrutura|seguranca|suporte|desenvolvimento)"
+            r"|desenvolvedor|programador|tecnologia da informacao|cientista de dados|ciencia de dados"
+            r"|administrador de (redes|banco|dados)|seguranca da informacao|engenheiro de (software|dados|computacao)"
+            r"|\bti\b|ciencia da computacao|infraestrutura de ti"
+        ),
+        "descricao": "tecnologia da informação (analista de sistemas, desenvolvedor/programador, analista de TI, dados, redes, segurança da informação)",
     },
 }
 
@@ -59,7 +84,8 @@ def _normalizar(texto: str) -> str:
 
 
 def cargo_da_area(cargo: str, area: str) -> bool:
-    return bool(AREAS[area]["cargo_re"].search(_normalizar(cargo)))
+    norm = _normalizar(cargo)
+    return bool(AREAS[area]["cargo_re"].search(norm)) and not EXCLUIR_RE.search(norm)
 
 
 def _data(valor: object) -> date | None:
@@ -88,11 +114,11 @@ def normalizar_resposta(bruto: object) -> dict:
 
 def montar_linhas(extraido: dict, area: str, *, hoje: date, url: str, titulo: str) -> list[dict]:
     """Linhas de `vagas_light` a partir da extração (texto ou PDF): só cargos da
-    área e só inscrição ainda aberta (ou sem data de fim — não dá pra afirmar
+    área e só inscrição com pelo menos `PRAZO_MINIMO_DIAS` restantes (ou sem data de fim — não dá pra afirmar
     que encerrou). Dedup por cargo dentro do mesmo documento."""
     extraido = normalizar_resposta(extraido)
     fim = _data(extraido.get("inscricoes_fim"))
-    if fim is not None and fim < hoje:
+    if fim is not None and (fim - hoje).days < PRAZO_MINIMO_DIAS:
         return []
     linhas: dict[str, dict] = {}
     for vaga in extraido.get("vagas") or []:

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Descoberta leve de vagas de enfermagem e engenharia para posts de Instagram.
+"""Descoberta leve de vagas de enfermagem, engenharia e TI para posts de Instagram.
 
-1 consulta Serper por área por execução; cada link novo vira no máx. 1
+1 a 2 consultas Serper por área por execução; cada link novo vira no máx. 1
 chamada Gemini (teto 80/dia por área). Grava em `vagas_light`
 (migration 112). Ver `notifica_vagas_scraper.light`.
 
-Uso: ``python scripts/rodar_descoberta_light.py [--area enfermagem|engenheiro] [--dry-run]``
+Uso: ``python scripts/rodar_descoberta_light.py [--area enfermagem|engenharia|ti] [--janela qdr:m] [--dry-run]``
 """
 
 from __future__ import annotations
@@ -32,10 +32,10 @@ from rodar_descoberta_google_search import (
 JANELA_BUSCA = "qdr:d7"
 
 
-def buscar_links(query: str, api_key: str) -> list[google_search.ItemBusca]:
+def buscar_links(query: str, api_key: str, janela: str = JANELA_BUSCA) -> list[google_search.ItemBusca]:
     resposta = requests.post(
         google_search.BASE_URL,
-        json={"q": query, "num": 10, "hl": "pt", "gl": "br", "tbs": JANELA_BUSCA},
+        json={"q": query, "num": 10, "hl": "pt", "gl": "br", "tbs": janela},
         headers={"User-Agent": USER_AGENT, "X-API-KEY": api_key, "Content-Type": "application/json"},
         timeout=20,
     )
@@ -75,12 +75,18 @@ def gravar(conn, linhas: list[dict]) -> int:
     return novas
 
 
-def processar_area(conn, area: str, serper_key: str, gemini_key: str, hoje, dry_run: bool) -> None:
+def processar_area(conn, area: str, serper_key: str, gemini_key: str, hoje, dry_run: bool, janela: str = JANELA_BUSCA) -> None:
     # origem + teto próprios: ver quota_gemini.origem_atual/_teto_origem
     os.environ["GEMINI_ORIGEM"] = f"light-{area}"
     os.environ["GEMINI_TETO_ORIGEM_DIA"] = str(light.TETO_GEMINI_POR_AREA_DIA)
-    itens = buscar_links(light.AREAS[area]["query"], serper_key)
-    print(f"[{area}] {len(itens)} resultado(s) da Serper (1 crédito).")
+    itens = []
+    vistos = set()
+    for query in light.AREAS[area]["queries"]:
+        for item in buscar_links(query, serper_key, janela):
+            if item.link not in vistos:
+                vistos.add(item.link)
+                itens.append(item)
+    print(f"[{area}] {len(itens)} resultado(s) da Serper ({len(light.AREAS[area]['queries'])} crédito(s)).")
     gravadas = gemini = 0
     for item in itens:
         if url_ja_vista(conn, item.link):
@@ -123,6 +129,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--area", choices=sorted(light.AREAS))
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--janela", default=JANELA_BUSCA, help="filtro de data da Serper (tbs), ex.: qdr:d7 ou qdr:m")
     args = ap.parse_args()
     serper_key, gemini_key = os.environ.get("SERPER_API_KEY"), os.environ.get("GEMINI_API_KEY")
     if not serper_key or (not gemini_key and not args.dry_run):
@@ -131,7 +138,7 @@ def main() -> None:
     conn = db.conectar()
     try:
         for area in [args.area] if args.area else sorted(light.AREAS):
-            processar_area(conn, area, serper_key, gemini_key or "", hoje, args.dry_run)
+            processar_area(conn, area, serper_key, gemini_key or "", hoje, args.dry_run, args.janela)
     finally:
         conn.close()
 
