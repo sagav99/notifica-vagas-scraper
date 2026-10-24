@@ -42,3 +42,9 @@ def test_valores_invalidos_viram_none():
 def test_dedup_por_cargo():
     ex = _extraido(vagas=[{"cargo": "Enfermeiro"}, {"cargo": "enfermeiro"}])
     assert len(light.montar_linhas(ex, "enfermagem", hoje=HOJE, url="u", titulo="t")) == 1
+
+
+def test_resposta_em_lista_nao_quebra():
+    assert light.montar_linhas([{"cargo": "Enfermeiro"}], "enfermagem", hoje=HOJE, url="u", titulo="t")[0]["cargo"] == "Enfermeiro"
+    assert light.montar_linhas([_extraido()], "enfermagem", hoje=HOJE, url="u", titulo="t")[0]["cargo"] == "Enfermeiro ESF"
+    assert light.montar_linhas("lixo", "enfermagem", hoje=HOJE, url="u", titulo="t") == []

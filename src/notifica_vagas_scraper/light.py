@@ -75,10 +75,22 @@ def _numero(valor: object) -> float | None:
     return float(valor) if isinstance(valor, (int, float)) and not isinstance(valor, bool) else None
 
 
+def normalizar_resposta(bruto: object) -> dict:
+    """O Gemini às vezes devolve lista em vez do objeto pedido (achado no 1º
+    run real, 2026-10-24): lista de vagas vira `{"vagas": [...]}`, lista de
+    objetos-edital usa o primeiro; qualquer outra coisa vira vazio."""
+    if isinstance(bruto, dict):
+        return bruto
+    if isinstance(bruto, list) and bruto and all(isinstance(x, dict) for x in bruto):
+        return {"vagas": bruto} if "cargo" in bruto[0] else bruto[0]
+    return {}
+
+
 def montar_linhas(extraido: dict, area: str, *, hoje: date, url: str, titulo: str) -> list[dict]:
     """Linhas de `vagas_light` a partir da extração (texto ou PDF): só cargos da
     área e só inscrição ainda aberta (ou sem data de fim — não dá pra afirmar
     que encerrou). Dedup por cargo dentro do mesmo documento."""
+    extraido = normalizar_resposta(extraido)
     fim = _data(extraido.get("inscricoes_fim"))
     if fim is not None and fim < hoje:
         return []
