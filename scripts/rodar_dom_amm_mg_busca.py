@@ -54,10 +54,12 @@ BATCH_SIZE = 35  # margem abaixo do limiar observado (~45 entidades) antes do th
 # Canário: entidade com matéria real confirmada manualmente (Pedra Dourada,
 # ver docs/fixtures/dom_amm_mg/ no repo principal), usado pra detectar
 # throttling silencioso do servidor (ver verificar_canario). CAVEAT: só
-# vale enquanto essa matéria (2026-07-08) estiver dentro de JANELA_DIAS —
-# válido até ~2026-10-08; depois disso, trocar por outro caso confirmado
-# se a checagem começar a falhar por motivo legítimo, não throttling.
+# vale enquanto essa matéria (2026-07-08) estiver dentro de
+# CANARIO_JANELA_DIAS (400 dias, válido até ~2027-08; a janela de 90 dias
+# anterior expirou em 2026-10-15 e derrubou o canário por 8 dias — achado
+# 2026-10-24). Depois disso, trocar por outro caso confirmado.
 CANARIO_ENTIDADE_ID = "273955"
+CANARIO_JANELA_DIAS = 400
 CANARIO_TERMO = "processo seletivo"
 CANARIO_A_CADA_N_ENTIDADES = 15
 
@@ -184,7 +186,7 @@ def verificar_canario() -> bool:
         caminho_pesquisar=dom_amm_mg.CAMINHO_PESQUISAR,
         entidade_id=CANARIO_ENTIDADE_ID,
         termo=CANARIO_TERMO,
-        data_inicio=hoje - timedelta(days=JANELA_DIAS),
+        data_inicio=hoje - timedelta(days=CANARIO_JANELA_DIAS),
         data_fim=hoje,
     )
     resultados = sigpub_busca.parsear_resultados(html)

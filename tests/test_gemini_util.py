@@ -303,7 +303,7 @@ class _RespostaFalsaComUso:
 def test_chamar_api_registra_uso_real_da_resposta(monkeypatch):
     monkeypatch.setattr(gemini_util, "esperar_rate_limit", lambda modelo: None)
     monkeypatch.setattr(gemini_util, "aguardar_orcamento_tpm", lambda modelo, tokens_estimados: None)
-    monkeypatch.setattr(quota_gemini, "registrar_chamada", lambda modelo: None)
+    monkeypatch.setattr(quota_gemini, "registrar_chamada", lambda modelo, **kw: None)
     monkeypatch.setattr(
         gemini_util.requests, "post", lambda *a, **k: _RespostaFalsaComUso(tokens_reais=12345)
     )
@@ -323,3 +323,25 @@ def test_campos_estruturados_extras_mapeia_pagamento_e_resultado():
     assert resultado["data_resultado"] == date(2026, 12, 15)
     # data mal formada não derruba: vira None
     assert gemini_util.campos_estruturados_extras({"data_resultado": "a definir"}, {})["data_resultado"] is None
+
+
+def test_disjuntor_para_apos_falhas_seguidas(monkeypatch):
+    import pytest
+
+    class _Resp:
+        status_code = 503
+
+        def json(self):
+            return {}
+
+    chamadas = []
+    monkeypatch.setattr(gemini_util, "esperar_rate_limit", lambda modelo: None)
+    monkeypatch.setattr(gemini_util, "aguardar_orcamento_tpm", lambda modelo, tokens_estimados: None)
+    monkeypatch.setattr(gemini_util.quota_gemini, "registrar_chamada", lambda modelo, **kw: None)
+    monkeypatch.setattr(gemini_util.requests, "post", lambda *a, **k: chamadas.append(1) or _Resp())
+    monkeypatch.setattr(gemini_util, "_falhas_seguidas", 0)
+    for _ in range(gemini_util.FALHAS_SEGUIDAS_PARA_PARAR):
+        gemini_util.chamar_api("u", {}, chave="k", modelo="m", timeout=1, tokens_estimados=1)
+    with pytest.raises(gemini_util.quota_gemini.CotaGeminiEsgotadaError):
+        gemini_util.chamar_api("u", {}, chave="k", modelo="m", timeout=1, tokens_estimados=1)
+    assert len(chamadas) == gemini_util.FALHAS_SEGUIDAS_PARA_PARAR  # a 5ª nem chegou na API

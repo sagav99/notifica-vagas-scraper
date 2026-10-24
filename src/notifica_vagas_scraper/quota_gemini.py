@@ -118,10 +118,39 @@ def proximo_modelo() -> str:
     return MODELO_FALLBACK if contagem_fallback < contagem_padrao else MODELO_PADRAO
 
 
+def origem_atual() -> str:
+    """Rotina que está chamando o Gemini (env `GEMINI_ORIGEM`, definida em
+    cada workflow) — alimenta `gemini_uso_origem` (migration 111)."""
+    return os.environ.get("GEMINI_ORIGEM") or "desconhecida"
+
+
+def _teto_origem() -> int | None:
+    """Teto diário (somando os 2 modelos) só da origem atual, via env
+    `GEMINI_TETO_ORIGEM_DIA`; `None` = sem teto próprio."""
+    bruto = os.environ.get("GEMINI_TETO_ORIGEM_DIA")
+    return int(bruto) if bruto and bruto.isdigit() else None
+
+
+def chamadas_origem_hoje(origem: str) -> int:
+    with _conectar() as conn, conn.cursor() as cur:
+        cur.execute(
+            "select coalesce(sum(chamadas), 0) from public.gemini_uso_origem where data = %(hoje)s and origem = %(o)s",
+            {"hoje": _hoje(), "o": origem},
+        )
+        return int(cur.fetchone()[0])
+
+
 def garantir_folga_diaria(modelo: str) -> None:
     """Levanta `CotaGeminiEsgotadaError` ANTES de chamar a API se o modelo
     já chegou em `TETO_RPD` hoje (a contagem inclui retries e chamadas com
     erro, ver `registrar_chamada`)."""
+    teto_origem = _teto_origem()
+    if teto_origem is not None:
+        usadas = chamadas_origem_hoje(origem_atual())
+        if usadas >= teto_origem:
+            raise CotaGeminiEsgotadaError(
+                f"Teto diário da origem '{origem_atual()}' atingido: {usadas}/{teto_origem} chamadas hoje."
+            )
     contagem = _ler_contagem_hoje(modelo)
     if contagem >= TETO_RPD:
         raise CotaGeminiEsgotadaError(
@@ -129,7 +158,7 @@ def garantir_folga_diaria(modelo: str) -> None:
         )
 
 
-def registrar_chamada(modelo: str) -> None:
+def registrar_chamada(modelo: str, *, erro: bool = False) -> None:
     """Chamar depois de CADA request de verdade feito à API de um
     modelo (sucesso ou erro — a cota é consumida pela tentativa, não só
     por resposta boa). Cada modelo tem sua própria linha
@@ -144,5 +173,15 @@ def registrar_chamada(modelo: str) -> None:
               set contagem = gemini_quota_diaria.contagem + 1
             """,
             {"hoje": _hoje(), "modelo": modelo},
+        )
+        cur.execute(
+            """
+            insert into public.gemini_uso_origem (data, origem, modelo, chamadas, erros)
+            values (%(hoje)s, %(origem)s, %(modelo)s, 1, %(erro)s)
+            on conflict (data, origem, modelo) do update
+              set chamadas = gemini_uso_origem.chamadas + 1,
+                  erros = gemini_uso_origem.erros + %(erro)s
+            """,
+            {"hoje": _hoje(), "origem": origem_atual(), "modelo": modelo, "erro": 1 if erro else 0},
         )
         conn.commit()

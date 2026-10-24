@@ -14,7 +14,7 @@ def _sem_espera_real(monkeypatch):
     # migration 010) -- esses testes não têm DATABASE_URL nem se importam
     # com qual modelo é escolhido, só com o parsing/decisão da resposta.
     monkeypatch.setattr(quota_gemini, "proximo_modelo", lambda: quota_gemini.MODELO_PADRAO)
-    monkeypatch.setattr(quota_gemini, "registrar_chamada", lambda modelo: None)
+    monkeypatch.setattr(quota_gemini, "registrar_chamada", lambda modelo, **kw: None)
 
 
 class _RespostaFalsa:

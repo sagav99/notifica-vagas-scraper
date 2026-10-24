@@ -38,6 +38,10 @@ def _chave(nome: str) -> str:
     return " ".join(sem_acento.lower().replace("-", " ").split())
 
 
+def _eh_residencia(titulo: str) -> bool:
+    return "residencia" in _chave(titulo)
+
+
 def ja_temos(conn, municipio_id: int, fim: date | None) -> bool:
     """Já existe vaga de médico (qualquer status de revisão) nesse município
     com o mesmo fim de inscrição — mesmo edital já coletado por outra fonte."""
@@ -115,6 +119,11 @@ def main(dry_run: bool) -> None:
         faltando: list[tuple[ocm.Candidato, int]] = []
         for cand in candidatos:
             if cand.inscricoes_fim and cand.inscricoes_fim < hoje:
+                continue
+            if _eh_residencia(cand.titulo):
+                # Residência Médica é programa de formação, fora do escopo
+                # (decisão do usuário, 2026-10-14); antes gastava 1 chamada
+                # do Gemini a cada 3 dias por edital, muitos falhando.
                 continue
             codigo = codigo_por_nome_uf.get((_chave(cand.cidade), cand.uf))
             if codigo is None:

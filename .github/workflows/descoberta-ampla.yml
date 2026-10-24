@@ -76,6 +76,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: descoberta-ampla
         run: python scripts/rodar_descoberta_google_news.py
 
       - name: Descoberta ampla (Serper — concurso médico)

@@ -9,6 +9,15 @@ class _CursorFalso:
         self._ultimo_resultado = None
 
     def execute(self, sql: str, parametros: dict):
+        if "gemini_uso_origem" in sql:
+            if sql.strip().startswith("insert"):
+                chave_o = (parametros["hoje"], parametros["origem"])
+                self._tabela.setdefault("__origem__", {})
+                self._tabela["__origem__"][chave_o] = self._tabela["__origem__"].get(chave_o, 0) + 1
+            else:
+                usadas = self._tabela.get("__origem__", {}).get((parametros["hoje"], parametros["o"]), 0)
+                self._ultimo_resultado = (usadas,)
+            return
         chave = (parametros["hoje"], parametros["modelo"])
         if sql.strip().startswith("select"):
             contagem = self._tabela.get(chave)
@@ -162,3 +171,23 @@ def test_proximo_modelo_foge_do_modelo_no_teto(monkeypatch):
     tabela[(quota_gemini._hoje(), quota_gemini.MODELO_PADRAO)] = quota_gemini.TETO_RPD
     tabela[(quota_gemini._hoje(), quota_gemini.MODELO_FALLBACK)] = quota_gemini.TETO_RPD - 1
     assert quota_gemini.proximo_modelo() == quota_gemini.MODELO_FALLBACK
+
+
+def test_teto_por_origem_bloqueia_ao_atingir(monkeypatch):
+    import pytest
+
+    tabela = _instalar_tabela_falsa(monkeypatch)
+    monkeypatch.setenv("GEMINI_ORIGEM", "enfermagem")
+    monkeypatch.setenv("GEMINI_TETO_ORIGEM_DIA", "2")
+    quota_gemini.registrar_chamada(quota_gemini.MODELO_PADRAO)
+    quota_gemini.garantir_folga_diaria(quota_gemini.MODELO_PADRAO)  # 1/2, passa
+    quota_gemini.registrar_chamada(quota_gemini.MODELO_FALLBACK)
+    assert tabela["__origem__"][(quota_gemini._hoje(), "enfermagem")] == 2
+    with pytest.raises(quota_gemini.CotaGeminiEsgotadaError):
+        quota_gemini.garantir_folga_diaria(quota_gemini.MODELO_PADRAO)
+
+
+def test_sem_teto_de_origem_nao_bloqueia(monkeypatch):
+    _instalar_tabela_falsa(monkeypatch)
+    monkeypatch.delenv("GEMINI_TETO_ORIGEM_DIA", raising=False)
+    quota_gemini.garantir_folga_diaria(quota_gemini.MODELO_PADRAO)

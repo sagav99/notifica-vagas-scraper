@@ -61,4 +61,5 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: scrape-instar
         run: python scripts/rodar_instar.py

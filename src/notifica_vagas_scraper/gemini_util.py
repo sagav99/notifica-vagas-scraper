@@ -161,6 +161,19 @@ def registrar_tokens_usados(modelo: str, tokens: int) -> None:
     _ultimos_tokens_por_modelo.setdefault(modelo, deque(maxlen=8)).append(tokens)
 
 
+#: Disjuntor: depois de N falhas técnicas SEGUIDAS (5xx, 429 ou timeout) o
+#: Gemini está fora do ar; insistir só queima cota (cada tentativa conta) e
+#: tempo de job. Reaproveita `CotaGeminiEsgotadaError`, que todos os
+#: chamadores já tratam como "pare o lote inteiro".
+FALHAS_SEGUIDAS_PARA_PARAR = 4
+_falhas_seguidas = 0
+
+
+def _registrar_resultado(falhou: bool) -> None:
+    global _falhas_seguidas
+    _falhas_seguidas = _falhas_seguidas + 1 if falhou else 0
+
+
 def chamar_api(
     url: str,
     body: dict,
@@ -179,11 +192,22 @@ def chamar_api(
     `tokens_estimados` se a resposta não vier em JSON) na janela de TPM
     depois. Não faz retry nem `raise_for_status` — isso fica com quem
     chama (ver `revisao_ia._chamar_gemini` pro retry com backoff)."""
+    if _falhas_seguidas >= FALHAS_SEGUIDAS_PARA_PARAR:
+        raise quota_gemini.CotaGeminiEsgotadaError(
+            f"Gemini com {_falhas_seguidas} falhas técnicas seguidas (5xx/429/timeout); parando o lote."
+        )
     quota_gemini.garantir_folga_diaria(modelo)
     esperar_rate_limit(modelo)
     aguardar_orcamento_tpm(modelo, tokens_estimados)
-    resposta = requests.post(url, params={"key": chave}, json=body, timeout=timeout)
-    quota_gemini.registrar_chamada(modelo)
+    try:
+        resposta = requests.post(url, params={"key": chave}, json=body, timeout=timeout)
+    except requests.RequestException:
+        quota_gemini.registrar_chamada(modelo, erro=True)
+        _registrar_resultado(True)
+        raise
+    status = getattr(resposta, "status_code", None)
+    quota_gemini.registrar_chamada(modelo, erro=isinstance(status, int) and status >= 400)
+    _registrar_resultado(isinstance(status, int) and (status >= 500 or status == 429))
     tokens_usados = tokens_estimados
     try:
         uso = resposta.json().get("usageMetadata", {})

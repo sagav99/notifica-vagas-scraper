@@ -93,6 +93,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: scrape-diario
         run: python scripts/rodar_fgv.py
 
       - name: Rodar coleta (Actcon)
@@ -100,6 +101,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: scrape-diario
         run: python scripts/rodar_actcon.py
 
       - name: Rodar coleta (WordPress)
@@ -107,6 +109,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: scrape-diario
         run: python scripts/rodar_wordpress.py
 
       - name: Rodar coleta (IMAM)
@@ -114,6 +117,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: scrape-diario
         run: python scripts/rodar_imam.py
 
       - name: Rodar coleta (Ache Concursos)
@@ -122,6 +126,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: scrape-diario
         run: python scripts/rodar_ache_concursos.py
 
       - name: Rodar coleta (IBGP)
@@ -129,6 +134,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: scrape-diario
         run: python scripts/rodar_ibgp.py
 
       - name: Rodar coleta (MSConcursos)
@@ -142,6 +148,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: scrape-diario
         run: python scripts/rodar_inepam.py
 
       - name: Rodar coleta (Kingpage)
@@ -149,6 +156,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: scrape-diario
         run: python scripts/rodar_kingpage.py
 
       - name: Rodar coleta (PBH/IBFC)
@@ -156,6 +164,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: scrape-diario
         run: python scripts/rodar_pbh_ibfc.py
 
       - name: Rodar coleta (Instituto Mais)
@@ -163,6 +172,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: scrape-diario
         run: python scripts/rodar_instituto_mais.py
 
       - name: Rodar coleta (Prefeitura de Itamonte/MG)
@@ -182,6 +192,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: scrape-diario
         run: python scripts/rodar_maua.py
 
       - name: Rodar coleta (Prefeitura de João Monlevade/MG)
@@ -189,6 +200,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: scrape-diario
         run: python scripts/rodar_pmjm_mg.py
 
       - name: Rodar coleta (Prefeitura de Bocaiúva/MG)
@@ -196,6 +208,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: scrape-diario
         run: python scripts/rodar_bocaiuva_mg.py
 
       - name: Rodar coleta (Prefeitura de Sorocaba/SP)

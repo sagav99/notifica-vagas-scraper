@@ -50,6 +50,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: auditar-completude-vagas
           SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
         run: python scripts/auditar_completude_vagas.py
 
