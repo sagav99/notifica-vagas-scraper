@@ -174,7 +174,69 @@ def _registrar_resultado(falhou: bool) -> None:
     _falhas_seguidas = _falhas_seguidas + 1 if falhou else 0
 
 
+#: 503 seguidos num MESMO modelo até tirá-lo da rotação por um tempo
+#: (`quota_gemini.marcar_instavel`). Achado 2026-10-24: o 3.1-flash-lite
+#: concentrou ~190 dos ~210 erros 503 de 20-22/10 enquanto o outro modelo
+#: respondia normalmente.
+FALHAS_503_PARA_MARCAR_INSTAVEL = 3
+_503_seguidos: dict[str, int] = {}
+
+
+def _outro_modelo(modelo: str) -> str | None:
+    if modelo == quota_gemini.MODELO_PADRAO:
+        return quota_gemini.MODELO_FALLBACK
+    if modelo == quota_gemini.MODELO_FALLBACK:
+        return quota_gemini.MODELO_PADRAO
+    return None
+
+
 def chamar_api(
+    url: str,
+    body: dict,
+    *,
+    chave: str,
+    modelo: str,
+    timeout: int,
+    tokens_estimados: int,
+) -> requests.Response:
+    """Chamada ao Gemini com troca de modelo em 503: se o modelo estiver
+    sobrecarregado (503), repete UMA vez a mesma chamada no outro modelo
+    (RPM/TPM/cota próprios) antes de devolver o erro a quem chamou. Ver
+    `_chamar_uma_vez` para o contrato completo."""
+    if _falhas_seguidas >= FALHAS_SEGUIDAS_PARA_PARAR:
+        raise quota_gemini.CotaGeminiEsgotadaError(
+            f"Gemini com {_falhas_seguidas} falhas técnicas seguidas (5xx/429/timeout); parando o lote."
+        )
+    try:
+        resposta = _chamada_com_troca_em_503(
+            url, body, chave=chave, modelo=modelo, timeout=timeout, tokens_estimados=tokens_estimados
+        )
+    except requests.RequestException:
+        _registrar_resultado(True)
+        raise
+    status = getattr(resposta, "status_code", None)
+    _registrar_resultado(isinstance(status, int) and (status >= 500 or status == 429))
+    return resposta
+
+
+def _chamada_com_troca_em_503(url, body, *, chave, modelo, timeout, tokens_estimados):
+    resposta = _chamar_uma_vez(url, body, chave=chave, modelo=modelo, timeout=timeout, tokens_estimados=tokens_estimados)
+    if getattr(resposta, "status_code", None) == 503:
+        _503_seguidos[modelo] = _503_seguidos.get(modelo, 0) + 1
+        if _503_seguidos[modelo] >= FALHAS_503_PARA_MARCAR_INSTAVEL:
+            quota_gemini.marcar_instavel(modelo)
+        alternativo = _outro_modelo(modelo)
+        if alternativo and not quota_gemini.esta_instavel(alternativo):
+            return _chamar_uma_vez(
+                url.replace(modelo, alternativo), body,
+                chave=chave, modelo=alternativo, timeout=timeout, tokens_estimados=tokens_estimados,
+            )
+    else:
+        _503_seguidos[modelo] = 0
+    return resposta
+
+
+def _chamar_uma_vez(
     url: str,
     body: dict,
     *,
@@ -192,10 +254,6 @@ def chamar_api(
     `tokens_estimados` se a resposta não vier em JSON) na janela de TPM
     depois. Não faz retry nem `raise_for_status` — isso fica com quem
     chama (ver `revisao_ia._chamar_gemini` pro retry com backoff)."""
-    if _falhas_seguidas >= FALHAS_SEGUIDAS_PARA_PARAR:
-        raise quota_gemini.CotaGeminiEsgotadaError(
-            f"Gemini com {_falhas_seguidas} falhas técnicas seguidas (5xx/429/timeout); parando o lote."
-        )
     quota_gemini.garantir_folga_diaria(modelo)
     esperar_rate_limit(modelo)
     aguardar_orcamento_tpm(modelo, tokens_estimados)
@@ -203,11 +261,9 @@ def chamar_api(
         resposta = requests.post(url, params={"key": chave}, json=body, timeout=timeout)
     except requests.RequestException:
         quota_gemini.registrar_chamada(modelo, erro=True)
-        _registrar_resultado(True)
         raise
     status = getattr(resposta, "status_code", None)
     quota_gemini.registrar_chamada(modelo, erro=isinstance(status, int) and status >= 400)
-    _registrar_resultado(isinstance(status, int) and (status >= 500 or status == 429))
     tokens_usados = tokens_estimados
     try:
         uso = resposta.json().get("usageMetadata", {})

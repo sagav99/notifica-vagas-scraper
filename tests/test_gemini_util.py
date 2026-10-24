@@ -345,3 +345,65 @@ def test_disjuntor_para_apos_falhas_seguidas(monkeypatch):
     with pytest.raises(gemini_util.quota_gemini.CotaGeminiEsgotadaError):
         gemini_util.chamar_api("u", {}, chave="k", modelo="m", timeout=1, tokens_estimados=1)
     assert len(chamadas) == gemini_util.FALHAS_SEGUIDAS_PARA_PARAR  # a 5ª nem chegou na API
+
+
+def _preparar_chamadas(monkeypatch, respostas_por_modelo):
+    class _Resp:
+        def __init__(self, status):
+            self.status_code = status
+
+        def json(self):
+            return {}
+
+    visto = []
+
+    def post(url, **kw):
+        modelo = url.split("/models/")[1].split(":")[0]
+        visto.append(modelo)
+        return _Resp(respostas_por_modelo[modelo])
+
+    monkeypatch.setattr(gemini_util, "esperar_rate_limit", lambda modelo: None)
+    monkeypatch.setattr(gemini_util, "aguardar_orcamento_tpm", lambda modelo, tokens_estimados: None)
+    monkeypatch.setattr(quota_gemini, "registrar_chamada", lambda modelo, **kw: None)
+    monkeypatch.setattr(gemini_util.requests, "post", post)
+    monkeypatch.setattr(gemini_util, "_falhas_seguidas", 0)
+    monkeypatch.setattr(gemini_util, "_503_seguidos", {})
+    monkeypatch.setattr(quota_gemini, "_instaveis_ate", {})
+    return visto
+
+
+def _url(modelo):
+    return f"https://x/v1beta/models/{modelo}:generateContent"
+
+
+def test_503_tenta_o_outro_modelo(monkeypatch):
+    p, f = quota_gemini.MODELO_PADRAO, quota_gemini.MODELO_FALLBACK
+    visto = _preparar_chamadas(monkeypatch, {p: 200, f: 503})
+    r = gemini_util.chamar_api(_url(f), {}, chave="k", modelo=f, timeout=1, tokens_estimados=1)
+    assert visto == [f, p] and r.status_code == 200
+
+
+def test_503_nos_dois_modelos_devolve_o_erro(monkeypatch):
+    p, f = quota_gemini.MODELO_PADRAO, quota_gemini.MODELO_FALLBACK
+    visto = _preparar_chamadas(monkeypatch, {p: 503, f: 503})
+    r = gemini_util.chamar_api(_url(p), {}, chave="k", modelo=p, timeout=1, tokens_estimados=1)
+    assert visto == [p, f] and r.status_code == 503
+
+
+def test_tres_503_seguidos_tiram_modelo_da_rotacao(monkeypatch):
+    p, f = quota_gemini.MODELO_PADRAO, quota_gemini.MODELO_FALLBACK
+    _preparar_chamadas(monkeypatch, {p: 200, f: 503})
+    for _ in range(gemini_util.FALHAS_503_PARA_MARCAR_INSTAVEL):
+        gemini_util.chamar_api(_url(f), {}, chave="k", modelo=f, timeout=1, tokens_estimados=1)
+    assert quota_gemini.esta_instavel(f)
+    assert quota_gemini.proximo_modelo() == p  # sem consultar o banco
+
+
+def test_sucesso_zera_contagem_de_503(monkeypatch):
+    p, f = quota_gemini.MODELO_PADRAO, quota_gemini.MODELO_FALLBACK
+    respostas = {p: 200, f: 503}
+    _preparar_chamadas(monkeypatch, respostas)
+    gemini_util.chamar_api(_url(f), {}, chave="k", modelo=f, timeout=1, tokens_estimados=1)
+    respostas[f] = 200
+    gemini_util.chamar_api(_url(f), {}, chave="k", modelo=f, timeout=1, tokens_estimados=1)
+    assert gemini_util._503_seguidos[f] == 0

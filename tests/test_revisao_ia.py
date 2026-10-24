@@ -151,7 +151,8 @@ def test_503_persistente_esgota_tentativas_e_rejeita(monkeypatch):
     monkeypatch.setattr(revisao_ia.requests, "post", _post)
     resultado = revisao_ia.decidir_revisao({"cargo": "Enfermeiro"}, api_key="chave-teste")
     assert resultado["decisao"] == "rejeitada"
-    assert chamadas["n"] == revisao_ia.TENTATIVAS_MAX
+    # cada tentativa faz 2 posts: o modelo em 503 + a troca para o outro modelo
+    assert chamadas["n"] == revisao_ia.TENTATIVAS_MAX * 2
 
 
 def test_prompt_inclui_data_de_hoje_como_referencia(monkeypatch):

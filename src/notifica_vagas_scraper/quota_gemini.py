@@ -23,6 +23,7 @@ de cada vez. A tabela `gemini_quota_diaria` agora tem 1 linha por
 from __future__ import annotations
 
 import os
+import time
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
@@ -96,6 +97,20 @@ def _ler_contagem_hoje(modelo: str) -> int:
         return linha[0] if linha else 0
 
 
+#: Modelos tirados da rotação por instabilidade (503 seguidos): modelo ->
+#: instante (monotonic) em que voltam. Só vale dentro do processo.
+_instaveis_ate: dict[str, float] = {}
+PAUSA_MODELO_INSTAVEL_S = 600
+
+
+def marcar_instavel(modelo: str) -> None:
+    _instaveis_ate[modelo] = time.monotonic() + PAUSA_MODELO_INSTAVEL_S
+
+
+def esta_instavel(modelo: str) -> bool:
+    return _instaveis_ate.get(modelo, 0.0) > time.monotonic()
+
+
 def proximo_modelo() -> str:
     """Modelo a usar na PRÓXIMA chamada: o que tiver MENOR contagem hoje
     entre `MODELO_PADRAO`/`MODELO_FALLBACK` (empate -> padrão) — ver
@@ -109,6 +124,10 @@ def proximo_modelo() -> str:
     forcado = os.environ.get("GEMINI_MODELO_FORCADO")
     if forcado:
         return forcado
+    if esta_instavel(MODELO_FALLBACK) and not esta_instavel(MODELO_PADRAO):
+        return MODELO_PADRAO
+    if esta_instavel(MODELO_PADRAO) and not esta_instavel(MODELO_FALLBACK):
+        return MODELO_FALLBACK
     contagem_padrao = _ler_contagem_hoje(MODELO_PADRAO)
     contagem_fallback = _ler_contagem_hoje(MODELO_FALLBACK)
     if contagem_padrao >= TETO_RPD and contagem_fallback < TETO_RPD:
