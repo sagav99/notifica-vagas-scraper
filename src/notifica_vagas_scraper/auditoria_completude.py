@@ -38,7 +38,7 @@ TIMEOUT_HTTP_S = 20
 #: consultas/dia pra esticar esse saldo por meses. Esta rotina só recorre
 #: à Serper quando o link salvo está genuinamente quebrado (fallback, não
 #: uso normal), por isso um teto bem mais conservador.
-LIMITE_SERPER_POR_EXECUCAO = 5
+LIMITE_SERPER_POR_EXECUCAO = 0  # desligado em 2026-10-24: 109 buscas, 0 resultado aproveitado
 
 
 def _normalizar(texto: str) -> str:

@@ -20,14 +20,31 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from .google_news import QUERIES
+from .google_news import QUERIES as QUERIES_NEWS
 
 BASE_URL = "https://google.serper.dev/search"
 
-#: saldo de créditos grátis do cadastro é fixo (2.500, sem renovação) —
-#: 20 queries por execução, 1x/dia, dura ~125 dias (~4 meses) antes de
-#: precisar de plano pago ou reavaliar (decisão do usuário, 2026-09-09).
-QUERIES_POR_EXECUCAO = 20
+#: Consultas da Serper (1 crédito cada). Enxugadas em 2026-10-24 (decisão
+#: do usuário, análise de `serper_consultas_log`): ficam as que mais
+#: renderam vaga médica aprovada; as demais repetiam link já trazido por
+#: estas (ou rendiam 0). O Google News RSS (grátis) segue com a lista
+#: completa em `google_news.QUERIES`.
+QUERIES: tuple[str, ...] = (
+    "concurso público médico plantonista",
+    "concurso médico ortopedista",
+    "concurso médico generalista",
+    "concurso médico ginecologista obstetra",
+    "vagas médico concurso prefeitura",
+    "concurso médico PSF",
+    "concurso médico",
+    "concurso médico da família ESF",
+    "concurso médico SP",
+    "concurso médico psiquiatra",
+)
+
+#: 10 queries por execução, rodando só seg/qua/sex (~30 créditos/semana,
+#: contra ~135 antes de 2026-10-24).
+QUERIES_POR_EXECUCAO = 10
 
 #: Janelas de recência disponíveis pro backfill retroativo (decisão do
 #: usuário, 2026-09-08): em vez de só "tudo de uma vez" (sem filtro
@@ -43,8 +60,9 @@ JANELAS_BACKFILL: dict[str, str | None] = {
     "tudo": None,
 }
 
-#: cron normal (fora de backfill) restringe aos últimos 2 dias.
-JANELA_DIAS = 2
+#: cron normal (fora de backfill) restringe aos últimos 3 dias: roda
+#: seg/qua/sex, então a segunda precisa cobrir sexta+fim de semana.
+JANELA_DIAS = 3
 
 
 @dataclass

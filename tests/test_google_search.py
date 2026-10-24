@@ -6,7 +6,7 @@ def test_montar_parametros_diario_restringe_recencia_e_backfill_nao():
     backfill = google_search.montar_parametros("concurso médico MG", backfill=True)
 
     assert diario["q"] == "concurso médico MG"
-    assert diario["tbs"] == "qdr:d2"
+    assert diario["tbs"] == "qdr:d3"
     assert "tbs" not in backfill
 
 
@@ -27,7 +27,7 @@ def test_montar_parametros_backfill_com_janela_em_estagios():
 
 def test_montar_parametros_janela_ignorada_fora_do_backfill():
     diario = google_search.montar_parametros("concurso médico MG", backfill=False, janela="semana")
-    assert diario["tbs"] == "qdr:d2"
+    assert diario["tbs"] == "qdr:d3"
 
 
 def test_listar_itens_extrai_resultado_valido_e_ignora_incompleto():
