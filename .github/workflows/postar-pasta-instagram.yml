@@ -1,0 +1,43 @@
+name: Postar carrossel pronto no Instagram
+
+# Publica uma pasta com slide-N.png + legenda.txt (ex.: carrossel do resumo semanal). Só manual, sem Gemini.
+
+on:
+  workflow_dispatch:
+    inputs:
+      pasta:
+        description: "Pasta com slide-N.png e legenda.txt (ex.: posts_manuais/2026-10-25-resumo-fechamento)"
+        type: string
+        required: true
+      dry_run:
+        description: "Só conferir a pasta (não publica)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write # sobe os PNGs na branch instagram-cards
+
+jobs:
+  postar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar dependências
+        run: pip install -e ".[instagram]"
+      - name: Publicar
+        env:
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PASTA: ${{ inputs.pasta }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            python scripts/postar_pasta_instagram.py "$PASTA" --dry-run
+          else
+            python scripts/postar_pasta_instagram.py "$PASTA"
+          fi
