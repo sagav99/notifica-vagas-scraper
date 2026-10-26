@@ -37,13 +37,23 @@ QUERIES: tuple[str, ...] = (
     "vagas médico concurso prefeitura",
     "concurso médico PSF",
     "concurso médico",
-    "concurso médico da família ESF",
     "concurso médico SP",
-    "concurso médico psiquiatra",
 )
 
-#: 10 queries por execução, rodando só seg/qua/sex (~30 créditos/semana,
-#: contra ~135 antes de 2026-10-24).
+#: Tiradas em 2026-10-26 para abrir espaço ao Sul sem aumentar o total:
+#: "concurso médico psiquiatra" (64 vagas/17 execuções) e "concurso médico da
+#: família ESF" (88; sobrepõe "PSF"), as de menor rendimento das 10.
+#:
+#: Sul (PR/SC/RS), terça e quinta, os dias em que MG/SP não rodam (pedido do
+#: usuário, 2026-10-26): 1 consulta por estado.
+QUERIES_SUL: tuple[str, ...] = (
+    "concurso público médico Paraná",
+    "concurso público médico Santa Catarina",
+    "concurso público médico Rio Grande do Sul",
+)
+
+#: 8 queries seg/qua/sex (24) + 3 do Sul ter/qui (6) = 30 créditos/semana,
+#: o mesmo orçamento de antes da inclusão do Sul.
 QUERIES_POR_EXECUCAO = 10
 
 #: Janelas de recência disponíveis pro backfill retroativo (decisão do
@@ -74,8 +84,13 @@ class ItemBusca:
     consulta: str | None = None
 
 
+#: Terça pega desde sexta (fim de semana sem edital novo) e quinta desde
+#: quarta; 4 dias cobre os dois sem custo extra (1 crédito por consulta).
+JANELA_DIAS_SUL = 4
+
+
 def montar_parametros(
-    query: str, *, backfill: bool = False, janela: str | None = None
+    query: str, *, backfill: bool = False, janela: str | None = None, janela_dias: int = JANELA_DIAS
 ) -> dict[str, str | int]:
     """Corpo (JSON) de uma única consulta à Serper.
 
@@ -92,7 +107,7 @@ def montar_parametros(
         "gl": "br",
     }
     if not backfill:
-        parametros["tbs"] = f"qdr:d{JANELA_DIAS}"
+        parametros["tbs"] = f"qdr:d{janela_dias}"
     elif janela is not None:
         tbs = JANELAS_BACKFILL[janela]
         if tbs is not None:

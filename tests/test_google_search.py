@@ -52,3 +52,12 @@ def test_listar_itens_extrai_resultado_valido_e_ignora_incompleto():
 
 def test_listar_itens_sem_resultados_devolve_lista_vazia():
     assert google_search.listar_itens({}) == []
+
+
+def test_orcamento_semanal_serper_nao_passa_de_30():
+    semana = 3 * len(google_search.QUERIES[: google_search.QUERIES_POR_EXECUCAO]) + 2 * len(google_search.QUERIES_SUL)
+    assert semana <= 30
+
+
+def test_janela_sul_maior_que_a_base():
+    assert google_search.montar_parametros("x", janela_dias=google_search.JANELA_DIAS_SUL)["tbs"] == "qdr:d4"

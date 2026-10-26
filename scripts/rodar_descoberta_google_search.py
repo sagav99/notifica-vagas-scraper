@@ -32,7 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 import requests
 from bs4 import BeautifulSoup
 
-from notifica_vagas_scraper.ufs import UFS_PROJETO
+from notifica_vagas_scraper.ufs import UFS_PROJETO, UFS_SUL
 from notifica_vagas_scraper import db, deteccao_bloqueio, evidencia_imagem, gemini_pdf, gemini_texto, gemini_util
 from notifica_vagas_scraper.fontes import fgv, google_search
 
@@ -73,13 +73,15 @@ def _parsear_data_iso(texto: str | None) -> date | None:
 def buscar_itens(
     *, api_key: str, backfill: bool = False, janela: str | None = None,
     estatisticas: dict[str, dict] | None = None,
+    queries: tuple[str, ...] | None = None, janela_dias: int = google_search.JANELA_DIAS,
 ) -> list[google_search.ItemBusca]:
     """Faz no máximo uma consulta por query, nunca excedendo o limite por execução.
     Se `estatisticas` for passado, recebe por consulta {resultados, novos, erro}."""
-    queries = google_search.QUERIES[: google_search.QUERIES_POR_EXECUCAO]
-    if len(google_search.QUERIES) > len(queries):
+    todas = google_search.QUERIES if queries is None else queries
+    queries = todas[: google_search.QUERIES_POR_EXECUCAO]
+    if len(todas) > len(queries):
         print(
-            f"aviso: {len(google_search.QUERIES)} queries configuradas; usando só {len(queries)} "
+            f"aviso: {len(todas)} queries configuradas; usando só {len(queries)} "
             f"para esticar o saldo de créditos da Serper (ver QUERIES_POR_EXECUCAO).",
             file=sys.stderr,
         )
@@ -90,7 +92,7 @@ def buscar_itens(
         try:
             resposta = requests.post(
                 google_search.BASE_URL,
-                json=google_search.montar_parametros(query, backfill=backfill, janela=janela),
+                json=google_search.montar_parametros(query, backfill=backfill, janela=janela, janela_dias=janela_dias),
                 headers={"User-Agent": USER_AGENT, "X-API-KEY": api_key, "Content-Type": "application/json"},
                 timeout=20,
             )
@@ -467,7 +469,7 @@ def escrever_relatorio_backfill(*, janela: str, itens: int, casados: int, sinais
     caminho.write_text(
         f"# Backfill Serper (descoberta ampla via Google) — janela: {janela}\n\n"
         f"Executado em {datetime.now(timezone.utc):%Y-%m-%d %H:%M UTC}.\n\n"
-        f"- Resultados únicos: {itens}\n- Casados com municípios MG/SP: {casados}\n"
+        f"- Resultados únicos: {itens}\n- Casados com municípios do projeto: {casados}\n"
         f"- Sinais novos: {sinais_novos}\n- Vagas extraídas: {vagas}\n",
         encoding="utf-8",
     )
@@ -481,7 +483,12 @@ def main(argv: list[str] | None = None) -> None:
         "--janela", choices=sorted(google_search.JANELAS_BACKFILL), default="tudo",
         help='só com --backfill: estágio de recência ("semana", "mes", "trimestre" ou "tudo", padrão "tudo")',
     )
+    parser.add_argument(
+        "--regiao", choices=("base", "sul"), default="base",
+        help='"sul" = PR/SC/RS (terça e quinta); "base" = consultas gerais, casando as 5 UFs (padrão)',
+    )
     args = parser.parse_args(argv)
+    sul = args.regiao == "sul"
     api_key = os.environ.get("SERPER_API_KEY")
     gemini_api_key = os.environ.get("GEMINI_API_KEY_DESCOBERTA_GOOGLE")
     faltando = [nome for nome, valor in (("SERPER_API_KEY", api_key),
@@ -498,11 +505,13 @@ def main(argv: list[str] | None = None) -> None:
 
     estatisticas: dict[str, dict] = {}
     itens = buscar_itens(api_key=api_key, backfill=args.backfill, janela=args.janela if args.backfill else None,
-                         estatisticas=estatisticas)
+                         estatisticas=estatisticas,
+                         queries=google_search.QUERIES_SUL if sul else None,
+                         janela_dias=google_search.JANELA_DIAS_SUL if sul else google_search.JANELA_DIAS)
     print(f"{len(itens)} resultado(s) único(s) da Serper.")
     conn = db.conectar()
     try:
-        municipios_completos = db.listar_municipios_com_codigo(conn, ufs=UFS_DO_PROJETO)
+        municipios_completos = db.listar_municipios_com_codigo(conn, ufs=list(UFS_SUL) if sul else UFS_DO_PROJETO)
         municipios = [(nome, uf) for _, nome, uf in municipios_completos]
         codigos = {(nome, uf): codigo for codigo, nome, uf in municipios_completos}
         dominios_conhecidos = db.listar_dominios_fontes_conhecidas(conn)
