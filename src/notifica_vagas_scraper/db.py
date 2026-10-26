@@ -166,6 +166,17 @@ def listar_identificadores_por_fonte_nome(conn: psycopg.Connection, nome_like: s
         return {row[0] for row in cur.fetchall()}
 
 
+def url_ja_e_evidencia(conn: psycopg.Connection, urls: list[str | None]) -> bool:
+    """True se alguma URL já é evidência de vaga. Evita gastar Gemini relendo
+    um edital que outra fonte (ex.: O Concurso Médico) já importou."""
+    validas = [u for u in urls if u]
+    if not validas:
+        return False
+    with conn.cursor() as cur:
+        cur.execute("select 1 from public.vaga_evidencias where url = any(%s) limit 1", (validas,))
+        return cur.fetchone() is not None
+
+
 def item_ja_processado(prefixo: str, identificadores: set[str]) -> bool:
     return any(i.startswith(prefixo) for i in identificadores)
 

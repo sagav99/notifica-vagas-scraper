@@ -1,10 +1,16 @@
 from decimal import Decimal
 from unittest.mock import Mock
 
+import pytest
 import requests
 
 import rodar_descoberta_google_search as script
 from notifica_vagas_scraper.fontes import google_search
+
+
+@pytest.fixture(autouse=True)
+def _url_nunca_e_evidencia(monkeypatch):
+    monkeypatch.setattr(script.db, "url_ja_e_evidencia", lambda conn, urls: False)
 
 
 def _item(titulo="Prefeitura de Paracatu abre concurso para médico", link="https://jornallocal.com.br/noticia/1"):
@@ -768,3 +774,13 @@ def test_buscar_itens_atribui_link_repetido_a_primeira_consulta(monkeypatch):
     assert estatisticas["a"] == {"resultados": 2, "novos": 2, "erro": None}
     assert estatisticas["b"] == {"resultados": 2, "novos": 1, "erro": None}
     assert estatisticas["falha"]["erro"] == "RequestException"
+
+
+def test_url_ja_evidencia_nao_chama_gemini(monkeypatch):
+    monkeypatch.setattr(script.db, "registrar_sinal_descoberta", lambda conn, **kw: True)
+    monkeypatch.setattr(script.db, "url_ja_e_evidencia", lambda conn, urls: True)
+    gemini = Mock(side_effect=AssertionError("não deveria chamar Gemini"))
+    monkeypatch.setattr(script.gemini_pdf, "extrair_vagas_de_pdf", gemini)
+    monkeypatch.setattr(script.gemini_texto, "extrair_vagas_de_texto", gemini)
+    item = google_search.ItemBusca(titulo="Edital", link="https://x/edital.pdf", resumo=None, publicado_em=None)
+    assert script.processar_item(Mock(), item, "Maravilha", "SC", 1, set(), "k") == (1, 0)

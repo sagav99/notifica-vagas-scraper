@@ -32,11 +32,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 import requests
 from bs4 import BeautifulSoup
 
+from notifica_vagas_scraper.ufs import UFS_PROJETO
 from notifica_vagas_scraper import db, deteccao_bloqueio, evidencia_imagem, gemini_pdf, gemini_texto, gemini_util
 from notifica_vagas_scraper.fontes import fgv, google_search
 
 USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com/sagav99/notifica-vagas-scraper)"
-UFS_DO_PROJETO = ["MG", "SP"]
+UFS_DO_PROJETO = list(UFS_PROJETO)
 TEXTO_MAX_CHARS = 8000
 RELATORIOS_DIR = Path(__file__).parent.parent / "relatorios"
 MAX_FALHAS_CONSECUTIVAS_API = 3
@@ -284,6 +285,8 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
         # O sinal é idempotente por URL. Reprocessá-lo consumiria Gemini e
         # poderia criar uma evidência duplicada, sem acrescentar informação.
         return 0, 0
+    if db.url_ja_e_evidencia(conn, [item.link]):
+        return int(sinal_novo), 0  # edital já importado por outra fonte: sem Gemini
 
     # `coberto=True` NÃO pula mais a extração (decisão do usuário,
     # 2026-09-08): pular era o comportamento antigo, mas isso fazia essa
@@ -313,6 +316,9 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
             print(f"  aviso: bloqueio detectado buscando '{item.link[:70]}': {exc.motivo}", file=sys.stderr)
         if html:
             url_pdf = encontrar_pdf_edital(html, item.link)
+
+    if url_pdf and url_pdf != item.link and db.url_ja_e_evidencia(conn, [url_pdf]):
+        return int(sinal_novo), 0  # PDF do edital já é evidência de outra fonte
 
     extraido = None
     tipo_documento = "pagina_html"

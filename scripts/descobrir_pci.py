@@ -46,11 +46,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 import requests
 from bs4 import BeautifulSoup
 
+from notifica_vagas_scraper.ufs import UFS_PROJETO
 from notifica_vagas_scraper import db
 from notifica_vagas_scraper.fontes import fgv
 
 USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com/sagav99/notifica-vagas-scraper)"
-UFS = ("mg", "sp")
+UFS = tuple(u.lower() for u in UFS_PROJETO)
 PCI_HOST = "www.pciconcursos.com.br"
 HOSTS_IGNORADOS = {
     PCI_HOST,
@@ -110,7 +111,7 @@ def buscar_links_externos(url_noticia: str) -> list[str]:
 def main() -> None:
     conn = db.conectar()
     try:
-        municipios_completos = db.listar_municipios_com_codigo(conn, ufs=["MG", "SP"])
+        municipios_completos = db.listar_municipios_com_codigo(conn, ufs=list(UFS_PROJETO))
         dominios_conhecidos = db.listar_dominios_fontes_conhecidas(conn)
         municipios = [(nome, uf) for _, nome, uf in municipios_completos]
         codigo_por_nome_uf = {(nome, uf): codigo for codigo, nome, uf in municipios_completos}

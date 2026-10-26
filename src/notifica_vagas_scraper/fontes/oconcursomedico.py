@@ -20,6 +20,8 @@ import json
 from dataclasses import dataclass
 from datetime import date, datetime
 
+from ..ufs import UFS_PROJETO
+
 FEED_URL = (
     "https://script.google.com/macros/s/"
     "AKfycbyOO3_5cmla4VOvW6lvImUPdGKurBnXEGIuUNJO3S1SJfhK-2wYFs_gf-lnStW0MOBL/exec"
@@ -65,7 +67,7 @@ def _url_do_edital(item: dict) -> str | None:
     return None
 
 
-def listar_candidatos(feed: dict | str, ufs: tuple[str, ...] = ("MG", "SP")) -> list[Candidato]:
+def listar_candidatos(feed: dict | str, ufs: tuple[str, ...] = UFS_PROJETO) -> list[Candidato]:
     dados = json.loads(feed) if isinstance(feed, str) else feed
     candidatos: list[Candidato] = []
     for item in dados.get("concursos", []):

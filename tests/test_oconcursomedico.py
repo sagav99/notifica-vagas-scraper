@@ -22,7 +22,7 @@ def test_lista_so_mg_sp_abertos_ou_previstos():
     feed = {
         "concursos": [
             _item(id=1),
-            _item(id=2, uf="PR"),
+            _item(id=2, uf="BA"),
             _item(id=3, status="encerradas"),
             _item(id=4, status="previsto", uf="MG"),
         ]

@@ -27,6 +27,7 @@ import requests
 
 from notifica_vagas_scraper import db, gemini_pdf, gemini_util
 from notifica_vagas_scraper.fontes import oconcursomedico as ocm
+from notifica_vagas_scraper.ufs import UFS_PROJETO
 
 USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com/sagav99/notifica-vagas-scraper)"
 FONTE_NOME = "O Concurso Médico (índice)"
@@ -102,16 +103,16 @@ def processar(conn, cand: ocm.Candidato, codigo_ibge: int) -> int:
     return total
 
 
-def main(dry_run: bool) -> None:
+def main(dry_run: bool, maximo: int = MAX_NOVOS_POR_EXECUCAO) -> None:
     conn = db.conectar()
     try:
         resposta = requests.get(ocm.FEED_URL, headers={"User-Agent": USER_AGENT}, timeout=60)
         resposta.raise_for_status()
         candidatos = ocm.listar_candidatos(resposta.json())
-        print(f"{len(candidatos)} concurso(s) de MG/SP abertos ou previstos na lista deles.")
+        print(f"{len(candidatos)} concurso(s) de {'/'.join(UFS_PROJETO)} abertos ou previstos na lista deles.")
 
         codigo_por_nome_uf = {
-            (_chave(nome), uf): codigo for codigo, nome, uf in db.listar_municipios_com_codigo(conn, ufs=["MG", "SP"])
+            (_chave(nome), uf): codigo for codigo, nome, uf in db.listar_municipios_com_codigo(conn, ufs=list(UFS_PROJETO))
         }
         ja_processados = db.listar_identificadores_por_fonte_nome(conn, FONTE_NOME)
         hoje = date.today()
@@ -143,7 +144,7 @@ def main(dry_run: bool) -> None:
             return
 
         total = 0
-        for cand, codigo in faltando[:MAX_NOVOS_POR_EXECUCAO]:
+        for cand, codigo in faltando[:maximo]:
             print(f"Processando: {cand.titulo} ({cand.edital_url})")
             try:
                 with conn.transaction():
@@ -151,7 +152,7 @@ def main(dry_run: bool) -> None:
                 conn.commit()
             except Exception as exc:  # um item ruim não derruba o lote
                 print(f"  ERRO processando '{cand.titulo}': {exc}")
-        restante = max(0, len(faltando) - MAX_NOVOS_POR_EXECUCAO)
+        restante = max(0, len(faltando) - maximo)
         print(f"\nOk. {total} vaga(s) gravada(s); {restante} edital(is) ficam pra próxima rodada.")
     except Exception:
         conn.rollback()
@@ -162,5 +163,6 @@ def main(dry_run: bool) -> None:
 
 if __name__ == "__main__":
     dry = "--dry-run" in sys.argv
+    maximo = int(sys.argv[sys.argv.index("--max") + 1]) if "--max" in sys.argv else MAX_NOVOS_POR_EXECUCAO
     with db.rastrear_execucao("rodar_oconcursomedico.py"):
-        main(dry)
+        main(dry, maximo)

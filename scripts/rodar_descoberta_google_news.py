@@ -47,11 +47,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 import requests
 from bs4 import BeautifulSoup
 
+from notifica_vagas_scraper.ufs import UFS_PROJETO
 from notifica_vagas_scraper import db, gemini_texto, gemini_util
 from notifica_vagas_scraper.fontes import fgv, google_news
 
 USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com/sagav99/notifica-vagas-scraper)"
-UFS_DO_PROJETO = ["MG", "SP"]
+UFS_DO_PROJETO = list(UFS_PROJETO)
 JANELA_DIAS = 2  # cadência é 1x/dia; folga pequena contra ciclo atrasado/pulado
 TEXTO_MAX_CHARS = 8000
 
