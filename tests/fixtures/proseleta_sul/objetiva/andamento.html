@@ -1,0 +1,1176 @@
+<style>
+.cliente { margin: 0 0 20px 0; padding: 15px; border-bottom: 1px solid #ddd; font-size: 28px; color: #777; text-align: center; }
+.cabecalhoConcurso { padding: 10px 20px; }
+.rodapeConcurso { padding: 20px; }
+</style>
+
+
+
+    <!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+                    <meta charset="iso-8859-1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Objetiva Instituto</title>
+    <meta name="description" content="" />
+    <meta name="keywords" content="Processos seletivos, concursos pï¿½blicos, vestibular" />
+    <meta name="author" content="Impacta Soluï¿½ï¿½es Web | Software ProSeleta" /> 
+        <link rel="shortcut icon" href="/uploads/361/configs/74ad5e57c1944e4db62fdc61a443bcd7.png" type="image/x-icon">
+    <link rel="icon" href="/uploads/361/configs/74ad5e57c1944e4db62fdc61a443bcd7.png" type="image/x-icon">
+        
+
+    <script src="//static-cdn.selecao.net.br/static/js/jquery-2.1.3.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery-ui-1.11.2.custom/jquery-ui.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/php.default.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.maskedinput.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.price_format.2.0.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.validate.min.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/jquery.validate.extra.js"></script>
+    <script src="//static-cdn.selecao.net.br/static/js/util.js?ver=202005101713"></script>
+
+    
+    
+    <!-- jQuery UI -->
+    <link rel="stylesheet" media="screen" href="//static-cdn.selecao.net.br/static/js/jquery-ui-1.11.2.custom/jquery-ui.min.css" /> 
+
+    <link href='//fonts.googleapis.com/css?family=Exo+2:700,500italic,400,500,200italic,800,200,700italic,300italic,600italic,600,300,800italic,400italic' rel='stylesheet' type='text/css'>
+    <link type="text/css" media="screen" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/site.css?ver=202607031200" />     <link type="text/css" media="all" rel="stylesheet" href="//static-cdn.selecao.net.br/static/texto.css" />
+    <link type="text/css" media="print" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/imprimir.css" />
+    <link type="text/css" media="screen" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/responsivo.css?ver=202609141200" />
+
+            <link type="text/css" media="all" rel="stylesheet" href="//static-cdn.selecao.net.br/static/clientes/objetivas.selecao.net.br/site.css?ver=202606241618" />
+    
+    
+          <!-- Google tag (gtag.js) -->
+            <script async src="https://www.googletagmanager.com/gtag/js?id=G-13PDJ2FXPF"></script>
+      <script>
+          
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          
+          gtag('config', 'G-13PDJ2FXPF');
+      </script>
+      
+        
+        
+    
+    
+    <link type="text/css" media="screen" rel="stylesheet" href="//static-cdn.selecao.net.br/static/candidatos/govbr.css?ver=202307251410" /> 
+    <!-- Rybena -->
+    </head>
+<body class="">
+    
+    
+    
+            <header id="TopoMobile">
+
+    <div class="logo-wrapper">
+        <a href="https://www.objetivas.com.br/home">
+            <img src="//static-cdn.selecao.net.br/uploads/361/configs/1b3157d04dd10070b44c26938b3bb661.png"
+                alt="Objetiva Instituto" class="logo" style="max-height: 115px"/>
+        </a>
+    </div>
+
+    <div class="menu-fix-clear" id="menuMobileWrapper">
+        <ul class="menu-wrapper">
+            
+                     <form action="/login/logar/" method="post" autocomplete="off" class="form-top">
+        <input name="foilautofill"
+               autocomplete="new-password"
+               style="display: none;" type="password" />             <h3 class="menu-title">Acessar Área do Candidato:</h3>
+            <input type="text" name="login" id="tl-login" value="" class="texto mascara cpf item" placeholder="CPF"/>
+
+            <input autocomplete="new-password"  type="password" name="senha" id="tl-senha" value="" class="texto item" placeholder="Senha"/>
+
+            <button type="submit" class="login-top-btn item">Entrar</button>
+
+                    <a href="/login/esqueci/" class="esqueci-mobile">Esqueci a minha senha</a>
+            </form>                
+
+                <h3 class="menu-title">Menu:</h3>
+                <li class="menu-item">
+                    <a href="https://www.objetivas.com.br/home">Início</a>
+                </li>
+                
+                
+                                    <li class="menu-item">
+                        <a href="/faleconosco/">                            Fale Conosco </a>
+                    </li>
+                            
+                        <div id="menuMobileCategorias">
+
+            </div>
+
+            
+            <form action="/index/todos/" name="formBuscaConcurso" method="get" class="barra-pesquisa-wrapper">
+                <h3 class="menu-title">Busca:</h3>
+                <input type="text" name="busca" placeholder="Busca..." class="texto search">
+                <button type="submit" class="button">Buscar</button>
+            </form>
+
+
+        </ul>
+    </div>
+
+    <div class="menu-btn-container" id="menu-mobile">
+        <h3 class="menu-indicador">Menu</h3>
+        <button class="btn-wrapper">
+            <i></i>
+            <i></i>
+            <i></i>
+        </button>
+    </div>
+</header>    
+        
+    <div id="Topo" class="naoimprimir">
+
+        <div class="Conteudo">
+
+                        
+                <div id="Logo">
+                    <h1><a href="https://www.objetivas.com.br/home"><img
+                                src="//static-cdn.selecao.net.br/uploads/361/configs/1b3157d04dd10070b44c26938b3bb661.png"
+                                alt="Objetiva Instituto" style="max-height: 115px"/></a></h1>
+                </div>
+
+            
+            
+                <div id="DadosEmpresa">
+                    <p><b>Objetiva Instituto</b></p>
+                    <p class="contatos">.</p>
+                                            <div class="faleconosco"><a href="/faleconosco/" class="botao"> Fale Conosco
+                                </a></div>
+                                    </div>
+
+                <div id="TopLogin" class="">
+                    <div class="item botoes" style="margin: 20px 0px 0px 70px;float: right;">
+                        <a href="/painel/" >
+                            <span class="btn-areacandidato">
+                                <svg style="width: 30px;padding: 5px;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.2" stroke="currentColor" class="w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Área do Candidato
+                            </span>
+                        </a>
+                    </div>                    
+                </div>
+
+            
+        </div>
+
+    </div>
+
+    
+    <script>
+        $('#menu-mobile').click(function() {
+            this.classList.toggle('abrir')
+            $('#menuMobileWrapper').toggleClass('abrir');
+        })
+    </script>
+
+<div id="MenuLateral" class="bgConcurso">
+    
+    <div class="Conteudo">
+        <div class="CategoriasConcursos">
+            <h3>                    CONCURSOS:
+                             </h3>
+            <ul>
+                                                                <li >
+                    <a href="/index/abertos/">Inscrições Abertas</a>
+                </li>
+                                                    <li  class="ativo">
+                        <a href="/index/1/">Em andamento</a>
+                    </li>
+                                    <li >
+                        <a href="/index/3/">Finalizado</a>
+                    </li>
+                
+                
+            </ul>
+        </div>
+        <div class="BsucarConcurso">
+            <form action="/index/todos/" name="formBuscaConcurso" method="get">
+                <input type="text" name="busca" placeholder="Busca..." class="texto" style="width:140px;">
+                <button type="submit" class="botao preto">ok</button>
+            </form>
+        </div>
+
+                                    <div class="bannerLateral">
+                    
+                                                    <img src="//static-cdn.selecao.net.br/uploads/361/banners/61nWmbscTQS8zAUAF6ncAV8xktqZANmfnHIXUVV3.png" alt="banner" style="max-width: 180px; max-height: 300px" />
+                        
+                                                    <div class="textoBannerLateral"><p><strong><font color="#ffffff">ATENDIMENTO</font></strong></p><p><font color="#ffffff">Whats:</font> <a href="https://api.whatsapp.com/send?phone=5551996145833" target="_blank"><font color="#cee7f7">(51) 99614-5833</font></a></p></div>
+                        
+                                        </div>
+                    
+
+        
+    </div>
+</div>
+
+<div class="Miolo Index">
+
+        
+
+
+        
+    
+            <div class="listaConcursos">
+    <h2 class="tituloPagina" style="font-size:24px;">
+        <span>
+             
+                CONCURSOS
+                                        -
+                        <b>Em andamento</b>
+        </span>
+    </h2>
+    <br>
+    
+    
+    <ul class="lista">
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2622/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/fDKErUbWuxKRagztPCuS35ESo7tOI4sQwI3ghfXb.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2622/" >NOVO XINGU/RS - Município - Concurso Público 001/2026</a></h3>
+                            
+                            
+                                                        
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>30/10/2026</b> a 
+                                            <b>30/11/2026</b>
+
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>30/10/2026</b> a 
+                                        <b>04/11/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2622/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2629/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/tfGUOxG9mUzRkyl2woUB9umPyEV2l5W3o9gBSikq.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2629/" >IPÊ/RS - Município - Concurso Público 01/2026</a></h3>
+                            
+                            
+                                                        
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>23/10/2026</b> a 
+                                            <b>23/11/2026</b>
+
+                                                                                            <a href="/informacoes/2629/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>23/10/2026</b> a 
+                                        <b>27/10/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2629/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2624/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/081c1ac2-36a4-49f9-9a88-bc87817bc4ca.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Processo Seletivo </p>
+                            
+                                                            <h3><a href="/informacoes/2624/" >IVAÍ/PR - Município - Processo Seletivo Simplificado 002/2026</a></h3>
+                            
+                            
+                                                        
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>23/10/2026</b> a 
+                                            <b>23/11/2026</b>
+
+                                                                                            <a href="/informacoes/2624/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>23/10/2026</b> a 
+                                        <b>26/10/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2624/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2628/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/vyjTBAuVPJXGFEvPWcDgJ6hRh8XzrpcEDAVpX7SD.jpg" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2628/" >NOVO CABRAIS/RS - Município - Concurso Público 01/2026</a></h3>
+                            
+                            
+                                                        
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>23/10/2026</b> a 
+                                            <b>23/11/2026</b>
+
+                                                                                            <a href="/informacoes/2628/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2628/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2627/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/be595728-2d1e-4ba8-9e23-201d71b90cce.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2627/" >TIO HUGO/RS - Município - Concurso Público 01/2026</a></h3>
+                            
+                            
+                                                        
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>16/10/2026</b> a 
+                                            <b>16/11/2026</b>
+
+                                                                                            <a href="/informacoes/2627/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>16/10/2026</b> a 
+                                        <b>20/10/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2627/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2600/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/o8tZxMvTJjlaJtlNeU5ijq5KF6tFgMUxIb0AALSJ.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2600/" >ARVOREZINHA/RS - Município - Concurso Público 01/2026</a></h3>
+                            
+                            
+                                                        
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>13/10/2026</b> a 
+                                            <b>13/11/2026</b>
+
+                                                                                            <a href="/informacoes/2600/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2600/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2632/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/8ada9bbe85135e35a706869ace553bb8.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2632/" >CANGUÇU/RS - Município - Concurso Público 001/2026 (BIÓLOGO)</a></h3>
+                            
+                            
+                                                        
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>20/10/2026</b> a 
+                                            <b>11/11/2026</b>
+
+                                                                                            <a href="/informacoes/2632/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>20/10/2026</b> a 
+                                        <b>22/10/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2632/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2623/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/b04595c2ba5c73c051ff59aa2d4f8941.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2623/" >CHAPECÓ/SC - Município - Concurso Público 002/2026 (CLT)</a></h3>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 01/2026</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>29/09/2026</b> a 
+                                            <b>29/10/2026</b>
+
+                                                                                            <a href="/informacoes/2623/" ><span class="inscricoesabertas">Inscrições Abertas!</span></a>
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>29/09/2026</b> a 
+                                        <b>01/10/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2623/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2620/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/fb0e52f5-2243-4220-af13-d87da4495fed.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2620/" >JACUTINGA/RS - Município - Concurso Público 001/2026 (Operador)</a></h3>
+                            
+                            
+                                                        
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>29/09/2026</b> a 
+                                            <b>19/10/2026</b>
+
+                                                                                    </p>
+                                
+                                                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2620/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2625/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/fb0e52f5-2243-4220-af13-d87da4495fed.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2625/" >JACUTINGA/RS - Município - Concurso Público 002/2026 (ACS)</a></h3>
+                            
+                            
+                                                        
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>29/09/2026</b> a 
+                                            <b>19/10/2026</b>
+
+                                                                                    </p>
+                                
+                                                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2625/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2607/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/184bf8d2-4fae-466d-b4b8-2603636247d2.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2607/" >VALE REAL/RS - Município - Concurso Público 01/2026</a></h3>
+                            
+                            
+                                                        
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>16/09/2026</b> a 
+                                            <b>16/10/2026</b>
+
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>16/09/2026</b> a 
+                                        <b>18/09/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2607/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2604/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/ff54694f-2166-424f-b10f-967eafec26ff.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2604/" >EPTC - PORTO ALEGRE/RS - Concurso Público 01/2026</a></h3>
+                            
+                            
+                                                        
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>09/09/2026</b> a 
+                                            <b>09/10/2026</b>
+
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>09/09/2026</b> a 
+                                        <b>11/09/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2604/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2621/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/8ada9bbe85135e35a706869ace553bb8.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2621/" >CANGUÇU/RS - Município - Concurso Público 001/2026</a></h3>
+                            
+                            
+                                                        
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>10/09/2026</b> a 
+                                            <b>02/10/2026</b>
+
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>10/09/2026</b> a 
+                                        <b>14/09/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2621/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2617/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/c6d36b3c-9397-462c-9003-100c72ce3138.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2617/" >GUAPORÉ/RS - Câmara Municipal - Concurso Público 001/2026</a></h3>
+                            
+                            
+                                                        
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>28/08/2026</b> a 
+                                            <b>28/09/2026</b>
+
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>28/08/2026</b> a 
+                                        <b>01/09/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2617/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2605/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/46b810e5-bea9-4c5a-a9db-65ccd4db7479.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2605/" >ESTRELA/RS - Município - Concurso Público 01/2026</a></h3>
+                            
+                            
+                                                        
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>18/08/2026</b> a 
+                                            <b>18/09/2026</b>
+
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>18/08/2026</b> a 
+                                        <b>20/08/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2605/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2603/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/38540633-1743-44fc-a1a4-06b1c0de9251.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2603/" >CACHOEIRA DO SUL/RS - Município -  Concurso Público 01/2026</a></h3>
+                            
+                            
+                                                        
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>18/08/2026</b> a 
+                                            <b>15/09/2026</b>
+
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>18/08/2026</b> a 
+                                        <b>20/08/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2603/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2602/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/e0cd108e-55cf-487f-a1ca-62fd8467c5cb.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2602/" >CONCEIÇÃO DO ALMEIDA/BA - Município - Concurso Público 01/2026</a></h3>
+                            
+                            
+                                                        
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>10/08/2026</b> a 
+                                            <b>10/09/2026</b>
+
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>10/08/2026</b> a 
+                                        <b>12/08/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2602/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2606/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/e0cd108e-55cf-487f-a1ca-62fd8467c5cb.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Processo Seletivo </p>
+                            
+                                                            <h3><a href="/informacoes/2606/" >CONCEIÇÃO DO ALMEIDA/BA - Município - Processo Seletivo Público 01/2026</a></h3>
+                            
+                            
+                                                        
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>10/08/2026</b> a 
+                                            <b>10/09/2026</b>
+
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>10/08/2026</b> a 
+                                        <b>12/08/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2606/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2601/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/2c572df2-b145-45fb-8c8e-ce53cf1d7c9a.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2601/" >SANTO ÂNGELO/RS - Município - Concurso Público 16/2026</a></h3>
+                            
+                            
+                                                        <p class="edital"><span class="editaln">Edital nº</span> 16/2026</p>
+                                                                                                    <p class="inscricoes-info-mobile-only">Inscrições de 
+                                            <b>10/07/2026</b> a 
+                                            <b>10/08/2026</b>
+
+                                                                                    </p>
+                                
+                                                                                                    <p class="datasPedidosIsencao">Pedidos de Isenção de  
+                                        <b>10/07/2026</b> a 
+                                        <b>14/07/2026</b>
+
+                                                                            </p>
+                                                                                    </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2601/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+                <li class="item">
+            <table>
+                <tr>
+                    <td class="col-1">
+                        <div class="imagem">
+                            <span class="helper"></span>
+                            <a href="/informacoes/2531/" >
+                            <!--img src="//static-cdn.selecao.net.br/static/candidatos/img/teste-brasao.gif" /-->
+                                                            <img class="logomarca-cliente" src="//static-cdn.selecao.net.br/uploads/361/clientes/f5ba945b0b0b895d69169ce52164879e.png" style="max-height:77px; max-width: 92px;"/>
+                                                        </a>
+                        </div>
+                    </td>
+                    <td class="col-2">
+                        <div class="dados">
+                            <p class="tipo">Concurso Público </p>
+                            
+                                                            <h3><a href="/informacoes/2531/" >TRENSURB -  Empresa de Trens Urbanos de Porto Alegre S.A  - Concurso Público 01/2025</a></h3>
+                            
+                            
+                                                        
+                                                                                                                                                </div>
+                    </td>
+                    <td class="col-3">
+                        <div class="vagas">
+                                                                                    <a href="/informacoes/2531/" class="botao" >Mais Informações</a>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </li>
+            </ul>
+
+</div>
+
+    
+            <div class="rodapeConcurso"><div style="-webkit-tap-highlight-color: transparent; font-family: &quot;Open Sans&quot;, sans-serif;"><div class="endereco" style="-webkit-tap-highlight-color: transparent; margin-left: 50px; top: -7px; position: relative; font-size: 15px;"><h4 style="-webkit-tap-highlight-color: transparent; font-family: Roboto, Helvetica, Arial, sans-serif; font-weight: bold; line-height: 1.1; margin-top: 2px; margin-bottom: 10px; font-size: 20px;"><p style="font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, &quot;Helvetica Neue&quot;, Arial, &quot;Noto Sans&quot;, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Segoe UI Symbol&quot;, &quot;Noto Color Emoji&quot;; font-size: 14px; font-weight: 400;"><span style="color: rgb(51, 51, 51); font-size: 20px; font-weight: bolder;"><br></span></p><p style="font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, &quot;Helvetica Neue&quot;, Arial, &quot;Noto Sans&quot;, sans-serif, &quot;Apple Color Emoji&quot;, &quot;Segoe UI Emoji&quot;, &quot;Segoe UI Symbol&quot;, &quot;Noto Color Emoji&quot;; font-size: 14px; font-weight: 400;"><br></p></h4><div style="color: rgb(255, 255, 255); background-color: rgb(7, 26, 66); -webkit-tap-highlight-color: transparent; font-size: 14px;"></div></div></div></div>
+    </div>
+
+
+<p><br></p>
+
+
+
+
+
+<div id="Rodape" class="naoimprimir">
+                
+        
+        <div class="ProSeleta">
+            <div class="Conteudo">
+                
+                <div class="info">
+                    <a href="https://www.objetivas.com.br/home">Início</a>
+                                                                                  /  <a href="/faleconosco/"> Fale Conosco </a>
+                                    </div>
+
+                
+                <div class="siteSeguro">
+                    <p>Site 100% Seguro</p>
+                </div>
+                
+            </div>
+        </div>
+
+        
+                    <div class="final">
+                <div class="Conteudo" >
+                    <div class="links">
+                        &copy; OBJETIVA INSTITUTO
+                                                                    </div>
+                                            <div class="DesenvolvimentoProSeleta">
+                            Desenvolvido por <a href="http://www.proseleta.com.br/" target="_blank">ProSeleta - Gestão de Processos Seletivos Online</a>
+                        </div>
+                                    </div>
+            </div>
+                    
+        </div>
+        
+    </div>
+    
+
+
+
+
+        <a href="https://wa.me/5551996145833" style="position:fixed;width:45px;height:45px;bottom:1.4rem;right:1.4rem;border-radius:50px;text-align:center;
+    z-index:1000;" target="_blank">
+    <img id="icon-whatsapp" src="//static-cdn.selecao.net.br/static/img/icon-whatsapp.svg">
+    </a>
+
+        <div vw class="enabled">
+        <div vw-access-button class="active"></div>
+        <div vw-plugin-wrapper>
+        <div class="vw-plugin-top-wrapper"></div>
+        </div>
+    </div>
+    
+    <style>
+        /* Ancorado em rem (escala no zoom e na fonte) e acima do WhatsApp; z-index alto
+           pra nao sumir atras do topo. */
+        div[vw].enabled { transform: none !important; }
+        div[vw].enabled div[vw-access-button] {
+            position: fixed !important;
+            right: 1rem !important;
+            bottom: 6rem !important;
+            top: auto !important;
+            left: auto !important;
+            z-index: 1000000 !important;
+        }
+        @media (max-width: 768px) {
+            div[vw].enabled div[vw-access-button] {
+                right: .75rem !important;
+                bottom: 5rem !important;
+            }
+        }
+    </style>
+    
+    <script src="https://vlibras.gov.br/app/vlibras-plugin.js" charset="UTF-8"></script>
+    <script>
+        try {
+            new window.VLibras.Widget('https://vlibras.gov.br/app');
+        } finally {
+        }
+    </script>
+
+
+
+</body>
+</html>
+
+
+<script>
+
+    document.onkeyup=function(e){
+
+        if(e.which == 27){
+              $('#bannerConcurso').hide();
+        }
+
+    }
+
+    $( "#FechaBanner" ).click(function() {
+        $('#bannerConcurso').hide();
+    });
+
+    var W = $("#ImgBanner").width();
+    $("#BlocoBanner").css("width", W);
+
+    $( document ).ready(function() {
+        $('#bannerConcurso').show();
+        var W = $("#ImgBanner").width();
+        $("#BlocoBanner").css("width", W);
+    });
+
+    $(function() {
+        $("#menuMobileCategorias").html(`<h3 class="menu-title menu-lateral-mobile-title">         CONCURSOS:
+    </h3>
+
+    <li class="menu-item ">
+        <a href="/index/abertos/">Inscrições Abertas</a>
+    </li>
+    <li class="menu-item  active ">
+        <a href="/index/1/">Em andamento</a>
+    </li>
+    <li class="menu-item ">
+        <a href="/index/3/">Finalizado</a>
+    </li>
+
+
+
+`);
+    })
+
+
+
+</script>
+
+

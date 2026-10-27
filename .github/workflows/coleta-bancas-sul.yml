@@ -1,0 +1,45 @@
+name: Coleta bancas do Sul (ProSeleta FURB/Objetiva/Univali + ACT Legalle/Tupy)
+
+# Pedido do usuário (2026-10-27): fonte própria para as bancas do Sul que mais
+# trazem vaga (triagem em docs/triagem_bancas_sul_2026-10-27.md no repo do
+# site). Parsers determinísticos em HTML: ZERO Gemini e ZERO Serper na coleta
+# (a revisão automática das vagas novas segue o fluxo normal e já tem trava).
+# Por isso fica fora do grupo `gemini-pesado`. Dias úteis, 20h UTC (1h antes
+# da coleta diária de 21h UTC).
+
+on:
+  schedule:
+    - cron: "0 20 * * 1-5"
+  workflow_dispatch: {}
+
+jobs:
+  coletar-sul:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install -e ".[dev]"
+
+      - name: Rodar testes
+        run: pytest tests/test_proseleta_sul.py tests/test_act_sistemas.py
+
+      - name: ProSeleta Sul (FURB, Objetiva, Univali)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          for t in furb objetiva univali; do
+            python scripts/rodar_proseleta_sul.py --tenant "$t" || echo "tenant $t falhou"
+          done
+
+      - name: ACT Sistemas (Legalle, Tupy)
+        if: always()
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/rodar_act_sistemas.py
