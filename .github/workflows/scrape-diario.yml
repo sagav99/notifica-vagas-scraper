@@ -138,6 +138,15 @@ jobs:
           GEMINI_ORIGEM: scrape-diario
         run: python scripts/rodar_ses_sc.py
 
+      - name: Rodar coleta (Estratégia MED, feed curado — Sul)
+        if: always()
+        timeout-minutes: 15
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: scrape-diario
+        run: python scripts/rodar_estrategia_med.py
+
       - name: Rodar coleta (IBGP)
         if: always()
         env:
