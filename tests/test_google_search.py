@@ -54,9 +54,15 @@ def test_listar_itens_sem_resultados_devolve_lista_vazia():
     assert google_search.listar_itens({}) == []
 
 
-def test_orcamento_semanal_serper_nao_passa_de_30():
-    semana = 3 * len(google_search.QUERIES[: google_search.QUERIES_POR_EXECUCAO]) + 2 * len(google_search.QUERIES_SUL)
-    assert semana <= 30
+def test_orcamento_semanal_serper_nao_passa_de_32():
+    semana = 3 * len(google_search.QUERIES[: google_search.QUERIES_POR_EXECUCAO]) + len(google_search.QUERIES_SUL_TERCA) + len(google_search.QUERIES_SUL_QUINTA)
+    assert semana <= 32  # fase de exploração do Sul (2026-10-27)
+
+
+def test_queries_sul_alternam_terca_e_quinta():
+    assert google_search.queries_sul(1) is google_search.QUERIES_SUL_TERCA
+    assert google_search.queries_sul(3) is google_search.QUERIES_SUL_QUINTA
+    assert not set(google_search.QUERIES_SUL_TERCA) & set(google_search.QUERIES_SUL_QUINTA)
 
 
 def test_janela_sul_maior_que_a_base():

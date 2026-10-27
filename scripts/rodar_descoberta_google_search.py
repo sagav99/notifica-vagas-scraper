@@ -506,7 +506,7 @@ def main(argv: list[str] | None = None) -> None:
     estatisticas: dict[str, dict] = {}
     itens = buscar_itens(api_key=api_key, backfill=args.backfill, janela=args.janela if args.backfill else None,
                          estatisticas=estatisticas,
-                         queries=google_search.QUERIES_SUL if sul else None,
+                         queries=google_search.queries_sul(datetime.now(timezone.utc).weekday()) if sul else None,
                          janela_dias=google_search.JANELA_DIAS_SUL if sul else google_search.JANELA_DIAS)
     print(f"{len(itens)} resultado(s) único(s) da Serper.")
     conn = db.conectar()

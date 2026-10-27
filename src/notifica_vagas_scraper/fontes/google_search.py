@@ -46,14 +46,34 @@ QUERIES: tuple[str, ...] = (
 #:
 #: Sul (PR/SC/RS), terça e quinta, os dias em que MG/SP não rodam (pedido do
 #: usuário, 2026-10-26): 1 consulta por estado.
-QUERIES_SUL: tuple[str, ...] = (
+#: Fase de exploração do Sul (2026-10-27, teste de recall com ~16 créditos):
+#: "processo seletivo simplificado médico secretaria de saúde <UF>" rendeu 8/10
+#: resultados com médico em 7 dias (a base "concurso público médico <UF>" 6-7/10)
+#: e `site:<uf>.gov.br` traz páginas de prefeitura de cidade pequena (cauda
+#: longa). Terça e quinta usam conjuntos diferentes (4 consultas cada, 8/semana,
+#: +2 sobre antes); depois de ~2 semanas, podar pelo `serper_consultas_log`
+#: (vagas_criadas por consulta), como foi feito com as de MG/SP.
+QUERIES_SUL_TERCA: tuple[str, ...] = (
+    "processo seletivo simplificado médico secretaria de saúde Paraná",
+    "processo seletivo simplificado médico secretaria de saúde Santa Catarina",
+    "processo seletivo simplificado médico secretaria de saúde Rio Grande do Sul",
+    "site:rs.gov.br edital médico processo seletivo OR concurso",
+)
+QUERIES_SUL_QUINTA: tuple[str, ...] = (
     "concurso público médico Paraná",
     "concurso público médico Santa Catarina",
     "concurso público médico Rio Grande do Sul",
+    "site:sc.gov.br edital médico processo seletivo OR concurso",
 )
 
-#: 8 queries seg/qua/sex (24) + 3 do Sul ter/qui (6) = 30 créditos/semana,
-#: o mesmo orçamento de antes da inclusão do Sul.
+
+def queries_sul(dia_semana: int) -> tuple[str, ...]:
+    """Consultas do Sul do dia (0=segunda): terça usa o conjunto A, os demais (quinta) o B."""
+    return QUERIES_SUL_TERCA if dia_semana == 1 else QUERIES_SUL_QUINTA
+
+
+#: 8 queries seg/qua/sex (24) + 4 do Sul ter/qui (8) = 32 créditos/semana
+#: (saldo 1.214 em 2026-10-27; fase de exploração do Sul, depois podar).
 QUERIES_POR_EXECUCAO = 10
 
 #: Janelas de recência disponíveis pro backfill retroativo (decisão do
