@@ -27,3 +27,19 @@ def test_db_item_ja_processado_prefixo_exato():
     assert db.item_ja_processado("portal2-9-", ids)
     assert not db.item_ja_processado("kingpage-124-", ids)
     assert not db.item_ja_processado("portal2-", set())
+
+
+def test_prefiltro_medico_do_sul():
+    from importlib import util
+    from pathlib import Path
+
+    spec = util.spec_from_file_location("ra", Path(__file__).parent.parent / "scripts" / "rodar_ache_concursos.py")
+    ra = util.module_from_spec(spec)
+    spec.loader.exec_module(ra)
+
+    cargos = "<table><tr><td>Médico Endocrinologista</td><td>R$ 12.799,56</td></tr><tr><td>Médicos</td></tr></table>"
+    assert ra.artigo_cita_cargo_medico(f"<html><body>{cargos}</body></html>")
+    # escolaridade, benefício e veterinário não são cargo médico
+    ruido = "<p>Nível médio. Ensino médio completo. Plano médico e assistência médica. Médico Veterinário.</p>"
+    assert not ra.artigo_cita_cargo_medico(f"<html><body>{ruido}</body></html>")
+    assert set(ra.LISTAGENS) == {"MG", "SP", "PR", "SC", "RS"}

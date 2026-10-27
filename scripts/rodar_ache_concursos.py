@@ -1,25 +1,28 @@
 #!/usr/bin/env python3
 """Entrypoint do cron pra fonte Ache Concursos: percorre as listagens de
 MG e SP, filtra pra quem ainda está com inscrição aberta, casa o título
-contra os municípios de MG/SP já cadastrados (mesmo mecanismo da FGV —
+contra os municípios de MG/SP/PR/SC/RS já cadastrados (mesmo mecanismo da FGV —
 não tem UF/município estruturado em HTML) e só pros que baterem segue a
 cadeia artigo -> sub-página "Edital do Concurso" -> PDF (self-hosted no
 próprio domínio do Ache Concursos, mesmo pra edital municipal — ver
 `fontes/ache_concursos.py`) pra extrair cargo/salário via Gemini.
 
-Uso: python scripts/rodar_ache_concursos.py
+Uso: python scripts/rodar_ache_concursos.py [--dry-run]
 Requer DATABASE_URL e GEMINI_API_KEY no ambiente.
 """
 
 from __future__ import annotations
 
+import re
 import sys
+import time
 from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
+from bs4 import BeautifulSoup
 
 from notifica_vagas_scraper.ufs import UFS_PROJETO
 from notifica_vagas_scraper import db, gemini_pdf, gemini_util
@@ -28,7 +31,30 @@ from notifica_vagas_scraper.fontes import fgv
 
 USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com/sagav99/notifica-vagas-scraper)"
 FONTE_NOME = "Ache Concursos"
-LISTAGENS = {"MG": "/concursos-minas-gerais", "SP": "/concursos-sao-paulo"}
+DRY_RUN = "--dry-run" in sys.argv  # lista o que seria processado; sem Gemini e sem gravar
+LISTAGENS = {
+    "MG": "/concursos-minas-gerais",
+    "SP": "/concursos-sao-paulo",
+    "PR": "/concursos-parana",
+    "SC": "/concursos-santa-catarina",
+    "RS": "/concursos-rio-grande-do-sul",
+}
+#: No Sul (paridade com MG/SP, 2026-10-27) o artigo é lido ANTES do Gemini e só
+#: segue se citar cargo médico: a listagem do Sul tem ~100 editais abertos e a
+#: maioria não é médica; sem isso a cota diária do Gemini (400 RPD) iria toda
+#: em edital de professor/garis. MG/SP seguem como antes (sem pré-filtro).
+UFS_COM_PREFILTRO_MEDICO = {"PR", "SC", "RS"}
+#: Teto de editais do Sul enviados ao Gemini por execução (o resto fica pra
+#: próxima: item não gravado não entra em `ja_processados`).
+MAX_GEMINI_SUL_POR_EXECUCAO = 15
+_RE_MEDICO = re.compile(r"\bm[eé]dic[oa]s?\b(?!\s+veterin)", re.IGNORECASE)
+
+
+def artigo_cita_cargo_medico(html_artigo: str) -> bool:
+    texto = BeautifulSoup(html_artigo, "html.parser").get_text(" ", strip=True)
+    # "assistência médica"/"plano médico"/"nível médico" são benefício/escolaridade, não cargo
+    texto = re.sub(r"(?i)(assist[eê]ncia|plano|exame|per[ií]cia|atestado|laudo|n[ií]vel|ensino|curso)\s+m[eé]dic[oa]s?", " ", texto)
+    return _RE_MEDICO.search(texto) is not None
 
 
 def slug_do_item(item: ache.ItemListagem) -> str:
@@ -121,13 +147,14 @@ def main() -> None:
         municipios_completos = db.listar_municipios_com_codigo(conn, ufs=list(UFS_PROJETO))
         municipios = [(nome, uf) for _, nome, uf in municipios_completos]
         codigo_por_nome_uf = {(nome, uf): codigo for codigo, nome, uf in municipios_completos}
-        print(f"{len(municipios)} município(s) de MG/SP carregados pra match.")
+        print(f"{len(municipios)} município(s) do projeto carregados pra match.")
 
         hoje = date.today()
         # Pula edital já gravado: sem isso toda noite rebaixava cada PDF e
         # rechamava o Gemini (42-60 min, estourava o timeout do workflow).
         ja_processados = db.listar_identificadores_por_fonte_nome(conn, FONTE_NOME)
         total_geral = 0
+        gemini_sul = 0
         for uf, caminho in LISTAGENS.items():
             try:
                 resposta = requests.get(f"{ache.BASE_URL}{caminho}", headers={"User-Agent": USER_AGENT}, timeout=30)
@@ -150,7 +177,11 @@ def main() -> None:
                 # cadastrado com espaço) — troca hífen por espaço antes de
                 # comparar, sem alterar fgv.encontrar_municipio (compartilhado
                 # com a FGV, que não tem esse problema nos próprios títulos).
-                match = fgv.encontrar_municipio(item.titulo.replace("-", " "), municipios)
+                # só municípios da UF da listagem: "Palmeira"/"Tapejara"/"Bom Jesus"
+                # existem em mais de um estado do projeto
+                match = fgv.encontrar_municipio(
+                    item.titulo.replace("-", " "), [m for m in municipios if m[1] == uf]
+                )
                 if match is None:
                     continue
                 municipio, municipio_uf = match
@@ -159,7 +190,23 @@ def main() -> None:
                     continue
                 if item_ja_processado(item, ja_processados):
                     continue
+                if uf in UFS_COM_PREFILTRO_MEDICO:
+                    time.sleep(1.5)  # Ache limita rajada: leituras seguidas voltam em timeout
+                    try:
+                        artigo = requests.get(item.url, headers={"User-Agent": USER_AGENT}, timeout=40)
+                        artigo.raise_for_status()
+                    except requests.exceptions.RequestException as exc:
+                        print(f"  ERRO lendo artigo '{item.titulo}': {exc}")
+                        continue
+                    if not artigo_cita_cargo_medico(artigo.text):
+                        continue
+                    if gemini_sul >= MAX_GEMINI_SUL_POR_EXECUCAO:
+                        print(f"  (teto de {MAX_GEMINI_SUL_POR_EXECUCAO} editais do Sul por execução; fica pra próxima) '{item.titulo}'")
+                        continue
+                    gemini_sul += 1
                 print(f"Achado: '{item.titulo}' -> {municipio}/{municipio_uf} ({item.url})")
+                if DRY_RUN:
+                    continue
                 try:
                     # savepoint por item: erro num item não deixa a transação
                     # inteira do lote em estado abortado pros próximos.
