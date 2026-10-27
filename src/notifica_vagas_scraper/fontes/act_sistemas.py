@@ -26,6 +26,10 @@ from decimal import Decimal
 TENANTS: dict[str, dict[str, str]] = {
     "legalle": {"base": "https://portal.institutolegalle.org.br", "banca": "Instituto Legalle"},
     "tupy": {"base": "https://portal.institutotupy.com.br", "banca": "Instituto Tupy"},
+    # Mesma plataforma, outros clientes (2026-10-27): editais que o O Concurso Médico lista com PDF
+    # morto (404) em Maratá/RS (Legalle Concursos) e Urussanga/SC (SC Treinamentos).
+    "legalle_concursos": {"base": "https://portal.editais.legalleconcursos.com.br", "banca": "Legalle Concursos"},
+    "sctreinamentos": {"base": "https://portal.sctreinamentos.selecao.site", "banca": "SC Treinamentos"},
 }
 
 
