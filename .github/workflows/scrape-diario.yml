@@ -129,6 +129,15 @@ jobs:
           GEMINI_ORIGEM: scrape-diario
         run: python scripts/rodar_ache_concursos.py
 
+      - name: Rodar coleta (SES-SC, processos seletivos com médico)
+        if: always()
+        timeout-minutes: 10
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_ORIGEM: scrape-diario
+        run: python scripts/rodar_ses_sc.py
+
       - name: Rodar coleta (IBGP)
         if: always()
         env:
