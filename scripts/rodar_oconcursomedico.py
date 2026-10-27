@@ -34,6 +34,10 @@ FONTE_NOME = "O Concurso Médico (índice)"
 MAX_NOVOS_POR_EXECUCAO = 5
 
 
+class DownloadFalhou(Exception):
+    """Edital não baixou (link vencido/bloqueado): não gastou Gemini, então não conta na cota da rodada."""
+
+
 def _chave(nome: str) -> str:
     sem_acento = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode("ascii")
     return " ".join(sem_acento.lower().replace("-", " ").split())
@@ -56,8 +60,11 @@ def ja_temos(conn, municipio_id: int, fim: date | None) -> bool:
 
 
 def processar(conn, cand: ocm.Candidato, codigo_ibge: int) -> int:
-    resposta = requests.get(cand.edital_url, headers={"User-Agent": USER_AGENT}, timeout=60)
-    resposta.raise_for_status()
+    try:
+        resposta = requests.get(cand.edital_url, headers={"User-Agent": USER_AGENT}, timeout=60)
+        resposta.raise_for_status()
+    except requests.RequestException as exc:
+        raise DownloadFalhou(str(exc)) from exc
     extraido = gemini_pdf.extrair_vagas_de_pdf(resposta.content)
     if not extraido.get("vagas"):
         print(f"  aviso: Gemini não retornou vagas pra {cand.edital_url}")
@@ -150,15 +157,22 @@ def main(dry_run: bool, maximo: int = MAX_NOVOS_POR_EXECUCAO, historico_ufs: tup
             return
 
         total = 0
-        for cand, codigo in faltando[:maximo]:
+        gastos = 0
+        for cand, codigo in faltando:
+            if gastos >= maximo:
+                break
             print(f"Processando: {cand.titulo} ({cand.edital_url})")
             try:
                 with conn.transaction():
                     total += processar(conn, cand, codigo)
                 conn.commit()
+                gastos += 1
+            except DownloadFalhou as exc:  # link ruim: segue sem gastar a cota da rodada
+                print(f"  ERRO processando '{cand.titulo}' (download, sem Gemini): {exc}")
             except Exception as exc:  # um item ruim não derruba o lote
+                gastos += 1
                 print(f"  ERRO processando '{cand.titulo}': {exc}")
-        restante = max(0, len(faltando) - maximo)
+        restante = max(0, len(faltando) - gastos)
         print(f"\nOk. {total} vaga(s) gravada(s); {restante} edital(is) ficam pra próxima rodada.")
     except Exception:
         conn.rollback()
