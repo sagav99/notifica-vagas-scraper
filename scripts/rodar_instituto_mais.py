@@ -38,6 +38,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 
+from notifica_vagas_scraper.ufs import UFS_PROJETO
 from notifica_vagas_scraper import db, gemini_pdf, gemini_util, ibge
 from notifica_vagas_scraper.fontes import fgv
 from notifica_vagas_scraper.fontes import instituto_mais
@@ -48,7 +49,7 @@ FONTE_NOME = "Instituto Mais"
 #: portfólio confirmado na investigação é só SP, mas o filtro cobre MG
 #: também por segurança (mesmo padrão de rodar_ache_concursos.py) — se a
 #: banca abrir concurso em MG no futuro, é coberto automaticamente.
-UFS_DO_PROJETO = ["MG", "SP"]
+UFS_DO_PROJETO = set(UFS_PROJETO)
 
 
 def _montar_resumo(item: instituto_mais.ItemListagem, vaga: instituto_mais.VagaQuadro) -> str:
@@ -257,7 +258,7 @@ def main() -> None:
 
     conn = db.conectar()
     try:
-        municipios = db.listar_nomes_municipios(conn, ufs=UFS_DO_PROJETO)
+        municipios = db.listar_nomes_municipios(conn, ufs=list(UFS_DO_PROJETO))
         print(f"{len(municipios)} município(s) de MG/SP carregados pra match.")
 
         fonte_id = db.upsert_fonte(

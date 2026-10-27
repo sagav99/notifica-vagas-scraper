@@ -68,7 +68,10 @@ def processar(conn, cand: ocm.Candidato, codigo_ibge: int) -> int:
     orgao = extraido.get("orgao") or cand.titulo
     numero_edital = extraido.get("numero_edital") or cand.titulo
     hoje = date.today()
-    status = "futura" if cand.inscricoes_inicio and cand.inscricoes_inicio > hoje else "aberta"
+    if cand.inscricoes_fim and cand.inscricoes_fim < hoje:
+        status = "encerrada"
+    else:
+        status = "futura" if cand.inscricoes_inicio and cand.inscricoes_inicio > hoje else "aberta"
 
     total = 0
     for vaga in extraido["vagas"]:
@@ -103,12 +106,15 @@ def processar(conn, cand: ocm.Candidato, codigo_ibge: int) -> int:
     return total
 
 
-def main(dry_run: bool, maximo: int = MAX_NOVOS_POR_EXECUCAO) -> None:
+def main(dry_run: bool, maximo: int = MAX_NOVOS_POR_EXECUCAO, historico_ufs: tuple[str, ...] = ()) -> None:
     conn = db.conectar()
     try:
         resposta = requests.get(ocm.FEED_URL, headers={"User-Agent": USER_AGENT}, timeout=60)
         resposta.raise_for_status()
         candidatos = ocm.listar_candidatos(resposta.json())
+        if historico_ufs:
+            # Encerrados só das UFs pedidas, DEPOIS dos abertos (que têm prioridade na cota).
+            candidatos += [c for c in ocm.listar_candidatos(resposta.json(), ufs=historico_ufs, historico=True) if c.status == "encerradas"]
         print(f"{len(candidatos)} concurso(s) de {'/'.join(UFS_PROJETO)} abertos ou previstos na lista deles.")
 
         codigo_por_nome_uf = {
@@ -119,7 +125,7 @@ def main(dry_run: bool, maximo: int = MAX_NOVOS_POR_EXECUCAO) -> None:
 
         faltando: list[tuple[ocm.Candidato, int]] = []
         for cand in candidatos:
-            if cand.inscricoes_fim and cand.inscricoes_fim < hoje:
+            if cand.inscricoes_fim and cand.inscricoes_fim < hoje and cand.status != "encerradas":
                 continue
             if _eh_residencia(cand.titulo):
                 # Residência Médica é programa de formação, fora do escopo
@@ -164,5 +170,7 @@ def main(dry_run: bool, maximo: int = MAX_NOVOS_POR_EXECUCAO) -> None:
 if __name__ == "__main__":
     dry = "--dry-run" in sys.argv
     maximo = int(sys.argv[sys.argv.index("--max") + 1]) if "--max" in sys.argv else MAX_NOVOS_POR_EXECUCAO
+    # --historico-sul: também importa os concursos ENCERRADOS de PR/SC/RS (métricas; MG/SP já têm).
+    historico = ("PR", "SC", "RS") if "--historico-sul" in sys.argv else ()
     with db.rastrear_execucao("rodar_oconcursomedico.py"):
-        main(dry, maximo)
+        main(dry, maximo, historico)

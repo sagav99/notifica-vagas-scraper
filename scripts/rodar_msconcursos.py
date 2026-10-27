@@ -47,6 +47,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 
+from notifica_vagas_scraper.ufs import UFS_PROJETO
 from notifica_vagas_scraper import db, ibge
 from notifica_vagas_scraper.fontes import msconcursos
 
@@ -57,7 +58,7 @@ FONTE_NOME = "MSConcursos"
 #: PR/RJ/BA/SC vistos na mesma homepage) — o projeto cobre só MG/SP (ver
 #: CLAUDE.md), filtra aqui, não em `fontes/msconcursos.py` (genérico pra
 #: qualquer UF), mesmo padrão de `rodar_access.py`/`rodar_jcm.py`.
-UFS_DO_PROJETO = {"MG", "SP"}
+UFS_DO_PROJETO = set(UFS_PROJETO)
 
 #: remuneração da amostra investigada vem sempre em valor mensal fixo
 #: (nenhum cargo com "por hora"/"por plantão", ver docstring do módulo) —

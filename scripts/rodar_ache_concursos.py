@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 
+from notifica_vagas_scraper.ufs import UFS_PROJETO
 from notifica_vagas_scraper import db, gemini_pdf, gemini_util
 from notifica_vagas_scraper.fontes import ache_concursos as ache
 from notifica_vagas_scraper.fontes import fgv
@@ -117,7 +118,7 @@ def processar_item(conn, item: ache.ItemListagem, municipio: str, uf: str, codig
 def main() -> None:
     conn = db.conectar()
     try:
-        municipios_completos = db.listar_municipios_com_codigo(conn, ufs=["MG", "SP"])
+        municipios_completos = db.listar_municipios_com_codigo(conn, ufs=list(UFS_PROJETO))
         municipios = [(nome, uf) for _, nome, uf in municipios_completos]
         codigo_por_nome_uf = {(nome, uf): codigo for codigo, nome, uf in municipios_completos}
         print(f"{len(municipios)} município(s) de MG/SP carregados pra match.")

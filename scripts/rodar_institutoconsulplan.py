@@ -35,6 +35,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 
+from notifica_vagas_scraper.ufs import UFS_PROJETO
 from notifica_vagas_scraper import db, gemini_pdf, gemini_util, ibge
 from notifica_vagas_scraper.fontes import institutoconsulplan
 
@@ -44,7 +45,7 @@ SITEMAP_URL = "https://www.institutoconsulplan.org.br/sitemap.xml"
 
 #: portfólio confirmado na investigação é MG/SP (9 clientes mapeados),
 #: mesmo padrão de filtro de FUNDEP/JCM/IBGP pra fonte multi-estado.
-UFS_DO_PROJETO = ("MG", "SP")
+UFS_DO_PROJETO = set(UFS_PROJETO)
 
 
 def processar_cliente(conn, fonte_id: str, url: str) -> int:

@@ -33,6 +33,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 
+from notifica_vagas_scraper.ufs import UFS_PROJETO
 from notifica_vagas_scraper import db, gemini_pdf, gemini_util, ibge
 from notifica_vagas_scraper.fontes import inepam
 
@@ -43,7 +44,7 @@ FONTE_NOME = "INEPAM"
 #: etc.), mas a banca atende outros estados também (MT, SC vistos na
 #: amostra real) — filtra por segurança, mesmo padrão de
 #: rodar_fundep.py/rodar_ache_concursos.py.
-UFS_DO_PROJETO = ("MG", "SP")
+UFS_DO_PROJETO = set(UFS_PROJETO)
 
 
 def processar_processo(conn, fonte_id: str, item: inepam.ItemListagem) -> int:

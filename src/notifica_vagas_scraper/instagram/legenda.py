@@ -39,7 +39,7 @@ def montar_legenda(vaga: dict[str, Any], tipo: str, hoje: date) -> str:
         "",
         "No Med Vagas toda vaga traz o link da fonte oficial, com todas as informações, sem você precisar ler o PDF inteiro.",
         "Confira sempre o edital oficial antes de se inscrever.",
-        "Entre no grupo de WhatsApp do Med Vagas e receba as vagas de médico de MG e SP: link na bio.",
+        "Entre no grupo de WhatsApp do Med Vagas e receba as vagas de médico de MG, SP, PR, SC e RS: link na bio.",
         "",
         _hashtags(vaga),
     ]

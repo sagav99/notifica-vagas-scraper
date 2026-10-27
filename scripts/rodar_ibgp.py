@@ -51,6 +51,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 
+from notifica_vagas_scraper.ufs import UFS_PROJETO
 from notifica_vagas_scraper import db, gemini_pdf, gemini_util, ibge
 from notifica_vagas_scraper.fontes import ibgp
 
@@ -60,7 +61,7 @@ FONTE_NOME = "IBGP"
 #: só MG foi confirmado na investigação (todos os 15 concursos abertos e
 #: os 23 "em breve" da amostra são de MG), mas filtra por segurança,
 #: mesmo padrão de rodar_jcm.py/rodar_fundep.py.
-UFS_DO_PROJETO = ("MG", "SP")
+UFS_DO_PROJETO = set(UFS_PROJETO)
 
 
 def _resolver_municipio_uf(conn, item: ibgp.ItemListagem) -> tuple[str, str, int] | None:

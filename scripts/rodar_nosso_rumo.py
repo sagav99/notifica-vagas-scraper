@@ -32,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 
+from notifica_vagas_scraper.ufs import UFS_PROJETO
 from notifica_vagas_scraper import db, ibge
 from notifica_vagas_scraper.fontes import fgv, nosso_rumo
 
@@ -42,7 +43,7 @@ FONTE_NOME = "Instituto Nosso Rumo"
 #: secretarias estaduais), mas o filtro cobre MG também por segurança
 #: (mesmo padrão de rodar_instituto_mais.py/rodar_access.py) — se a banca
 #: abrir concurso em MG no futuro, é coberto automaticamente.
-UFS_DO_PROJETO = ["MG", "SP"]
+UFS_DO_PROJETO = set(UFS_PROJETO)
 
 
 def _montar_resumo(cargo: nosso_rumo.Cargo) -> str:
@@ -124,7 +125,7 @@ def main() -> None:
 
     conn = db.conectar()
     try:
-        municipios = db.listar_nomes_municipios(conn, ufs=UFS_DO_PROJETO)
+        municipios = db.listar_nomes_municipios(conn, ufs=list(UFS_DO_PROJETO))
         print(f"{len(municipios)} município(s) de MG/SP carregados pra match.")
 
         fonte_id = db.upsert_fonte(conn, nome=FONTE_NOME, url=nosso_rumo.BASE_URL, tipo="oficial", uf="SP")

@@ -27,7 +27,8 @@ FEED_URL = (
     "AKfycbyOO3_5cmla4VOvW6lvImUPdGKurBnXEGIuUNJO3S1SJfhK-2wYFs_gf-lnStW0MOBL/exec"
 )
 SITE_URL = "https://oconcursomedico.com"
-STATUS_INTERESSANTES = {"abertas", "previsto"}
+STATUS_INTERESSANTES = {"abertas", "previsto", "acaba_hoje"}
+STATUS_HISTORICO = {"encerradas"}
 
 
 @dataclass
@@ -55,8 +56,15 @@ def _url_do_edital(item: dict) -> str | None:
     """Primeiro link http(s) do anexo chamado "Edital". Anexo sem link
     (string vazia) é comum em concurso ainda "previsto"."""
     editais = item.get("editais")
-    if not isinstance(editais, list):
-        return None
+    if not isinstance(editais, list) or not editais:
+        # Concursos encerrados vêm com as colunas deslocadas: os anexos ficam
+        # em `urlSite` como string JSON (achado 2026-10-27).
+        try:
+            editais = json.loads(item.get("urlSite") or "[]")
+        except (TypeError, ValueError):
+            return None
+        if not isinstance(editais, list):
+            return None
     for anexo in editais:
         if not isinstance(anexo, dict):
             continue
@@ -67,14 +75,19 @@ def _url_do_edital(item: dict) -> str | None:
     return None
 
 
-def listar_candidatos(feed: dict | str, ufs: tuple[str, ...] = UFS_PROJETO) -> list[Candidato]:
+def listar_candidatos(
+    feed: dict | str, ufs: tuple[str, ...] = UFS_PROJETO, historico: bool = False
+) -> list[Candidato]:
+    """`historico=True` inclui os concursos encerrados (para alimentar o
+    banco de métricas, como já existe para MG/SP)."""
+    aceitos = STATUS_INTERESSANTES | (STATUS_HISTORICO if historico else set())
     dados = json.loads(feed) if isinstance(feed, str) else feed
     candidatos: list[Candidato] = []
     for item in dados.get("concursos", []):
         status = str(item.get("status") or "").strip().lower()
         uf = str(item.get("uf") or "").strip().upper()
         cidade = str(item.get("cidade") or "").strip()
-        if status not in STATUS_INTERESSANTES or uf not in ufs or not cidade:
+        if status not in aceitos or uf not in ufs or not cidade:
             continue
         candidatos.append(
             Candidato(

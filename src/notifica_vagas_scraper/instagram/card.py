@@ -408,7 +408,7 @@ font-size:26px;font-weight:800;letter-spacing:.3px}
   <div class="barra-topo"><div class="bolha" style="background:#f36457"></div><div class="bolha" style="background:#f4bd4f"></div><div class="bolha" style="background:#3fca63"></div></div>
   {minis}
 </div>
-<div class="chamada">Todo dia útil entram vagas novas de médico em MG e SP. Entre no nosso grupo de WhatsApp e receba as vagas.</div>
+<div class="chamada">Todo dia útil entram vagas novas de médico em MG, SP, PR, SC e RS. Entre no nosso grupo de WhatsApp e receba as vagas.</div>
 <div>
   <div class="cta">GRUPO DE WHATSAPP COM VAGAS &nbsp;→&nbsp; LINK NA BIO</div>
 </div>"""
