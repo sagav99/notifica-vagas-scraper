@@ -34,6 +34,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from notifica_vagas_scraper.ufs import UFS_PROJETO, UFS_SUL
+from notifica_vagas_scraper.classificar_medico import eh_cargo_medico
 from notifica_vagas_scraper import db, deteccao_bloqueio, evidencia_imagem, gemini_pdf, gemini_texto, gemini_util
 from notifica_vagas_scraper.fontes import fgv, google_search
 
@@ -270,7 +271,8 @@ def _conferir_documento(
 def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str, codigo_ibge: int,
                    dominios_conhecidos: set[str], gemini_api_key: str,
                    supabase_url: str | None = None, service_role_key: str | None = None,
-                   vagas_criadas_out: list[int] | None = None) -> tuple[int, int]:
+                   vagas_criadas_out: list[int] | None = None,
+                   vagas_medicas_criadas_out: list[int] | None = None) -> tuple[int, int]:
     """Registra sempre o sinal e devolve ``(sinais_novos, vagas_extraidas)``."""
     dominio = normalizar_dominio(item.link)
     dominios_normalizados = {normalizar_dominio(f"//{host}") for host in dominios_conhecidos}
@@ -455,6 +457,8 @@ def processar_item(conn, item: google_search.ItemBusca, municipio: str, uf: str,
         )
         if vagas_criadas_out is not None and resultado["vaga_criada"]:
             vagas_criadas_out.append(1)
+            if vagas_medicas_criadas_out is not None and eh_cargo_medico(cargo):
+                vagas_medicas_criadas_out.append(1)
         novo = "nova evidência" if resultado["evidencia_id"] else "já existente (dedup)"
         if coberto and resultado["vaga_criada"]:
             print(f"    ALERTA cobertura: {cargo}: vaga_id={resultado['vaga_id']} é NOVA mesmo com domínio '{dominio}' coberto por fonte oficial ({novo})")
@@ -517,7 +521,7 @@ def main(argv: list[str] | None = None) -> None:
         codigos = {(nome, uf): codigo for codigo, nome, uf in municipios_completos}
         dominios_conhecidos = db.listar_dominios_fontes_conhecidas(conn)
         casados = sinais_novos = vagas = 0
-        por_consulta = {q: {"casados": 0, "sinais_novos": 0, "extraidas": 0, "criadas": 0} for q in estatisticas}
+        por_consulta = {q: {"casados": 0, "sinais_novos": 0, "extraidas": 0, "criadas": 0, "criadas_medicas": 0} for q in estatisticas}
         for item in itens:
             match = fgv.casar_municipio_com_guarda_de_uf(item.titulo, "", municipios, link=item.link)
             if match is None or (codigo_ibge := codigos.get(match)) is None:
@@ -528,12 +532,14 @@ def main(argv: list[str] | None = None) -> None:
                 acum["casados"] += 1
             print(f"Processando '{item.titulo[:80]}' -> {match[0]}/{match[1]}...")
             criadas: list[int] = []
+            criadas_medicas: list[int] = []
             try:
                 with conn.transaction():
                     novos, extraidas = processar_item(conn, item, match[0], match[1], codigo_ibge,
                                                        dominios_conhecidos, gemini_api_key,
                                                        supabase_url, service_role_key,
-                                                       vagas_criadas_out=criadas)
+                                                       vagas_criadas_out=criadas,
+                                                       vagas_medicas_criadas_out=criadas_medicas)
                 conn.commit()
                 sinais_novos += novos
                 vagas += extraidas
@@ -541,6 +547,7 @@ def main(argv: list[str] | None = None) -> None:
                     acum["sinais_novos"] += novos
                     acum["extraidas"] += extraidas
                     acum["criadas"] += len(criadas)
+                    acum["criadas_medicas"] += len(criadas_medicas)
             except Exception as exc:
                 print(f"  ERRO processando '{item.titulo[:80]}': {exc}", file=sys.stderr)
         if not args.backfill:
@@ -550,7 +557,7 @@ def main(argv: list[str] | None = None) -> None:
                     conn, origem="descoberta", consulta=query, resultados=est["resultados"],
                     links_novos_na_execucao=est["novos"], casados=acum["casados"],
                     sinais_novos=acum["sinais_novos"], vagas_extraidas=acum["extraidas"],
-                    vagas_criadas=acum["criadas"], erro=est["erro"],
+                    vagas_criadas=acum["criadas"], vagas_medicas_criadas=acum["criadas_medicas"], erro=est["erro"],
                 )
         print(f"\nOk. {casados} casado(s), {sinais_novos} sinal(is) novo(s), {vagas} vaga(s) processada(s).")
         if args.backfill:

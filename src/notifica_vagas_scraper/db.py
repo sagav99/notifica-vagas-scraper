@@ -1061,6 +1061,7 @@ def registrar_consulta_serper(
     sinais_novos: int = 0,
     vagas_extraidas: int = 0,
     vagas_criadas: int = 0,
+    vagas_medicas_criadas: int = 0,
     erro: str | None = None,
 ) -> None:
     """1 linha em `public.serper_consultas_log` (migration 071, repo principal)
@@ -1069,10 +1070,10 @@ def registrar_consulta_serper(
         with conn.transaction():
             conn.execute(
                 "insert into public.serper_consultas_log (origem, consulta, resultados, links_novos_na_execucao,"
-                " casados, sinais_novos, vagas_extraidas, vagas_criadas, erro)"
-                " values (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                " casados, sinais_novos, vagas_extraidas, vagas_criadas, vagas_medicas_criadas, erro)"
+                " values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (origem, consulta, resultados, links_novos_na_execucao, casados, sinais_novos,
-                 vagas_extraidas, vagas_criadas, erro),
+                 vagas_extraidas, vagas_criadas, vagas_medicas_criadas, erro),
             )
     except Exception as exc:
         print(f"aviso: não consegui registrar consulta Serper no log: {exc}", file=sys.stderr)
