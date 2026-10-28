@@ -25,6 +25,7 @@ import unicodedata
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
+from zoneinfo import ZoneInfo
 from urllib.parse import urljoin, urlparse
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -506,7 +507,7 @@ def main(argv: list[str] | None = None) -> None:
     estatisticas: dict[str, dict] = {}
     itens = buscar_itens(api_key=api_key, backfill=args.backfill, janela=args.janela if args.backfill else None,
                          estatisticas=estatisticas,
-                         queries=google_search.queries_sul(datetime.now(timezone.utc).weekday()) if sul else None,
+                         queries=google_search.queries_sul(datetime.now(ZoneInfo("America/Sao_Paulo")).weekday()) if sul else None,
                          janela_dias=google_search.JANELA_DIAS_SUL if sul else google_search.JANELA_DIAS)
     print(f"{len(itens)} resultado(s) único(s) da Serper.")
     conn = db.conectar()
