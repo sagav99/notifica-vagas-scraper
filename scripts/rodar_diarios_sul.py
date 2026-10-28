@@ -137,7 +137,12 @@ def processar(conn, fonte_id, uf: str, cand: dict, codigo_ibge: int, hoje: date)
         print("    (Gemini: sem cargo médico de abertura)")
         return 0
     fim = gemini_util.parsear_data_iso(extraido.get("inscricoes_fim"))
-    if fim and fim < hoje:
+    if fim is None:
+        # Abertura de verdade traz período de inscrição; sem ele é convocação/chamamento de
+        # concurso antigo (achado 2026-10-28: 14 vagas sem prazo em Guaíra, Erechim, Jaborá...).
+        print("    (sem prazo de inscrição: provável convocação, ignorado)")
+        return 0
+    if fim < hoje:
         print(f"    (inscrição já encerrada em {fim}, ignorado)")
         return 0
     numero = extraido.get("numero_edital") or cand["titulo"][:40]
