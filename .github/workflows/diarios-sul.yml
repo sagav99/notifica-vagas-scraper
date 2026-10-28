@@ -18,6 +18,9 @@ on:
       max_gemini:
         description: "Teto de chamadas Gemini por UF"
         default: "10"
+      ufs:
+        description: "UFs a rodar (padrão: SC PR RS)"
+        default: "SC PR RS"
 
 # Trava global: no máximo 1 workflow pesado de Gemini por vez.
 concurrency:
@@ -42,7 +45,7 @@ jobs:
         run: pytest
 
       - name: Diários do Sul (SC)
-        if: always()
+        if: ${{ always() && contains(inputs.ufs || 'SC PR RS', 'SC') }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -50,7 +53,7 @@ jobs:
         run: python scripts/rodar_diarios_sul.py --uf SC --dias "${{ inputs.dias || '3' }}" --max-gemini "${{ inputs.max_gemini || '10' }}"
 
       - name: Diários do Sul (PR)
-        if: always()
+        if: ${{ always() && contains(inputs.ufs || 'SC PR RS', 'PR') }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -58,7 +61,7 @@ jobs:
         run: python scripts/rodar_diarios_sul.py --uf PR --dias "${{ inputs.dias || '3' }}" --max-gemini "${{ inputs.max_gemini || '10' }}"
 
       - name: Diários do Sul (RS)
-        if: always()
+        if: ${{ always() && contains(inputs.ufs || 'SC PR RS', 'RS') }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
