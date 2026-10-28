@@ -757,8 +757,16 @@ CAMPOS_COMPLETUDE = (
 )
 
 
+#: Vaga que a auditoria releu sem achar nada novo (o edital simplesmente não traz o
+#: campo) só volta à fila depois destes dias. Medido em 2026-10-28: 233 vagas
+#: relidas ~3x em 5 dias, 90% `sem_alteracao` — ~170 chamadas/dia de Gemini quase
+#: sem ganho, e o job estourava o timeout de 90 min todo dia.
+DIAS_CARENCIA_AUDITORIA = 10
+
+
 def listar_vagas_medicas_incompletas(
-    conn: psycopg.Connection, *, minimo_campos_faltando: int = 3, limite: int
+    conn: psycopg.Connection, *, minimo_campos_faltando: int = 3, limite: int,
+    dias_carencia: int = DIAS_CARENCIA_AUDITORIA,
 ) -> list[dict[str, Any]]:
     """Vaga médica já aprovada e visível ao usuário (mesma regra de
     `vagas_pagina` no repo principal: `revisao_status = 'aprovada'` +
@@ -791,10 +799,17 @@ def listar_vagas_medicas_incompletas(
             where v.revisao_status = 'aprovada'
               and v.categoria_saude = 'medico'
               and ({campos_nulos_sql}) >= %(minimo)s
-            order by v.detectada_em desc
+              and not exists (
+                select 1 from public.vagas_conferencias c
+                where c.vaga_id = v.id
+                  and c.conferido_por = 'auditoria_completude'
+                  and c.resultado in ('sem_alteracao', 'releitura_falhou')
+                  and c.conferido_em > now() - make_interval(days => %(carencia)s)
+              )
+            order by coalesce(v.inscricoes_fim >= current_date, false) desc, v.detectada_em desc
             limit %(limite)s
             """,
-            {"minimo": minimo_campos_faltando, "limite": limite},
+            {"minimo": minimo_campos_faltando, "limite": limite, "carencia": dias_carencia},
         )
         colunas = [coluna.name for coluna in cur.description]
         return [dict(zip(colunas, row)) for row in cur.fetchall()]
