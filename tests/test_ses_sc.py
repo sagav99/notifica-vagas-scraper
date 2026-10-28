@@ -36,3 +36,13 @@ def test_escolher_municipio():
     assert ses_sc.escolher_municipio("Grande Florianópolis", muns) == "Florianópolis"
     assert ses_sc.escolher_municipio("Mafra e Lages", muns) == "Florianópolis"
     assert ses_sc.escolher_municipio("", muns) == "Florianópolis"
+
+
+def test_url_pagina_processo_acha_ponteiro_do_artigo():
+    html = (
+        '<a href="/index.php/pt/servicos/concursos-e-selecoes/pss-ses-link-categoria/'
+        'processos-seletivos-2026/processo-seletivo-042-2026">PSS 042</a>'
+        '<a href="/index.php/pt/servicos/concursos-e-selecoes/edital-de-selecao">outro</a>'
+    )
+    assert ses_sc.url_pagina_processo(html, "042/2026").endswith("processos-seletivos-2026/processo-seletivo-042-2026")
+    assert ses_sc.url_pagina_processo(html, "043/2026") is None

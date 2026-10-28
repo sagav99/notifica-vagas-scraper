@@ -89,6 +89,20 @@ def url_edital(html_artigo: str) -> str | None:
     return urljoin(BASE_URL, escolhido) if escolhido else None
 
 
+def url_pagina_processo(html_artigo: str, numero: str) -> str | None:
+    """Página do processo (`processos-seletivos-AAAA/processo-seletivo-NNN-AAAA`).
+
+    Desde 2026-10 o artigo da listagem é só um ponteiro; o link `/download` do
+    edital fica nessa página (ex.: PSS 042/2026)."""
+    numero_url = numero.replace("/", "-")
+    soup = BeautifulSoup(html_artigo, "html.parser")
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if "/processos-seletivos-" in href and href.rstrip("/").endswith(f"processo-seletivo-{numero_url}"):
+            return urljoin(BASE_URL, href)
+    return None
+
+
 def escolher_municipio(local: str, municipios_sc: dict[str, int], padrao: str = "Florianópolis") -> str:
     """Um único município de SC citado em `Local` -> ele; senão a sede (Florianópolis)
     ("Grande Florianópolis", várias cidades, etc.)."""

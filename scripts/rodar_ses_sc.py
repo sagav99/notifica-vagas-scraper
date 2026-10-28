@@ -34,6 +34,12 @@ def processar_pss(conn, fonte_id: str, item: ses_sc.ItemPss, municipios_sc: dict
     artigo.raise_for_status()
     url_pdf = ses_sc.url_edital(artigo.text)
     if url_pdf is None:
+        url_pagina = ses_sc.url_pagina_processo(artigo.text, item.numero)
+        if url_pagina:
+            pagina = requests.get(url_pagina, headers={"User-Agent": USER_AGENT}, timeout=30)
+            pagina.raise_for_status()
+            url_pdf = ses_sc.url_edital(pagina.text)
+    if url_pdf is None:
         print(f"  aviso: sem link de edital em {item.url}")
         return 0
     pdf = requests.get(url_pdf, headers={"User-Agent": USER_AGENT}, timeout=90)
