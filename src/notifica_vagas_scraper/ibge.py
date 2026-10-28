@@ -51,7 +51,31 @@ def listar_municipios(uf: str) -> list[dict]:
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
             ultimo_erro = exc
     assert ultimo_erro is not None
+    # API do IBGE fora (timeout persistente a partir do GitHub Actions, achado
+    # 2026-09-09 e de novo em 27-28/10 derrubando os editais de MG da coleta):
+    # o cadastro local `public.municipios` já tem exatamente esses códigos.
+    municipios = _listar_municipios_locais(uf)
+    if municipios:
+        _cache_por_uf[uf] = municipios
+        return municipios
     raise ultimo_erro
+
+
+def _listar_municipios_locais(uf: str) -> list[dict]:
+    try:
+        from . import db
+
+        conn = db.conectar()
+    except Exception:
+        return []
+    try:
+        with conn.cursor() as cur:
+            cur.execute("select codigo_ibge, nome from public.municipios where uf = %s", (uf,))
+            return [{"codigo_ibge": int(row[0]), "nome": row[1]} for row in cur.fetchall()]
+    except Exception:
+        return []
+    finally:
+        conn.close()
 
 
 def buscar_codigo_ibge(nome_municipio: str, uf: str) -> int | None:

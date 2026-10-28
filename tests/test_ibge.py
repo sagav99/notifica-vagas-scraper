@@ -83,3 +83,24 @@ def test_buscar_codigo_ibge_encontra_por_nome_normalizado(monkeypatch):
 def test_buscar_codigo_ibge_nao_encontrado_devolve_none(monkeypatch):
     monkeypatch.setattr(ibge.requests, "get", lambda *a, **k: _RespostaFalsa(_PAYLOAD))
     assert ibge.buscar_codigo_ibge("Cidade Inexistente", "MG") is None
+
+
+def test_cai_para_cadastro_local_quando_api_do_ibge_cai(monkeypatch):
+    def _get(*a, **k):
+        raise ibge.requests.exceptions.ConnectTimeout("timeout")
+
+    monkeypatch.setattr(ibge.requests, "get", _get)
+    monkeypatch.setattr(ibge, "_listar_municipios_locais", lambda uf: [{"codigo_ibge": 3106200, "nome": "Belo Horizonte"}])
+
+    assert ibge.buscar_codigo_ibge("belo horizonte", "MG") == 3106200
+
+
+def test_sem_api_e_sem_cadastro_local_levanta_o_erro_original(monkeypatch):
+    def _get(*a, **k):
+        raise ibge.requests.exceptions.ConnectTimeout("timeout")
+
+    monkeypatch.setattr(ibge.requests, "get", _get)
+    monkeypatch.setattr(ibge, "_listar_municipios_locais", lambda uf: [])
+
+    with pytest.raises(ibge.requests.exceptions.ConnectTimeout):
+        ibge.listar_municipios("MG")
