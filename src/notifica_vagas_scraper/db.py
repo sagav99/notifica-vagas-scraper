@@ -177,6 +177,22 @@ def url_ja_e_evidencia(conn: psycopg.Connection, urls: list[str | None]) -> bool
         return cur.fetchone() is not None
 
 
+def diario_sul_ja_visto(conn: psycopg.Connection, chave: str) -> bool:
+    """Publicação de diário oficial do Sul já lida pelo Gemini (`public.diarios_sul_vistos`, migration 117)."""
+    with conn.cursor() as cur:
+        cur.execute("select 1 from public.diarios_sul_vistos where chave = %s", (chave,))
+        return cur.fetchone() is not None
+
+
+def registrar_diario_sul_visto(conn: psycopg.Connection, *, chave: str, uf: str, titulo: str, gerou_vaga: bool) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "insert into public.diarios_sul_vistos (chave, uf, titulo, gerou_vaga) values (%s, %s, %s, %s)"
+            " on conflict (chave) do nothing",
+            (chave, uf, titulo[:300], gerou_vaga),
+        )
+
+
 def item_ja_processado(prefixo: str, identificadores: set[str]) -> bool:
     return any(i.startswith(prefixo) for i in identificadores)
 

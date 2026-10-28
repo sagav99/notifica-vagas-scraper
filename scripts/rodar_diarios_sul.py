@@ -210,7 +210,10 @@ def main() -> None:
                 print(f"  sem município no cadastro: {rotulo}")
                 continue
             chave = f"{codigo_ibge}|{slug(cand['titulo'])}"
-            if chave in vistos or (conn is not None and db.url_ja_e_evidencia(conn, [cand["url"]])):
+            chave_visto = f"{uf}:{cand['codigo']}"
+            if chave in vistos or (
+                conn is not None and (db.url_ja_e_evidencia(conn, [cand["url"]]) or db.diario_sul_ja_visto(conn, chave_visto))
+            ):
                 continue
             vistos.add(chave)
             if args.dry_run:
@@ -223,7 +226,9 @@ def main() -> None:
             gastos += 1
             try:
                 with conn.transaction():
-                    total += processar(conn, fonte_id, uf, cand, codigo_ibge, hoje)
+                    gravadas = processar(conn, fonte_id, uf, cand, codigo_ibge, hoje)
+                    db.registrar_diario_sul_visto(conn, chave=chave_visto, uf=uf, titulo=cand["titulo"], gerou_vaga=gravadas > 0)
+                total += gravadas
                 conn.commit()
             except Exception as exc:  # 1 publicação ruim não derruba o lote
                 print(f"    ERRO: {exc}")
