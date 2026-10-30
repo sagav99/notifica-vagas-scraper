@@ -58,8 +58,8 @@ _EXCLUIR_TITULO = re.compile(
 )
 # Fase posterior à abertura anunciada no CORPO quando o título é genérico ("EDITAL Nº 182/2026"): achado 2026-10-30 (Guaíra, Campo Bom, Erechim).
 _FASE_POSTERIOR = re.compile(
-    r"(a\s+convoca[cç][aã]o dos candidatos|ser[aá] convocad|fica(m)? convocad|classifica[cç][aã]o final|homologa[cç][aã]o d|resultado (final|preliminar|d[oa])|"
-    r"avalia[cç][aã]o dos t[ií]tulos|sorteio p[uú]blico|resultado d[oa] sorteio|convoca[cç][aã]o d[eo]s? candidat|candidatos? (aprovad|classificad|convocad))",
+    r"(a\s+convoca[cç][aã]o dos candidatos|fica(m)? convocad|classifica[cç][aã]o final|homologa[cç][aã]o d[aeo]|resultado (final|preliminar|d[oa] (sorteio|processo|concurso))|"
+    r"avalia[cç][aã]o dos t[ií]tulos|resultado do sorteio|convoca[cç][aã]o d[eo]s? candidat)",
     re.I,
 )
 _ABERTURA_FORTE = re.compile(r"(edital de abertura|abertura (do|de) (processo|concurso)|per[ií]odo de inscri|inscri[cç][oõ]es (abertas|ser[aã]o|poder[aã]o)|as inscri[cç][oõ]es)", re.I)
