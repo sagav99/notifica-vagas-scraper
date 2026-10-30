@@ -21,6 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
+from notifica_vagas_scraper.fontes.diarios_sul import datetime_hoje_brasilia
 
 from notifica_vagas_scraper import db, gemini_pdf, gemini_util
 from notifica_vagas_scraper.classificar_medico import eh_cargo_medico
@@ -75,7 +76,9 @@ def tem_medico_em_aberto(conn, municipio_id: int) -> bool:
     with conn.cursor() as cur:
         cur.execute(
             "select 1 from public.vagas where municipio_id = %s and categoria_saude = 'medico' "
-            "and (inscricoes_fim is null or inscricoes_fim >= current_date) limit 1",
+            "and revisao_status <> 'rejeitada' "
+            # só conta vaga com prazo ainda válido (data de Brasília): sem prazo = fase posterior/dado incompleto, não cobre o edital
+            "and inscricoes_fim >= (now() at time zone 'America/Sao_Paulo')::date limit 1",
             (municipio_id,),
         )
         return cur.fetchone() is not None
@@ -97,11 +100,11 @@ def processar(conn, fonte_id: str, edital, nome: str, uf: str, municipios, max_g
     pdf.raise_for_status()
     extraido = gemini_pdf.extrair_vagas_de_pdf(pdf.content)
     fim = _data_iso(extraido.get("inscricoes_fim"))
-    if fim is not None and fim < date.today():
+    if fim is not None and fim < datetime_hoje_brasilia().date():
         print(f"  inscrição encerrada em {fim}; ignorado")
         return 0
     inicio = _data_iso(extraido.get("inscricoes_inicio"))
-    status = "futura" if inicio and inicio > date.today() else "aberta"
+    status = "futura" if inicio and inicio > datetime_hoje_brasilia().date() else "aberta"
     orgao = extraido.get("orgao") or f"Prefeitura Municipal de {nome}"
     total = 0
     for vaga in extraido.get("vagas") or []:
