@@ -3,13 +3,16 @@ name: Monitor de convocações (plano Max)
 # Procura o nome dos assinantes Max e as convocações dos concursos que acompanham nos diários
 # oficiais de MG/SP/PR/SC/RS (AMM-MG, APM, AMP, FAMURS, CIGA). 0 Gemini, 0 Serper: não entra no
 # grupo `gemini-pesado`. Todo dia (convocação sai também no sábado); o cron do site envia os e-mails
-# às 12:30 e 21:00 UTC (duas rodadas por dia: 11:20 e 20:30 UTC). Janela de 3 dias cobre falha de um dia. Detalhe: docs/convocacoes_monitoramento.md
+# às 12:30 e 21:00 UTC (rodadas às 10:47, 15:37 e 20:13 UTC). Janela de 3 dias cobre falha de um dia. Detalhe: docs/convocacoes_monitoramento.md
 # no repo principal.
 
 on:
   schedule:
-    - cron: "20 11 * * *"   # 08:20 BRT: diários da manhã
-    - cron: "30 20 * * *"   # 17:30 BRT: diários publicados à tarde
+    # Minutos fora de :00/:20/:30 de propósito: o GitHub atrasa/derruba cron em horário nobre (em 30/10 o das 11:20 não rodou em 2 h).
+    # Três tentativas por dia; repetir é inofensivo (convocacao_vistos / avisos únicos por publicação).
+    - cron: "47 10 * * *"   # 07:47 BRT: diários da manhã (antes do e-mail das 12:30 UTC)
+    - cron: "37 15 * * *"   # 12:37 BRT: reserva
+    - cron: "13 20 * * *"   # 17:13 BRT: diários publicados à tarde (antes do e-mail das 21:00 UTC)
   workflow_dispatch:
     inputs:
       dias:

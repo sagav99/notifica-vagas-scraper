@@ -9,7 +9,7 @@ name: Diários oficiais do Sul (SC CIGA, PR AMP, RS FAMURS)
 
 on:
   schedule:
-    - cron: "10 12 * * 1-5"
+    - cron: "43 11 * * 1-5"   # fora do horário nobre do GitHub (o das 12:10 chegou a rodar 6 h depois)
   workflow_dispatch:
     inputs:
       dias:
