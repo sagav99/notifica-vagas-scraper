@@ -66,6 +66,8 @@ def recortar_para_gemini(texto: str, limite: int = LIMITE_TEXTO_GEMINI) -> str:
 def coletar_candidatas_sc(dias: int, hoje: date, sessao: requests.Session) -> list[dict]:
     zips = diarios_sul.listar_zips_sc(dias, hoje=hoje, sessao=sessao)
     print(f"SC: {len(zips)} ZIP(s) do CIGA na janela de {dias} dia(s).")
+    if not zips and any((hoje - timedelta(days=n)).weekday() < 5 for n in (0, 1)):
+        raise RuntimeError("SC: nenhum ZIP do CIGA na janela em dia útil (CKAN mudou ou fora do ar?)")
     candidatas: list[dict] = []
     for z in zips:
         resposta = sessao.get(z["url"], headers={"User-Agent": diarios_sul.USER_AGENT}, timeout=180)
@@ -106,6 +108,9 @@ def coletar_candidatas_sigpub(uf: str, dias: int, hoje: date, sessao: requests.S
             else:
                 print(f"  AVISO {uf} {dia} '{termo}': bateu o teto de {PAGINAS_MAX_SIGPUB} páginas (pode haver mais).")
     print(f"{uf}: {len(cartoes)} matéria(s) distintas nas buscas.")
+    # Dia útil recente sem NENHUMA matéria nas buscas = HTML do SIGPub mudou ou diário fora do ar: falhar alto (workflow vermelho).
+    if not cartoes and any((hoje - timedelta(days=n)).weekday() < 5 for n in (0, 1)):
+        raise RuntimeError(f"{uf}: as buscas do SIGPub devolveram 0 matérias em dia útil (HTML mudou ou diário fora do ar?)")
 
     candidatas: list[dict] = []
     for r in cartoes.values():
