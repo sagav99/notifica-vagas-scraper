@@ -45,3 +45,18 @@ def test_ler_zip_sc_aceita_json_nulo_e_publicacoes():
         )
     pubs = d.ler_zip_sc(buf.getvalue())
     assert len(pubs) == 1 and pubs[0].municipio == "Ilhota" and pubs[0].codigo == "1"
+
+
+def test_fase_posterior_com_titulo_generico_nao_e_abertura():
+    cab = "Imprimir a matéria Baixar a edição completa (PDF) PREFEITURA ESTADO "
+    medico = " Cargo: Médico Clínico Geral 40h, vencimento R$ 15.000, 1 vaga. "
+    conv = cab + "CONSAMU CONCURSO PÚBLICO Nº 001/2025 EDITAL Nº180/2026 TORNA PÚBLICO: 1. A convocação dos candidatos relacionados, aprovados no Concurso Público nº 001/2025." + medico
+    res = cab + "PROCESSO SELETIVO SIMPLIFICADO Nº 281/2026 EDITAL Nº 004/2026 – CLASSIFICAÇÃO FINAL torna público o resultado" + medico + "processo seletivo"
+    assert not d.eh_candidata("EDITAL Nº 182/2026", conv + " processo seletivo", "Edital")
+    assert not d.eh_candidata("EDITAL 004/2026", res, "Edital")
+
+
+def test_abertura_real_continua_candidata_mesmo_citando_resultado_depois():
+    cab = "Imprimir a matéria Baixar a edição completa (PDF) "
+    texto = cab + "EDITAL DE ABERTURA Nº 01/2026 PROCESSO SELETIVO SIMPLIFICADO. As inscrições serão realizadas de 01/11 a 10/11. Cargo: Médico 20h, R$ 12.000, 2 vagas. O resultado final será divulgado no site."
+    assert d.eh_candidata("EDITAL DE ABERTURA Nº 01/2026", texto, "Edital")

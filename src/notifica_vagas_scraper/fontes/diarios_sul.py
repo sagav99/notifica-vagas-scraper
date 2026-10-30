@@ -56,6 +56,13 @@ _EXCLUIR_TITULO = re.compile(
     r"plano de contrata|eliminad|candidatos|comunicado)",
     re.I,
 )
+# Fase posterior à abertura anunciada no CORPO quando o título é genérico ("EDITAL Nº 182/2026"): achado 2026-10-30 (Guaíra, Campo Bom, Erechim).
+_FASE_POSTERIOR = re.compile(
+    r"(a\s+convoca[cç][aã]o dos candidatos|ser[aá] convocad|fica(m)? convocad|classifica[cç][aã]o final|homologa[cç][aã]o d|resultado (final|preliminar|d[oa])|"
+    r"avalia[cç][aã]o dos t[ií]tulos|sorteio p[uú]blico|resultado d[oa] sorteio|convoca[cç][aã]o d[eo]s? candidat|candidatos? (aprovad|classificad|convocad))",
+    re.I,
+)
+_ABERTURA_FORTE = re.compile(r"(edital de abertura|abertura (do|de) (processo|concurso)|per[ií]odo de inscri|inscri[cç][oõ]es (abertas|ser[aã]o|poder[aã]o)|as inscri[cç][oõ]es)", re.I)
 _EXCLUIR_TEXTO = re.compile(r"(m[eé]dico[- ]veterin|exame m[eé]dico|laudo m[eé]dico|atestado m[eé]dico|junta m[eé]dica|perito m[eé]dico)", re.I)
 _CARGO_MEDICO = re.compile(
     r"\bm[eé]dic[oa]s?\b(?![- ]veterin)|\b(cl[ií]nic[oa] geral|ginecolog|obstetr|pediatr|psiquiatr|ortoped|cardiolog|anestesi)",
@@ -93,6 +100,10 @@ def eh_candidata(titulo: str, texto: str, categoria: str | None = None) -> bool:
         return False
     base = f"{titulo} {texto}"
     if not _ABERTURA.search(base):
+        return False
+    # Cabeçalho do corpo (sem a navegação do SIGPub): fase posterior sem sinal forte de abertura não é abertura.
+    cabeca = re.sub(r"\s+", " ", texto.split("Baixar a edição completa (PDF)")[-1])[:1200]
+    if _FASE_POSTERIOR.search(cabeca) and not _ABERTURA_FORTE.search(cabeca):
         return False
     sem_ruido = _EXCLUIR_TEXTO.sub(" ", base)
     for achado in _CARGO_MEDICO.finditer(sem_ruido):
