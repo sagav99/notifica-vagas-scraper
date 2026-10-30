@@ -339,3 +339,26 @@ def test_doe_sp_acha_nomeacao_com_entidades_html_e_ignora_ato_de_servidor_ativo(
     assert len(r) == 1 and r[0].fonte == "doe-sp" and r[0].cargo == "Médico I"
     ativo = {"title": "DESPACHO", "date": "2026-10-26", "slug": "executivo/b", "content": "<p>Concede licença-prêmio e quinquênio ao servidor Ligia Pereira Martins Quessada, médica da Secretaria, aposentadoria.</p>"}
     assert c.achados_doe_sp(S(), ac, c.date(2026, 10, 20), c.date(2026, 10, 30), baixar=lambda i: ativo) == []
+
+
+def test_doe_rs_baixa_pdf_do_dia_uma_vez_e_acha_nome():
+    from notifica_vagas_scraper.fontes import convocacoes as c
+    ac = c.Acompanhamento("a1", "u1", "Maria Aparecida Souza", None, None)
+
+    class S:
+        def get(self, url, **kw):
+            class R:
+                status_code = 200
+                content = b"x"
+                def raise_for_status(self):
+                    pass
+                def json(self):
+                    return {"id": 77, "edicoes": []}
+            return R()
+
+    texto = "ATOS DE PESSOAL. Fica nomeada, em virtude de aprovação em concurso público, Maria Aparecida Souza, para o cargo de Médico."
+    lidas = []
+    r, n = c.achados_doe_rs(S(), [ac], [c.date(2026, 10, 29)], set(), baixar_pdf=lambda i: texto, ao_ler=lidas.append)
+    assert n == 1 and len(r) == 1 and r[0].uf == "RS" and lidas == ["doe-rs:2026-10-29:77"]
+    r2, n2 = c.achados_doe_rs(S(), [ac], [c.date(2026, 10, 29)], set(lidas), baixar_pdf=lambda i: texto)
+    assert n2 == 0 and r2 == []

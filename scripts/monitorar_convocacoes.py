@@ -212,6 +212,15 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
             achados_doe += len(novos)
             achados += novos
             pausa()
+    if "RS" in ufs:
+        try:
+            novos, lidas = conv.achados_doe_rs(sessao, acompanhamentos, lista_dias, vistos, ao_ler=ao_ler, esgotado=esgotado)
+        except (requests.RequestException, ValueError, KeyError) as erro:
+            print(f"  doe-rs: {erro}")
+        else:
+            achados_doe += len(novos)
+            achados += novos
+            print(f"DOE-RS: {lidas} edição(ões) nova(s) lida(s), {len(novos)} achado(s).")
     print(f"DOE estaduais (SP/MG/PR): {achados_doe} achado(s) para {len(acompanhamentos)} acompanhamento(s).")
 
     # Diário Oficial da União: concursos federais (EBSERH, universidades, ministérios). Mesma busca por nome.

@@ -782,6 +782,63 @@ def achados_doe_mg(sessao: requests.Session, ac: Acompanhamento, desde: date, ho
     return achados
 
 
+DOE_RS_API = "https://doe-backend.pro.rs.gov.br"
+
+
+def achados_doe_rs(
+    sessao: requests.Session, acompanhamentos: list[Acompanhamento], dias: list[date], ja_vistos: set[str], *,
+    baixar_pdf=None, ao_ler=lambda chave: None, esgotado=lambda: False,
+) -> tuple[list[Achado], int]:
+    """DOE-RS: o índice de busca só tem atos privados, então baixa o PDF completo do dia (~300 páginas, texto nativo) e casa os
+    nomes localmente, uma vez por dia (`doe-rs:<data>:<id>` em convocacao_vistos). Devolve (achados, edições lidas)."""
+    alvo = [a for a in acompanhamentos if len(normalizar(a.nome_edital).split()) >= 2 and a.uf in (None, "RS")]
+    if not alvo:
+        return [], -1
+    ua = {"User-Agent": "Mozilla/5.0"}
+
+    def _pdf(i: int) -> str:
+        import io
+        import pdfplumber
+
+        r = sessao.get(f"{DOE_RS_API}/public/diarios/download/{i}/pdf", headers=ua, timeout=300)
+        r.raise_for_status()
+        with pdfplumber.open(io.BytesIO(r.content)) as pdf:
+            return "\n".join((p.extract_text() or "") for p in pdf.pages)
+
+    baixar_pdf = baixar_pdf or _pdf
+    achados: list[Achado] = []
+    lidas = 0
+    for dia in dias:
+        if esgotado():
+            break
+        r = sessao.get(f"{DOE_RS_API}/public/diarios/consultar/", params={"tipoDiario": 1, "data": dia.isoformat(), "tipoRetorno": 2}, headers=ua, timeout=60)
+        if r.status_code in (404, 204) or not r.content.strip():
+            continue  # sem edição nesse dia (fim de semana/feriado)
+        r.raise_for_status()
+        dados = r.json()
+        if not dados or not dados.get("id"):
+            continue
+        for i in [dados["id"]]:  # o PDF principal já inclui as edições extras (qtdPaginas = total)
+            chave = f"doe-rs:{dia.isoformat()}:{i}"
+            if chave in ja_vistos or esgotado():
+                continue
+            try:
+                texto = re.sub(r"\s+", " ", baixar_pdf(i))
+            except (requests.RequestException, ValueError, OSError):
+                continue  # edição extra sem PDF próprio: tenta de novo na próxima rodada
+            lidas += 1
+            for ac in alvo:
+                achado = avaliar_em_ocorrencias(
+                    ac, texto, fonte="doe-rs", estadual=True, uf="RS", chave=chave, titulo="Diário Oficial do Estado do RS", entidade=None,
+                    data_publicacao=dia, url=f"https://diariooficial.rs.gov.br/ (edição de {dia.strftime('%d/%m/%Y')})", raio_contexto=1200,
+                )
+                if achado:
+                    achado.municipio = None
+                    achados.append(achado)
+            ao_ler(chave)
+    return achados, lidas
+
+
 # ----------------------------------------------------------- Google News (SP)
 
 
