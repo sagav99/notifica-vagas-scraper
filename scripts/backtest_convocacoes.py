@@ -82,7 +82,7 @@ def backtest_sigpub(uf: str, inicio: date, fim: date, amostra: int) -> None:
             casos.append((nome, c.codigo))
     print(f"{uf}: {len(cartoes)} convocações independentes; {len(casos)} nomes de teste.", flush=True)
     acs = [conv.Acompanhamento(f"bt{i}", "u", nome, None, None) for i, (nome, _) in enumerate(casos)]
-    achados, lidas = conv.processar_sigpub(sessao, uf, dias, acs, set(), pausa=pausa)
+    achados, lidas, _ = conv.processar_sigpub(sessao, uf, dias, acs, set(), pausa=pausa)
     achou = 0
     perdidos = []
     for i, (nome, codigo) in enumerate(casos):

@@ -119,3 +119,60 @@ def test_convocacao_para_assinatura_de_termo_e_ruido():
 def test_cargo_detectado_nao_inclui_o_nome_do_candidato():
     _, cargo = conv.detectar_concurso("EDITAL 7", "Convoca para o cargo de Médico Clínico Geral o candidato Fulano de Tal, 2º colocado.", 80)
     assert cargo == "Médico Clínico Geral"
+
+
+def test_prazo_em_dias_uteis_e_por_extenso():
+    assert conv.detectar_prazo("Os candidatos têm prazo de 5 (cinco) dias úteis para comparecer.") == "5 dias úteis"
+    assert conv.detectar_prazo("deverá comparecer no prazo de três dias") == "3 dias"
+
+
+def test_prazo_por_data_e_hora():
+    assert conv.detectar_prazo("apresentar documentos até o dia 05/11/2026 às 17h") == "até 05/11/2026 às 17h"
+    assert conv.detectar_prazo("sem prazo algum aqui") is None
+
+
+def test_nome_invertido_sobrenome_virgula():
+    assert conv.nome_no_texto("Maria da Silva Santos", "12º SANTOS, Maria da Silva - aprovada") >= 0
+
+
+def test_classificacao_confere_ou_diverge():
+    texto = "Convocados: 11º Joao Pereira Lima 12º Maria da Silva Santos 13º Pedro Souza Neto"
+    pos = conv.nome_no_texto("Maria da Silva Santos", texto)
+    assert conv.avaliar_classificacao(12, texto, pos) == "alta"
+    assert conv.avaliar_classificacao(40, texto, pos) == "baixa"
+    assert conv.avaliar_classificacao(None, texto, pos) is None
+
+
+def test_url_de_pagina_so_https_publico():
+    assert conv.url_de_pagina_valida("https://www.prefeitura.mg.gov.br/concursos/convocacoes")
+    for ruim in ("http://x.gov.br/a", "https://127.0.0.1/a", "https://localhost/a", "https://user:senha@x.gov.br/a", "https://x.gov.br:8443/a", "file:///etc/passwd", "https://intranet", None, ""):
+        assert not conv.url_de_pagina_valida(ruim), ruim
+
+
+def test_pagina_primeira_leitura_so_avisa_se_o_nome_ja_esta():
+    ac = conv.Acompanhamento("a1", "u", "Maria da Silva Santos", "MG", "Luz")
+    pagina = "Convocação nº 3: convoca-se a candidata Maria da Silva Santos, 4ª colocada, para comparecer em 5 dias."
+    assert [a.tipo for a in conv.achados_da_pagina(ac, "https://x.gov.br/c", pagina, None)] == ["nome"]
+    assert conv.achados_da_pagina(ac, "https://x.gov.br/c", "Convocação nº 3: convoca-se o candidato Pedro Souza Lima, 1º colocado.", None) == []
+
+
+def test_pagina_frase_nova_de_convocacao_avisa_o_concurso():
+    ac = conv.Acompanhamento("a1", "u", "Maria da Silva Santos", "MG", "Luz")
+    antes = "Convocação nº 3: convoca-se o candidato Pedro Souza Lima, 1º colocado, para comparecer."
+    anteriores = conv.hashes_das_sentencas(antes)
+    depois = antes + " Convocação nº 4: convoca-se o candidato Jose Alves Prado, 2º colocado, para comparecer."
+    achados = conv.achados_da_pagina(ac, "https://x.gov.br/c", depois, anteriores)
+    assert [a.tipo for a in achados] == ["concurso"]
+    assert conv.achados_da_pagina(ac, "https://x.gov.br/c", antes, anteriores) == []
+
+
+def test_pagina_nome_novo_na_pagina_avisa_como_nome():
+    ac = conv.Acompanhamento("a1", "u", "Maria da Silva Santos", "MG", "Luz")
+    antes = "Convocação nº 3: convoca-se o candidato Pedro Souza Lima, 1º colocado, para comparecer."
+    depois = antes + " Convocação nº 4: convoca-se a candidata Maria da Silva Santos, 2ª colocada, para comparecer."
+    assert [a.tipo for a in conv.achados_da_pagina(ac, "https://x.gov.br/c", depois, conv.hashes_das_sentencas(antes))] == ["nome"]
+
+
+def test_cargo_de_cabecalho_de_tabela_e_ignorado():
+    _, cargo = conv.detectar_concurso("ATO 1", "Convoca servidores. Cargo Efetivo Unidade de Lotação Data de posse: tabela.", -1)
+    assert cargo is None

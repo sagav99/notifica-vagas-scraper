@@ -24,6 +24,8 @@ from __future__ import annotations
 
 import hashlib
 import re
+import ipaddress
+from urllib.parse import urlparse
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import date
@@ -59,6 +61,7 @@ class Acompanhamento:
     concurso: str | None = None
     cargo: str | None = None
     classificacao: int | None = None
+    url_convocacoes: str | None = None
 
 
 @dataclass
@@ -77,6 +80,8 @@ class Achado:
     trecho: str
     concurso: str | None = None
     cargo: str | None = None
+    prazo: str | None = None
+    confianca: str | None = None  # 'alta' = classificação informada confere; 'baixa' = publicação indica outra
 
 
 # --------------------------------------------------------------------- texto
@@ -110,6 +115,13 @@ def nome_no_texto(nome: str, texto: str) -> int:
         return -1
     plano = re.sub(r"\s+", " ", texto)
     sem_acento = normalizar(plano)
+    partes = alvo.split()
+    # "SILVA, Maria da" (sobrenome primeiro, comum em listas): também vale para o mesmo nome
+    invertido = rf"{re.escape(partes[-1])}\s*,\s*{re.escape(' '.join(partes[:-1]))}"
+    if len(sem_acento) == len(plano):
+        achado_inv = re.search(rf"(?<![a-z0-9]){invertido}(?![a-z0-9])", sem_acento)
+        if achado_inv and not re.search(rf"(?<![a-z0-9]){re.escape(alvo)}(?![a-z0-9])", sem_acento):
+            return achado_inv.start()
     if len(sem_acento) != len(plano):  # normalizar mexeu no tamanho (símbolos exóticos): sem checagem de borda
         achado = re.search(rf"(?<![a-z0-9]){re.escape(alvo)}(?![a-z0-9])", sem_acento)
         return achado.start() if achado else -1
@@ -254,8 +266,49 @@ def detectar_concurso(titulo: str, texto: str, pos: int = -1) -> tuple[str | Non
         if achado:
             cargo = re.split(r"\s+(?:o|a|os|as)\s+(?:candidat|aprovad|classificad)|\s+(?:para|que|do|no|da|conforme|aprovad)\b", achado[1], maxsplit=1, flags=re.I)[0]
             cargo = cargo.strip(" -–:")[:60]
+            if re.search(r"(efetivo|lota[cç]|unidade|\bdata\b|segue|abaixo|conforme|tabela|anexo)", cargo, re.I) or len(cargo) < 4:
+                cargo = None
+                continue
             break
     return concurso, cargo
+
+
+_NUMEROS_EXTENSO = {"um": 1, "dois": 2, "tres": 3, "quatro": 4, "cinco": 5, "seis": 6, "sete": 7, "oito": 8, "dez": 10, "quinze": 15, "vinte": 20, "trinta": 30}
+_PRAZO_DIAS = re.compile(r"prazo\s+(?:m[aá]ximo\s+)?de\s+(\d{1,3}|[^\W\d_]+)\s*(?:\([^)]{1,30}\)\s*)?(dias?(?:\s+[uú]teis)?|horas?)", re.I)
+_PRAZO_ATE = re.compile(r"(?:at[eé]|no dia|em)\s+(?:o\s+dia\s+)?(\d{1,2}/\d{1,2}/\d{2,4})(?:\s*(?:,|[àa]s)?\s*(?:at[eé]\s+)?(?:[àa]s\s+)?(\d{1,2}[h:]\d{0,2}))?", re.I)
+
+
+def detectar_prazo(texto: str, pos: int = -1) -> str | None:
+    """Prazo para comparecer/apresentar documentos ('5 dias úteis', 'até 05/11/2026'), perto do nome ou no texto."""
+    plano = re.sub(r"\s+", " ", texto)
+    regioes = ([plano[max(0, pos - 1200) : pos + 1500]] if pos >= 0 else []) + [plano[:4000]]
+    for regiao in regioes:
+        achado = _PRAZO_DIAS.search(regiao)
+        if achado:
+            bruto = normalizar(achado[1])
+            numero = int(bruto) if bruto.isdigit() else _NUMEROS_EXTENSO.get(bruto)
+            if numero:
+                return f"{numero} {re.sub(r'\s+', ' ', normalizar(achado[2]))}".replace("uteis", "úteis")
+        achado = _PRAZO_ATE.search(regiao)
+        if achado:
+            hora = f" às {achado[2]}" if achado[2] else ""
+            return f"até {achado[1]}{hora}"
+    return None
+
+
+_ORDINAL = re.compile(r"(\d{1,5})\s*(?:[ºo°ª]|\u00ba)(?!\w)")
+
+
+def avaliar_classificacao(classificacao: int | None, texto: str, pos: int) -> str | None:
+    """'alta' se o número informado aparece junto do nome; 'baixa' se só aparecem outros; None sem dado."""
+    if not classificacao or pos < 0:
+        return None
+    plano = re.sub(r"\s+", " ", texto)
+    janela = plano[max(0, pos - 90) : pos + 160]
+    numeros = {int(n) for n in _ORDINAL.findall(janela)} | {int(n) for n in re.findall(r"(?:classifica[cç][aã]o|coloca[cç][aã]o|lugar)\D{0,12}(\d{1,5})", janela, re.I)}
+    if not numeros:
+        return None
+    return "alta" if classificacao in numeros else "baixa"
 
 
 def avaliar_publicacao(
@@ -269,7 +322,10 @@ def avaliar_publicacao(
     pos = nome_no_texto(ac.nome_edital, texto)
     if pos >= 0 and contexto_de_convocacao(titulo, texto, ac.nome_edital):
         concurso, cargo = detectar_concurso(titulo, texto, pos)
-        return Achado(ac.id, "nome", chave, fonte, uf, municipio, titulo, data_publicacao, url, trecho_em_torno(texto, ac.nome_edital), concurso, cargo)
+        return Achado(
+            ac.id, "nome", chave, fonte, uf, municipio, titulo, data_publicacao, url, trecho_em_torno(texto, ac.nome_edital),
+            concurso, cargo, detectar_prazo(texto, pos), avaliar_classificacao(ac.classificacao, texto, pos),
+        )
     if (
         ac.uf == uf
         and ac.municipio
@@ -280,7 +336,7 @@ def avaliar_publicacao(
         and cargo_no_texto(ac.cargo, texto)
     ):
         concurso, cargo = detectar_concurso(titulo, texto)
-        return Achado(ac.id, "concurso", chave, fonte, uf, ac.municipio, titulo, data_publicacao, url, _sem_cabecalho(texto)[:420], concurso, cargo)
+        return Achado(ac.id, "concurso", chave, fonte, uf, ac.municipio, titulo, data_publicacao, url, _sem_cabecalho(texto)[:420], concurso, cargo, detectar_prazo(texto))
     return None
 
 
@@ -303,15 +359,19 @@ def varrer_dia_sigpub(sessao: requests.Session, uf: str, dia: date, *, pausa=lam
 def processar_sigpub(
     sessao: requests.Session, uf: str, dias: list[date], acompanhamentos: list[Acompanhamento],
     ja_vistos: set[str], *, pausa=lambda: None, ao_ler=lambda chave: None,
-) -> tuple[list[Achado], int]:
-    """Lê as publicações novas dos `dias` e cruza com os acompanhamentos. Devolve (achados, lidas)."""
+) -> tuple[list[Achado], int, int]:
+    """Lê as publicações novas dos `dias` e cruza com os acompanhamentos. Devolve (achados, lidas, cartões vistos);
+    cartões = 0 em dia útil indica que o diário mudou de HTML ou saiu do ar (o chamador deve falhar alto)."""
     alvo = [a for a in acompanhamentos if a.uf in (None, uf)]
     if not alvo:
-        return [], 0
+        return [], 0, -1
     achados: list[Achado] = []
     lidas = 0
+    cartoes_total = 0
     for dia in dias:
-        for c in varrer_dia_sigpub(sessao, uf, dia, pausa=pausa):
+        cartoes_dia = varrer_dia_sigpub(sessao, uf, dia, pausa=pausa)
+        cartoes_total += len(cartoes_dia)
+        for c in cartoes_dia:
             chave = f"sigpub-{uf.lower()}:{c.codigo}"
             if chave in ja_vistos:
                 continue
@@ -326,7 +386,7 @@ def processar_sigpub(
                 if achado:
                     achados.append(achado)
             ao_ler(chave)
-    return achados, lidas
+    return achados, lidas, cartoes_total
 
 
 # ----------------------------------------------------------- SC (CIGA aberto)
@@ -398,4 +458,113 @@ def noticias_convocacao(sessao: requests.Session, ac: Acompanhamento, desde: dat
             continue
         chave = "gnews:" + hashlib.sha1(link.encode()).hexdigest()[:16]
         achados.append(Achado(ac.id, "concurso", chave, "google-news", ac.uf, ac.municipio, titulo, publicado, link, titulo))
+    return achados
+
+
+# ------------------------------------------------------------------- cobertura
+
+
+def municipios_cobertos_sigpub(sessao: requests.Session, uf: str) -> list[str]:
+    """Municípios que o diário agregador do estado cobre (opções do seletor de entidade)."""
+    from bs4 import BeautifulSoup
+
+    resposta = sessao.get(
+        f"https://www.diariomunicipal.com.br/{SLUG_POR_UF[uf]}/pesquisar", headers={"User-Agent": USER_AGENT}, timeout=45
+    )
+    resposta.raise_for_status()
+    soup = BeautifulSoup(resposta.text, "html.parser")
+    nomes: list[str] = []
+    for sel in soup.find_all("select", attrs={"name": "busca_avancada[entidade]"}):
+        for opcao in sel.find_all("option"):
+            entidade = opcao.get_text(strip=True)
+            if re.match(r"(prefeitura|munic[ií]pio)", entidade, re.I):
+                municipio = municipio_da_entidade(entidade)
+                if municipio:
+                    nomes.append(municipio)
+    return sorted(set(nomes))
+
+
+# ---------------------------------------------- página de convocações (link do usuário)
+
+_SENTENCA_CONVOCACAO = re.compile(r"(convoc|nomea|chamad|posse|classificad|aprovad)", re.I)
+
+
+def url_de_pagina_valida(url: str | None) -> bool:
+    """https, host com domínio (nunca IP/localhost/porta), sem credenciais: o scraper só busca páginas públicas."""
+    if not url or len(url) > 300:
+        return False
+    try:
+        partes = urlparse(url)
+        host = partes.hostname or ""
+        if partes.scheme != "https" or partes.username or partes.password or partes.port not in (None, 443):
+            return False
+        try:
+            ipaddress.ip_address(host)
+            return False
+        except ValueError:
+            pass
+        return "." in host and not host.endswith((".local", ".internal", ".localhost"))
+    except ValueError:
+        return False
+
+
+def _sentencas(texto: str) -> list[str]:
+    plano = re.sub(r"\s+", " ", texto)
+    return [p.strip() for p in re.split(r"(?<=[.;!?])\s+|\s{2,}| \| ", plano) if len(p.strip()) >= 25]
+
+
+def sentencas_novas(texto: str, anteriores: set[str]) -> list[str]:
+    """Frases de convocação que não estavam na leitura anterior da página (hash de cada frase)."""
+    novas = []
+    for frase in _sentencas(texto):
+        if hashlib.sha1(normalizar(frase).encode()).hexdigest()[:16] not in anteriores and _SENTENCA_CONVOCACAO.search(frase):
+            novas.append(frase)
+    return novas
+
+
+def hashes_das_sentencas(texto: str) -> set[str]:
+    return {hashlib.sha1(normalizar(f).encode()).hexdigest()[:16] for f in _sentencas(texto)}
+
+
+def achados_da_pagina(ac: Acompanhamento, url: str, texto: str, anteriores: set[str] | None) -> list[Achado]:
+    """Compara a página com a leitura anterior. Primeira leitura (`anteriores` None) só avisa se o NOME já está lá."""
+    chave_base = "pagina:" + hashlib.sha1(f"{url}|{ac.id}".encode()).hexdigest()[:12]
+    achados: list[Achado] = []
+    pos = nome_no_texto(ac.nome_edital, texto)
+    novas = sentencas_novas(texto, anteriores or set()) if anteriores is not None else []
+    if pos >= 0 and (anteriores is None or any(nome_no_texto(ac.nome_edital, f) >= 0 for f in novas)):
+        trecho = trecho_em_torno(texto, ac.nome_edital)
+        chave = f"{chave_base}:{hashlib.sha1(normalizar(trecho).encode()).hexdigest()[:10]}"
+        achados.append(Achado(ac.id, "nome", chave, "pagina", ac.uf or "", ac.municipio, "Página de convocações do concurso", None, url, trecho, None, None, detectar_prazo(texto, pos), avaliar_classificacao(ac.classificacao, texto, pos)))
+    elif novas:
+        resumo = " … ".join(novas[:3])[:420]
+        chave = f"{chave_base}:{hashlib.sha1(normalizar(resumo).encode()).hexdigest()[:10]}"
+        achados.append(Achado(ac.id, "concurso", chave, "pagina", ac.uf or "", ac.municipio, "Página de convocações atualizada", None, url, resumo))
+    return achados
+
+
+# ------------------------------------------------ Google (só para município sem diário agregador)
+
+_DOMINIOS_RUIDO = ("instagram.com", "facebook.com", "linkedin.com", "glassdoor", "indeed.com", "jusbrasil.com.br", "youtube.com", "tiktok.com", "x.com", "twitter.com")
+
+
+def consulta_google(ac: Acompanhamento) -> str:
+    """Busca do município + concurso (nunca do nome: o Google não indexa os diários por nome, backtest 2026-10-29)."""
+    return f'"{ac.municipio}" convocação {ac.concurso or ac.cargo or "concurso"}'
+
+
+def achados_google(ac: Acompanhamento, resposta: dict) -> list[Achado]:
+    """Resultados orgânicos da Serper que falam de convocação NO município (título ou resumo)."""
+    achados: list[Achado] = []
+    for item in resposta.get("organic", []) or []:
+        link, titulo = item.get("link") or "", item.get("title") or ""
+        if not link or any(d in link for d in _DOMINIOS_RUIDO):
+            continue
+        base = normalizar(f"{titulo} {item.get('snippet') or ''}")
+        if not ac.municipio or normalizar(ac.municipio) not in base or not _TITULO_CONVOCACAO.search(base):
+            continue
+        if not numero_edital_no_texto(ac.concurso, f"{titulo} {item.get('snippet') or ''}") and ac.concurso:
+            continue
+        chave = "google:" + hashlib.sha1(link.encode()).hexdigest()[:16]
+        achados.append(Achado(ac.id, "concurso", chave, "google", ac.uf or "", ac.municipio, titulo, None, link, (item.get("snippet") or titulo)[:420]))
     return achados
