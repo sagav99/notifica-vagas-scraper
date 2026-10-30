@@ -13,6 +13,7 @@ pra resolver com Python determinístico" já usada nesse arquivo pra data.
 
 from __future__ import annotations
 
+import re
 import unicodedata
 
 # Mesma rede de segurança de ESPECIALIDADES_MEDICAS_SEM_PREFIXO em
@@ -26,6 +27,9 @@ _ESPECIALIDADES_SEM_PREFIXO = [
     "angiolog", "gastroenterolog", "nefrolog", "clinica medica", "cirurgia geral",
     "cirurgia vascular", "cirurgiao geral", "medicina intensiva", "medicina de familia",
     "medicina do trabalho", "medicina de emergencia",
+    # espelho do lado TS (2026-10-30)
+    "cirurgiao vascular", "neurocirurg", "medicina hospitalar", "arritmolog", "cirurgia plastica",
+    "cirurgiao plastico", "cirurgia refrativa", "ceratocone", "radiologia e diagnostico por imagem",
 ]
 
 # Profissão de saúde não-médica cujo nome colide por substring com uma
@@ -35,7 +39,7 @@ _ESPECIALIDADES_SEM_PREFIXO = [
 # a não ser que o cargo também tenha a palavra "médico"/"médica" de
 # verdade (ex: cargo composto real, prioriza o prefixo explícito).
 _PROFISSOES_NAO_MEDICAS_QUE_COLIDEM_COM_ESPECIALIDADE = [
-    "fisioterapeut",
+    "fisioterapeut", "odonto", "dentist", "enfermag", "enfermeir",
 ]
 
 
@@ -66,7 +70,8 @@ def eh_cargo_medico(cargo: str | None) -> bool:
 
     tem_prefixo_medico = any(p.startswith("medico") or p.startswith("medica") for p in palavras)
     if tem_prefixo_medico:
-        return True
+        # Função de apoio na 1ª palavra ("Técnico Auxiliar de Regulação Médica", "Secretária Médica"): "médica" é adjetivo.
+        return not re.match(r"(tecnic[oa]s?|auxiliar(es)?|atendente|secretari[oa]|recepcionista|agente|motorista|servente|tecnolog[oa]|escriturari[oa]|operador(a)?)$", palavras[0])
 
     eh_profissao_nao_medica_colidente = any(
         raiz in normalizado for raiz in _PROFISSOES_NAO_MEDICAS_QUE_COLIDEM_COM_ESPECIALIDADE

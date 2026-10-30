@@ -52,3 +52,19 @@ def test_cargos_nao_saude():
 @pytest.mark.parametrize("caso", _CASOS, ids=[repr(c["cargo"]) for c in _CASOS])
 def test_fixture_classificacao_cargo_medico(caso):
     assert eh_cargo_medico(caso["cargo"]) is caso["eh_medico"], caso["cargo"]
+
+
+def test_funcao_de_apoio_com_medica_como_adjetivo_nao_e_medico():
+    from notifica_vagas_scraper.classificar_medico import eh_cargo_medico
+    assert not eh_cargo_medico("Técnico Auxiliar de Regulação Médica")
+    assert not eh_cargo_medico("Secretária Médica")
+    assert eh_cargo_medico("Médico Regulador")
+    assert eh_cargo_medico("Médico do Trabalho")
+
+
+def test_espelho_das_especialidades_do_lado_ts():
+    from notifica_vagas_scraper.classificar_medico import eh_cargo_medico
+    for cargo in ("Neurocirurgião", "CIRURGIÃO VASCULAR (24 horas)", "Medicina Hospitalar", "Cirurgia Plástica"):
+        assert eh_cargo_medico(cargo), cargo
+    assert not eh_cargo_medico("Cirurgião Dentista Odontopediatra")
+    assert not eh_cargo_medico("Técnico de Enfermagem Pediátrica")
