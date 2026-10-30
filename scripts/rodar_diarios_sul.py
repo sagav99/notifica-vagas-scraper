@@ -30,7 +30,7 @@ from notifica_vagas_scraper.fontes import diarios_sul
 
 PAUSA_S = 1.5
 LIMITE_TEXTO_GEMINI = 24000
-PAGINAS_MAX_SIGPUB = 3
+PAGINAS_MAX_SIGPUB = 10
 
 FONTES = {
     "SC": ("Diário Oficial dos Municípios de SC (CIGA/DOMSC)", "https://dados.ciga.sc.gov.br/", "sc"),
@@ -87,19 +87,24 @@ def coletar_candidatas_sc(dias: int, hoje: date, sessao: requests.Session) -> li
 
 
 def coletar_candidatas_sigpub(uf: str, dias: int, hoje: date, sessao: requests.Session, conn) -> list[dict]:
-    inicio = hoje - timedelta(days=dias)
-    cartoes: dict[str, object] = {}
-    for termo in diarios_sul.TERMOS_SIGPUB:
-        for pagina in range(1, PAGINAS_MAX_SIGPUB + 1):
-            time.sleep(PAUSA_S)
-            html = diarios_sul.buscar_sigpub(sessao, uf, termo, inicio, hoje, pagina)
-            from notifica_vagas_scraper.fontes import sigpub_busca
+    from notifica_vagas_scraper.fontes import sigpub_busca
 
-            resultados = sigpub_busca.parsear_resultados(html)
-            for r in resultados:
-                cartoes.setdefault(r.codigo, r)
-            if len(resultados) < 25:
-                break
+    cartoes: dict[str, object] = {}
+    # Um dia por vez: a busca do SIGPub ignora aspas e ordena por data, então uma janela de vários dias
+    # estoura o teto de páginas e esconde as aberturas mais antigas (medido em 2026-10-30: "médico" = 140 cartões/dia no PR).
+    for n in range(dias, -1, -1):
+        dia = hoje - timedelta(days=n)
+        for termo in diarios_sul.TERMOS_SIGPUB:
+            for pagina in range(1, PAGINAS_MAX_SIGPUB + 1):
+                time.sleep(PAUSA_S)
+                html = diarios_sul.buscar_sigpub(sessao, uf, termo, dia, dia, pagina)
+                resultados = sigpub_busca.parsear_resultados(html)
+                for r in resultados:
+                    cartoes.setdefault(r.codigo, r)
+                if len(resultados) < 25:
+                    break
+            else:
+                print(f"  AVISO {uf} {dia} '{termo}': bateu o teto de {PAGINAS_MAX_SIGPUB} páginas (pode haver mais).")
     print(f"{uf}: {len(cartoes)} matéria(s) distintas nas buscas.")
 
     candidatas: list[dict] = []

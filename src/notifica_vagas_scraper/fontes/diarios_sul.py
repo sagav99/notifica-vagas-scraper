@@ -31,7 +31,7 @@ USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com
 SLUG_SIGPUB = {"PR": "amp", "RS": "famurs"}
 
 #: Termos da busca global PR/RS (cada termo = 1+ páginas de 25 cartões).
-TERMOS_SIGPUB = ('"processo seletivo" médico', '"concurso público" médico', "edital médico")
+TERMOS_SIGPUB = ('"processo seletivo" médico', '"concurso público" médico', "edital médico", "médico")
 
 #: Categorias do CIGA que nunca trazem abertura (atas de preço, licitação etc.).
 CATEGORIAS_DESCARTADAS = {  # já normalizadas (sem acento, minúsculas), comparar com `normalizar`
