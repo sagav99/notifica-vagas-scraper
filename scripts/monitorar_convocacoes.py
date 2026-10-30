@@ -69,7 +69,7 @@ def gravar_paginas(conn, memoria: dict[str, set[str]]) -> None:
 
 def gravar_cobertura(conn, cobertura: dict[str, dict[str, str]]) -> None:
     """`cobertura[uf][municipio_norm] = nome do município` (fonte = agregador do estado)."""
-    fontes = {"MG": "amm-mg", "SP": "apm", "PR": "amp", "RS": "famurs", "SC": "ciga-sc"}
+    fontes = {"MG": "amm-mg", "SP": "apm+dosp+querido-diario", "PR": "amp", "RS": "famurs", "SC": "ciga-sc"}
     with conn.cursor() as cur:
         for uf, municipios in cobertura.items():
             for norm, nome in municipios.items():
@@ -153,6 +153,22 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
         print(f"SC: {len(zips)} ZIP(s) do CIGA, {achados_sc} achado(s).")
         if not zips and any(d.weekday() < 5 for d in lista_dias[-2:]):
             raise RuntimeError("SC: nenhum ZIP do CIGA na janela em dia útil (CKAN mudou ou fora do ar?)")
+
+    # DOSP/DiOE (~187 municípios de SP + alguns de MG/PR/SC/RS): varredura por ID, texto lido localmente.
+    if ufs & {"SP", "MG", "PR", "SC", "RS"}:
+        try:
+            novos, lidos, publicados = conv.varrer_dosp(sessao, acompanhamentos, vistos, pausa=pausa, ao_ler=ao_ler, esgotado=esgotado)
+        except (requests.RequestException, ValueError) as erro:
+            print(f"  dosp: {erro}")
+        else:
+            ja = {(a.acompanhamento_id, diarios_sul.normalizar(a.municipio or ""), a.data_publicacao) for a in achados}
+            novos = [a for a in novos if (a.acompanhamento_id, diarios_sul.normalizar(a.municipio or ""), a.data_publicacao) not in ja]
+            achados += novos
+            print(f"DOSP: {publicados} edição(ões) na varredura de IDs, {lidos} nova(s) lida(s), {len(novos)} achado(s).")
+            if publicados == 0 and lista_dias[-1].weekday() < 5:
+                raise RuntimeError("DOSP: nenhuma edição nos IDs varridos em dia útil (exibe_do.php mudou, ID inicial velho demais ou fora do ar?)")
+            if "SP" in ufs:
+                estado["cobertura"].setdefault("SP", {}).update({diarios_sul.normalizar(n): n for n in conv.municipios_dosp_sp()})
 
     # Querido Diário: busca o NOME (frase exata) em milhares de municípios, inclusive os que os agregadores acima não cobrem.
     achados_qd = 0

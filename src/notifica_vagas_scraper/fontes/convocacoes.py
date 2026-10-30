@@ -154,7 +154,7 @@ def _sem_cabecalho(texto: str) -> str:
     return plano[achado.end() :] if achado else plano
 
 
-def contexto_de_convocacao(titulo: str, texto: str, nome: str) -> bool:
+def contexto_de_convocacao(titulo: str, texto: str, nome: str, raio: int = 500) -> bool:
     """O nome aparece numa publicação de convocação/nomeação? Título com o sinal OU sinal perto do nome."""
     if _RUIDO_TITULO.search(normalizar(titulo)):
         return False
@@ -164,7 +164,30 @@ def contexto_de_convocacao(titulo: str, texto: str, nome: str) -> bool:
     pos = nome_no_texto(nome, texto)
     if pos < 0:
         return False
-    return bool(_SINAL_CONVOCACAO.search(plano[max(0, pos - 500) : pos + 400]))
+    return bool(_SINAL_CONVOCACAO.search(plano[max(0, pos - raio) : pos + raio - 100]))
+
+
+def ocorrencias_do_nome(nome: str, texto: str, limite: int = 20) -> list[int]:
+    """Todas as posições do nome (até `limite`): num diário inteiro o mesmo nome pode aparecer em atos sem relação
+    antes da convocação, e olhar só a primeira ocorrência perderia o aviso."""
+    achadas: list[int] = []
+    deslocamento = 0
+    while len(achadas) < limite:
+        p = nome_no_texto(nome, texto[deslocamento:])
+        if p < 0:
+            break
+        achadas.append(deslocamento + p)
+        deslocamento += p + 1
+    return achadas
+
+
+def avaliar_em_ocorrencias(ac: "Acompanhamento", texto: str, *, antes: int = 2500, depois: int = 1500, **kw) -> "Achado | None":
+    """Roda `avaliar_publicacao` numa janela em torno de CADA ocorrência do nome e devolve o primeiro achado do tipo 'nome'."""
+    for pos in ocorrencias_do_nome(ac.nome_edital, texto):
+        achado = avaliar_publicacao(ac, texto=texto[max(0, pos - antes) : pos + depois], **kw)
+        if achado and achado.tipo == "nome":
+            return achado
+    return None
 
 
 def numero_edital_no_texto(concurso: str | None, texto: str) -> bool:
@@ -314,14 +337,14 @@ def avaliar_classificacao(classificacao: int | None, texto: str, pos: int) -> st
 
 def avaliar_publicacao(
     ac: Acompanhamento, *, fonte: str, uf: str, chave: str, titulo: str, entidade: str | None,
-    data_publicacao: date | None, url: str, texto: str,
+    data_publicacao: date | None, url: str, texto: str, raio_contexto: int = 500,
 ) -> Achado | None:
     """Esta publicação merece aviso para este acompanhamento? Nome vence concurso."""
     if _RUIDO_TITULO.search(normalizar(titulo)):
         return None
     municipio = municipio_da_entidade(entidade) or entidade
     pos = nome_no_texto(ac.nome_edital, texto)
-    if pos >= 0 and contexto_de_convocacao(titulo, texto, ac.nome_edital):
+    if pos >= 0 and contexto_de_convocacao(titulo, texto, ac.nome_edital, raio_contexto):
         concurso, cargo = detectar_concurso(titulo, texto, pos)
         return Achado(
             ac.id, "nome", chave, fonte, uf, municipio, titulo, data_publicacao, url, trecho_em_torno(texto, ac.nome_edital),
@@ -463,16 +486,12 @@ def achados_querido_diario(sessao: requests.Session, ac: Acompanhamento, desde: 
                 continue
             vistas.add(g["txt_url"])
             texto = re.sub(r"\s+", " ", baixar(g["txt_url"]))
-            pos = nome_no_texto(ac.nome_edital, texto)
-            if pos < 0:
-                continue
-            # o diário inteiro é enorme: avalia só a janela em torno do nome (o contexto e o concurso são locais)
-            janela = texto[max(0, pos - 2500) : pos + 1500]
-            achado = avaliar_publicacao(
-                ac, fonte="querido-diario", uf=g["state_code"], chave=f"qd:{g['territory_id']}:{g['date']}:{g.get('edition') or ''}:{g['is_extra_edition']}",
-                titulo="Diário Oficial", entidade=g["territory_name"], data_publicacao=date.fromisoformat(g["date"]), url=g.get("url") or g["txt_url"], texto=janela,
+            # o diário inteiro é enorme: avalia só a janela em torno de cada ocorrência do nome (o contexto e o concurso são locais)
+            achado = avaliar_em_ocorrencias(
+                ac, texto, fonte="querido-diario", uf=g["state_code"], chave=f"qd:{g['territory_id']}:{g['date']}:{g.get('edition') or ''}:{g['is_extra_edition']}",
+                titulo="Diário Oficial", entidade=g["territory_name"], data_publicacao=date.fromisoformat(g["date"]), url=g.get("url") or g["txt_url"], raio_contexto=1200,
             )
-            if achado and achado.tipo == "nome":
+            if achado:
                 achado.municipio = g["territory_name"]
                 achados.append(achado)
         if len(dados.get("gazettes", [])) < 50:
@@ -512,23 +531,120 @@ def achados_dou(sessao: requests.Session, ac: Acompanhamento, desde: date, hoje:
     for it in itens:
         url = DOU_ARTIGO + it["urlTitle"]
         texto = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", baixar(url)))
-        pos = nome_no_texto(ac.nome_edital, texto)
-        if pos < 0:
-            continue
         try:
             publicado = datetime.strptime(it["pubDate"], "%d/%m/%Y").date()
         except (KeyError, ValueError):
             publicado = None
-        if _RUIDO_DOU.search(normalizar(texto[max(0, pos - 800) : pos + 800])):
-            continue  # "Edital de Convocação" de assembleia/sindicato, licitação: o nome aparece como subscritor, não como convocado
-        achado = avaliar_publicacao(
-            ac, fonte="dou", uf="BR", chave=f"dou:{it['urlTitle']}", titulo=it.get("title") or "Diário Oficial da União",
-            entidade=None, data_publicacao=publicado, url=url, texto=texto[max(0, pos - 2500) : pos + 1500],
-        )
-        if achado and achado.tipo == "nome":
-            achado.municipio = None
-            achados.append(achado)
+        for pos in ocorrencias_do_nome(ac.nome_edital, texto):
+            if _RUIDO_DOU.search(normalizar(texto[max(0, pos - 800) : pos + 800])):
+                continue  # "Edital de Convocação" de assembleia/sindicato, licitação: o nome aparece como subscritor, não como convocado
+            achado = avaliar_publicacao(
+                ac, fonte="dou", uf="BR", chave=f"dou:{it['urlTitle']}", titulo=it.get("title") or "Diário Oficial da União",
+                entidade=None, data_publicacao=publicado, url=url, texto=texto[max(0, pos - 2500) : pos + 1500],
+            )
+            if achado and achado.tipo == "nome":
+                achado.municipio = None
+                achados.append(achado)
+                break
     return achados
+
+
+# ------------------------------------- DOSP / DiOE (diários municipais de SP, MG, PR, SC, RS por ID)
+DOSP_EXIBE = "https://www.dosp.com.br/exibe_do.php?i="
+DOSP_ID_INICIAL = 900400  # ~28/10/2026; só vale na primeira rodada (depois parte do maior ID já lido)
+DOSP_MARGEM_ID = 600  # relê os últimos ~1 dia de IDs: edição publicada depois do ID seguinte ainda aparece
+DOSP_PASSO_MAX = 2500  # teto de IDs por rodada (~5 dias de edições)
+DOSP_UFS = {"sp": "SP", "mg": "MG", "pr": "PR", "sc": "SC", "rs": "RS"}
+_UA_DOSP = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36", "Referer": "https://www.imprensaoficialmunicipal.com.br/"}
+_DOSP_LOCATION = re.compile(r"/diario/([a-z]{2})/([a-z0-9-]+)/(\d{4}-\d{2}-\d{2})/ed-([0-9a-z]+)-(\d+)-[0-9a-f]+\.pdf")
+
+
+def municipios_dosp_sp() -> list[str]:
+    """187 municípios de SP hospedados no DiOE (piso medido em 30/10/2026)."""
+    from pathlib import Path
+
+    return json.loads((Path(__file__).with_name("dosp_municipios_sp.json")).read_text(encoding="utf-8"))
+
+
+def id_dosp(chave: str) -> int | None:
+    m = re.fullmatch(r"dosp:(\d+)", chave)
+    return int(m[1]) if m else None
+
+
+def inicio_varredura_dosp(vistos: set[str]) -> int:
+    ids = [i for i in (id_dosp(c) for c in vistos) if i is not None]
+    return max(ids) - DOSP_MARGEM_ID if ids else DOSP_ID_INICIAL
+
+
+def varrer_dosp(
+    sessao: requests.Session, acompanhamentos: list[Acompanhamento], ja_vistos: set[str], *,
+    cabeca=None, baixar_pdf=None, pausa=lambda: None, ao_ler=lambda chave: None, esgotado=lambda: False,
+) -> tuple[list[Achado], int, int]:
+    """Enumera os IDs sequenciais do DOSP (HEAD -> 301 com UF/município/data no Location), baixa só os PDFs das 5 UFs
+    ainda não lidos e cruza o NOME. A busca do site tem ~8 dias de atraso, por isso não é usada.
+    Devolve (achados, lidos, ids com publicação). `cabeca(id) -> (status, location)` e `baixar_pdf(url) -> str` são injetáveis."""
+    import base64
+    import concurrent.futures as cf
+
+    cabeca = cabeca or (
+        lambda i: (lambda r: (r.status_code, r.headers.get("location", "")))(
+            sessao.head(DOSP_EXIBE + base64.b64encode(str(i).encode()).decode(), headers=_UA_DOSP, allow_redirects=False, timeout=30)
+        )
+    )
+
+    def _pdf(url: str) -> str:
+        import io
+        import pdfplumber
+
+        r = sessao.get(url, headers=_UA_DOSP, timeout=90)
+        r.raise_for_status()
+        with pdfplumber.open(io.BytesIO(r.content)) as pdf:
+            return "\n".join((p.extract_text() or "") for p in pdf.pages)
+
+    baixar_pdf = baixar_pdf or _pdf
+    alvo = [a for a in acompanhamentos if len(normalizar(a.nome_edital).split()) >= 2]
+    if not alvo:
+        return [], 0, -1
+    inicio = inicio_varredura_dosp(ja_vistos)
+    ids = list(range(inicio, inicio + DOSP_PASSO_MAX))
+    with cf.ThreadPoolExecutor(8) as ex:
+        respostas = list(ex.map(lambda i: (i, *cabeca(i)), ids))
+    publicados = []
+    for i, status, loc in respostas:
+        m = _DOSP_LOCATION.search(loc or "") if status in (301, 302) else None
+        if m:
+            publicados.append((i, m, loc))
+    achados: list[Achado] = []
+    lidos = 0
+    for i, m, loc in publicados:
+        chave = f"dosp:{i}"
+        uf = DOSP_UFS.get(m[1])
+        if chave in ja_vistos:
+            continue
+        if esgotado():
+            break
+        if uf is None:  # outra UF: marca como visto sem baixar
+            ao_ler(chave)
+            continue
+        try:
+            texto = re.sub(r"\s+", " ", baixar_pdf(loc))
+        except (requests.RequestException, ValueError, OSError) as erro:  # PDF ruim não derruba a rodada: fica sem 'visto' e reentra enquanto estiver na margem
+            print(f"  dosp {i}: {erro}")
+            continue
+        pausa()
+        lidos += 1
+        municipio = m[2].replace("-", " ").title()
+        for ac in alvo:
+            if ac.uf not in (None, uf):
+                continue
+            achado = avaliar_em_ocorrencias(
+                ac, texto, fonte="dosp", uf=uf, chave=chave, titulo="Diário Oficial", entidade=f"Prefeitura de {municipio}",
+                data_publicacao=date.fromisoformat(m[3]), url=loc, raio_contexto=1200,
+            )
+            if achado:
+                achados.append(achado)
+        ao_ler(chave)
+    return achados, lidos, len(publicados)
 
 
 # ----------------------------------------------------------- Google News (SP)

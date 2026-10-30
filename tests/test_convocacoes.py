@@ -279,3 +279,43 @@ def test_dou_ignora_edital_de_assembleia_com_nome_de_subscritor():
 
     texto = "EDITAL DE CONVOCAÇÃO ASSEMBLEIA GERAL DE FUNDAÇÃO DE ENTIDADE SINDICAL O subscritor ALVINO CAMILO DA SILVA, médico, CONVOCA os integrantes da categoria"
     assert c.achados_dou(S(), ac, c.date(2026, 10, 20), c.date(2026, 10, 30), baixar=lambda u: texto) == []
+
+
+def test_dosp_varre_ids_baixa_so_uf_alvo_e_acha_nome():
+    from notifica_vagas_scraper.fontes import convocacoes as c
+    ac = c.Acompanhamento("a1", "u1", "Maria Aparecida Souza", None, None)
+    base = "https://dosp.com.br/diario/"
+    locs = {
+        100: (301, base + "sp/itapeva/2026-10-30/ed-3005-100-abc123.pdf"),
+        101: (403, ""),
+        102: (301, base + "ma/sao-luis/2026-10-30/ed-9-102-abc123.pdf"),
+        103: (301, base + "sp/taciba/2026-10-30/ed-7-103-abc123.pdf"),
+    }
+    baixados = []
+
+    def pdf(url):
+        baixados.append(url)
+        if "itapeva" in url:
+            return "EDITAL DE CONVOCAÇÃO Concurso Público 001/2025. Fica convocada Maria\nAparecida Souza, classificada em 3º lugar, para o cargo de Médico, prazo de 5 dias úteis."
+        return "Outro texto"
+
+    c.DOSP_ID_INICIAL = 100
+    lidas = []
+    r, lidos, publicados = c.varrer_dosp(None, [ac], set(), cabeca=lambda i: locs.get(i, (403, "")), baixar_pdf=pdf, ao_ler=lidas.append)
+    assert publicados == 3 and lidos == 2
+    assert len(r) == 1 and r[0].fonte == "dosp" and r[0].uf == "SP" and r[0].chave == "dosp:100"
+    assert not any("sao-luis" in u for u in baixados)  # MA não é alvo: não baixa
+    assert set(lidas) == {"dosp:100", "dosp:102", "dosp:103"}
+    # segunda rodada parte do maior ID visto (menos a margem) e não relê o que já foi lido
+    assert c.inicio_varredura_dosp({"dosp:100", "dosp:103"}) == 103 - c.DOSP_MARGEM_ID
+    baixados.clear()
+    c.varrer_dosp(None, [ac], set(lidas), cabeca=lambda i: locs.get(i, (403, "")), baixar_pdf=pdf)
+    assert baixados == []
+
+
+def test_nome_repetido_no_diario_avalia_todas_as_ocorrencias():
+    from notifica_vagas_scraper.fontes import convocacoes as c
+    ac = c.Acompanhamento("a1", "u1", "Marcos Henrique da Silva", None, None)
+    texto = "Pagamento a MARCOS HENRIQUE DA SILVA referente a diárias de viagem. " + "fornecedores e licitações " * 300 + "EDITAL DE CONVOCAÇÃO Processo Seletivo 001/2026. Fica convocado MARCOS HENRIQUE DA SILVA para posse no cargo de Médico em 5 dias."
+    a = c.avaliar_em_ocorrencias(ac, texto, fonte="x", uf="SP", chave="k", titulo="Diário Oficial", entidade="Prefeitura de Taciba", data_publicacao=None, url="u")
+    assert a is not None and "convocado" in a.trecho.lower()
