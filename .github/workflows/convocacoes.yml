@@ -1,0 +1,42 @@
+name: Monitor de convocações (plano Max)
+
+# Procura o nome dos assinantes Max e as convocações dos concursos que acompanham nos diários
+# oficiais de MG/SP/PR/SC/RS (AMM-MG, APM, AMP, FAMURS, CIGA). 0 Gemini, 0 Serper: não entra no
+# grupo `gemini-pesado`. Todo dia (convocação sai também no sábado); o cron do site envia os e-mails
+# às 12:30 UTC. Janela de 3 dias cobre falha de um dia. Detalhe: docs/convocacoes_monitoramento.md
+# no repo principal.
+
+on:
+  schedule:
+    - cron: "20 11 * * *"
+  workflow_dispatch:
+    inputs:
+      dias:
+        description: "Janela em dias (padrão 3)"
+        default: "3"
+
+concurrency:
+  group: convocacoes
+  cancel-in-progress: false
+
+jobs:
+  convocacoes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependências
+        run: pip install -e ".[dev]"
+
+      - name: Rodar testes
+        run: pytest tests/test_convocacoes.py
+
+      - name: Monitorar convocações
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/monitorar_convocacoes.py --dias "${{ inputs.dias || '3' }}"
