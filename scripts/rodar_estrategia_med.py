@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import sys
 import time
-from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -25,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import requests
 
+from notifica_vagas_scraper.fontes.diarios_sul import datetime_hoje_brasilia
 from notifica_vagas_scraper import db, gemini_pdf, gemini_util
 from notifica_vagas_scraper.fontes import estrategia_med as em
 from notifica_vagas_scraper.fontes import fgv
@@ -50,7 +50,7 @@ def _get(url: str, **kw) -> requests.Response:
 
 def coletar_candidatos(paginas: int, municipios_por_uf: dict[str, list[tuple[str, str]]]):
     """(item, artigo, nome_municipio, uf) dos itens do Sul abertos/futuros com edital em PDF."""
-    hoje = date.today()
+    hoje = datetime_hoje_brasilia().date()
     vistos: set[str] = set()
     saida = []
     for pagina in range(1, paginas + 1):
@@ -102,7 +102,7 @@ def processar(conn, item, artigo, municipio: str, uf: str, codigo_ibge: int, ocm
     fonte_id = db.upsert_fonte(conn, nome=FONTE_NOME, url=em.SITE_URL, tipo="oficial", uf=uf)
     orgao = extraido.get("orgao") or item.titulo
     numero_edital = extraido.get("numero_edital") or item.titulo
-    hoje = date.today()
+    hoje = datetime_hoje_brasilia().date()
     status = "futura" if artigo.inscricoes_inicio and artigo.inscricoes_inicio > hoje else "aberta"
 
     total = 0

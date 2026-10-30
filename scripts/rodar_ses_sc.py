@@ -14,13 +14,13 @@ Requer DATABASE_URL e GEMINI_API_KEY no ambiente.
 from __future__ import annotations
 
 import sys
-from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 import requests
 
+from notifica_vagas_scraper.fontes.diarios_sul import datetime_hoje_brasilia
 from notifica_vagas_scraper import db, gemini_pdf, gemini_util
 from notifica_vagas_scraper.fontes import ses_sc
 
@@ -94,7 +94,7 @@ def main() -> None:
     itens = ses_sc.listar_pss(resposta.text)
     if not itens:
         raise RuntimeError("listagem da SES-SC sem nenhum PSS: layout mudou?")
-    hoje = date.today()
+    hoje = datetime_hoje_brasilia().date()
     abertos = [i for i in itens if i.tem_medico and i.inscricoes_fim and i.inscricoes_fim >= hoje]
     print(f"{len(itens)} PSS listados, {len(abertos)} com médico e inscrição aberta.")
     if DRY_RUN:

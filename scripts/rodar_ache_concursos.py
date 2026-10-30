@@ -16,7 +16,6 @@ from __future__ import annotations
 import re
 import sys
 import time
-from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -25,6 +24,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from notifica_vagas_scraper.ufs import UFS_PROJETO
+from notifica_vagas_scraper.fontes.diarios_sul import datetime_hoje_brasilia
 from notifica_vagas_scraper import db, gemini_pdf, gemini_util
 from notifica_vagas_scraper.fontes import ache_concursos as ache
 from notifica_vagas_scraper.fontes import fgv
@@ -149,7 +149,7 @@ def main() -> None:
         codigo_por_nome_uf = {(nome, uf): codigo for codigo, nome, uf in municipios_completos}
         print(f"{len(municipios)} município(s) do projeto carregados pra match.")
 
-        hoje = date.today()
+        hoje = datetime_hoje_brasilia().date()
         # Pula edital já gravado: sem isso toda noite rebaixava cada PDF e
         # rechamava o Gemini (42-60 min, estourava o timeout do workflow).
         ja_processados = db.listar_identificadores_por_fonte_nome(conn, FONTE_NOME)
