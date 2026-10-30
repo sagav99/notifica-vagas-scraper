@@ -170,6 +170,19 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
         pausa()
     print(f"Querido Diário: {achados_qd} achado(s) para {len(acompanhamentos)} acompanhamento(s).")
 
+    # Diário Oficial da União: concursos federais (EBSERH, universidades, ministérios). Mesma busca por nome.
+    achados_dou = 0
+    for ac in acompanhamentos:
+        try:
+            novos = conv.achados_dou(sessao, ac, hoje - timedelta(days=dias), hoje)
+        except (requests.RequestException, ValueError) as erro:
+            print(f"  dou: {erro}")
+            continue
+        achados_dou += len(novos)
+        achados += novos
+        pausa()
+    print(f"DOU: {achados_dou} achado(s) para {len(acompanhamentos)} acompanhamento(s).")
+
     # Município cadastrado que o agregador do estado NÃO cobre: notícias (grátis) todo dia; Google (Serper) só em dia par, com teto.
     descobertos = [
         a for a in acompanhamentos

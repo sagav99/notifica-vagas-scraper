@@ -37,8 +37,13 @@ _BASE = f"""
         where ve.vaga_id = v.id and ve.verificado_por_ia = true
       )
       and not exists (
+        -- já postada em qualquer formato (automático ou à mão), inclusive o mesmo
+        -- cargo/município registrado em duplicata (outro id da mesma vaga)
         select 1 from public.posts_instagram p
-        where p.vaga_id = v.id and p.tipo = %(tipo)s
+        join public.vagas vp on vp.id = p.vaga_id
+        where p.status <> 'erro'
+          and (p.vaga_id = v.id
+               or (vp.municipio_id = v.municipio_id and lower(vp.cargo) = lower(v.cargo)))
       )
 """
 

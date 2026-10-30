@@ -242,3 +242,40 @@ def test_noticia_de_outro_cargo_nao_vira_aviso():
     ac = c.Acompanhamento("a", "u", "Fulano de Tal Silva", "MG", "Uberlandia")
     r = c.noticias_convocacao(S(), ac, c.date(2026, 10, 1))
     assert [x.url for x in r] == ["http://n/2"]
+
+
+def test_dou_acha_nome_em_nomeacao_federal():
+    from notifica_vagas_scraper.fontes import convocacoes as c
+    ac = c.Acompanhamento("a1", "u1", "Maria Aparecida Souza", None, None)
+    corpo = 'x"jsonArray":[{"urlTitle":"portaria-1-123","title":"PORTARIA Nº 1","pubDate":"28/10/2026"}],"y":1'
+
+    class S:
+        def get(self, url, **kw):
+            return _Resp2(corpo)
+
+    class _Resp2:
+        def __init__(self, t):
+            self.text = t
+        def raise_for_status(self):
+            pass
+
+    texto = "<p>Nomear MARIA APARECIDA SOUZA, aprovada no concurso público Edital nº 05/2025, para o cargo de Médico.</p>"
+    r = c.achados_dou(S(), ac, c.date(2026, 10, 20), c.date(2026, 10, 30), baixar=lambda u: texto)
+    assert len(r) == 1 and r[0].fonte == "dou" and r[0].url.endswith("portaria-1-123")
+    assert c.achados_dou(S(), ac, c.date(2026, 10, 20), c.date(2026, 10, 30), baixar=lambda u: "Outra pessoa") == []
+
+
+def test_dou_ignora_edital_de_assembleia_com_nome_de_subscritor():
+    from notifica_vagas_scraper.fontes import convocacoes as c
+    ac = c.Acompanhamento("a1", "u1", "Alvino Camilo da Silva", None, None)
+
+    class S:
+        def get(self, url, **kw):
+            class R:
+                text = 'x"jsonArray":[{"urlTitle":"edital-1","title":"EDITAL DE CONVOCAÇÃO","pubDate":"27/10/2026"}],"y":1'
+                def raise_for_status(self):
+                    pass
+            return R()
+
+    texto = "EDITAL DE CONVOCAÇÃO ASSEMBLEIA GERAL DE FUNDAÇÃO DE ENTIDADE SINDICAL O subscritor ALVINO CAMILO DA SILVA, médico, CONVOCA os integrantes da categoria"
+    assert c.achados_dou(S(), ac, c.date(2026, 10, 20), c.date(2026, 10, 30), baixar=lambda u: texto) == []

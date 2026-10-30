@@ -110,3 +110,25 @@ def test_main_para_no_429_sem_rejeitar_as_restantes(monkeypatch):
     revisar_vagas.main()
 
     assert aplicadas == ["Enfermeiro"]
+
+
+def test_main_nao_grava_nada_quando_nao_ha_decisao_e_para_apos_5_falhas(monkeypatch):
+    """Decisão do usuário (2026-10-14): vaga sem decisão real do Gemini fica pendente
+    (nada gravado). 5 falhas seguidas param o lote."""
+    vagas = [_vaga_minima(f"Médico {i}") for i in range(8)]
+    monkeypatch.setattr(revisar_vagas.db, "conectar", lambda: Mock())
+    monkeypatch.setattr(revisar_vagas.db, "listar_vagas_pendentes", lambda conn: vagas)
+    chamadas = []
+
+    def _decidir(dados):
+        chamadas.append(dados["cargo"])
+        return {"decisao": "pendente", "motivo": "[revisão automática] Erro ao consultar o Gemini: x"}
+
+    monkeypatch.setattr(revisar_vagas.revisao_ia, "decidir_revisao", _decidir)
+    aplicadas = []
+    monkeypatch.setattr(revisar_vagas.db, "aplicar_revisao", lambda conn, **kw: aplicadas.append(kw["vaga_id"]))
+
+    revisar_vagas.main()
+
+    assert aplicadas == []
+    assert len(chamadas) == revisar_vagas.MAX_FALHAS_SEGUIDAS

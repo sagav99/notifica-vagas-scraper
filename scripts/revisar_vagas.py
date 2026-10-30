@@ -42,6 +42,9 @@ def checar_cronologia_inscricoes(vaga: dict) -> str:
     )
 
 
+MAX_FALHAS_SEGUIDAS = 5
+
+
 def montar_dados_para_revisao(vaga: dict) -> dict:
     return {
         "municipio": f"{vaga['municipio_nome']}/{vaga['municipio_uf']}",
@@ -73,6 +76,7 @@ def main() -> None:
     try:
         vagas = db.listar_vagas_pendentes(conn)
         print(f"{len(vagas)} vaga(s) pendente(s) de revisão.")
+        falhas_seguidas = 0
         for indice, vaga in enumerate(vagas):
             if not eh_cargo_medico(vaga["cargo"]):
                 # Escopo virou só médico (rebrand Med Vagas, decisão do
@@ -103,6 +107,18 @@ def main() -> None:
                     f"{len(vagas) - indice} vaga(s) seguem pendentes pra próxima execução."
                 )
                 break
+            if resultado["decisao"] == "pendente":
+                # Falha técnica (rede, 5xx, formato): sem decisão real do Gemini a
+                # vaga NÃO é rejeitada (decisão do usuário, 2026-10-14) — fica
+                # pendente pra próxima execução. 5 falhas seguidas = problema geral
+                # (chave, API fora do ar): para o lote em vez de gastar cota à toa.
+                falhas_seguidas += 1
+                print(f"  {vaga['cargo']} (sem decisão, segue pendente) — {resultado['motivo']}")
+                if falhas_seguidas >= MAX_FALHAS_SEGUIDAS:
+                    print(f"  {falhas_seguidas} falhas seguidas — parando. {len(vagas) - indice - 1} vaga(s) seguem pendentes.")
+                    break
+                continue
+            falhas_seguidas = 0
             db.aplicar_revisao(
                 conn, vaga_id=vaga["id"], decisao=resultado["decisao"], motivo=resultado["motivo"]
             )

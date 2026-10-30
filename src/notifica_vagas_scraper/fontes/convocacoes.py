@@ -23,12 +23,13 @@ Tudo aqui é função pura ou HTTP simples; o gravar no banco fica em `scripts/m
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import ipaddress
 from urllib.parse import urlparse
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from email.utils import parsedate_to_datetime
 from urllib.parse import quote
 
@@ -476,6 +477,57 @@ def achados_querido_diario(sessao: requests.Session, ac: Acompanhamento, desde: 
                 achados.append(achado)
         if len(dados.get("gazettes", [])) < 50:
             break
+    return achados
+
+
+# ------------------------------------------------- Diário Oficial da União
+DOU_BUSCA = "https://www.in.gov.br/consulta/-/buscar/dou"
+DOU_ARTIGO = "https://www.in.gov.br/web/dou/-/"
+MAX_ARTIGOS_DOU = 20
+_RUIDO_DOU = re.compile(r"(assembleia|sindicato|licitac|pregao|dispensa de|cnpj sob|inscrito no cnpj|\bcrm/[a-z]{2} sob)")
+_UA_NAVEGADOR = {"User-Agent": "Mozilla/5.0"}  # o DOU derruba a conexão do User-Agent de bot
+
+
+def achados_dou(sessao: requests.Session, ac: Acompanhamento, desde: date, hoje: date, *, baixar=None) -> list[Achado]:
+    """Busca o NOME (frase exata) no Diário Oficial da União (concursos federais: EBSERH, universidades, ministérios).
+
+    Grátis e sem login; 1 requisição por nome (+ o download dos artigos que a busca devolveu). `baixar(url) -> str` é injetável."""
+    if len(normalizar(ac.nome_edital).split()) < 2:
+        return []
+    baixar = baixar or (lambda u: sessao.get(u, headers=_UA_NAVEGADOR, timeout=60).text)
+    sessao.get("https://www.in.gov.br/consulta", headers=_UA_NAVEGADOR, timeout=30)  # cookie de sessão: sem ele a busca volta vazia
+    r = sessao.get(
+        DOU_BUSCA,
+        params={"q": f'"{ac.nome_edital}"', "s": "todos", "sortType": 1, "delta": MAX_ARTIGOS_DOU, "exactDate": "personalizado",
+                "publishFrom": desde.strftime("%d-%m-%Y"), "publishTo": hoje.strftime("%d-%m-%Y")},
+        headers=_UA_NAVEGADOR, timeout=60,
+    )
+    r.raise_for_status()
+    corpo = r.text
+    i = corpo.find('"jsonArray":')
+    if i < 0:
+        raise ValueError("DOU: resposta sem jsonArray (layout mudou?)")
+    itens = json.JSONDecoder().raw_decode(corpo[i + len('"jsonArray":') :])[0]
+    achados: list[Achado] = []
+    for it in itens:
+        url = DOU_ARTIGO + it["urlTitle"]
+        texto = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", baixar(url)))
+        pos = nome_no_texto(ac.nome_edital, texto)
+        if pos < 0:
+            continue
+        try:
+            publicado = datetime.strptime(it["pubDate"], "%d/%m/%Y").date()
+        except (KeyError, ValueError):
+            publicado = None
+        if _RUIDO_DOU.search(normalizar(texto[max(0, pos - 800) : pos + 800])):
+            continue  # "Edital de Convocação" de assembleia/sindicato, licitação: o nome aparece como subscritor, não como convocado
+        achado = avaliar_publicacao(
+            ac, fonte="dou", uf="BR", chave=f"dou:{it['urlTitle']}", titulo=it.get("title") or "Diário Oficial da União",
+            entidade=None, data_publicacao=publicado, url=url, texto=texto[max(0, pos - 2500) : pos + 1500],
+        )
+        if achado and achado.tipo == "nome":
+            achado.municipio = None
+            achados.append(achado)
     return achados
 
 

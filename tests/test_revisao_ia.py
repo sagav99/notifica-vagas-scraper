@@ -79,46 +79,46 @@ def test_remove_cerca_de_markdown(monkeypatch):
     assert resultado["decisao"] == "aprovada"
 
 
-def test_sem_api_key_rejeita_por_padrao(monkeypatch):
+def test_sem_api_key_fica_pendente(monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     resultado = revisao_ia.decidir_revisao({"cargo": "Enfermeiro"}, api_key=None)
-    assert resultado["decisao"] == "rejeitada"
+    assert resultado["decisao"] == "pendente"
 
 
-def test_erro_de_rede_rejeita_por_padrao(monkeypatch):
+def test_erro_de_rede_fica_pendente(monkeypatch):
     def _levanta(*a, **k):
         raise revisao_ia.requests.exceptions.ConnectionError("falha de rede")
 
     monkeypatch.setattr(revisao_ia.requests, "post", _levanta)
     resultado = revisao_ia.decidir_revisao({"cargo": "Enfermeiro"}, api_key="chave-teste")
-    assert resultado["decisao"] == "rejeitada"
+    assert resultado["decisao"] == "pendente"
     assert "Erro ao consultar o Gemini" in resultado["motivo"]
 
 
-def test_json_invalido_rejeita_por_padrao(monkeypatch):
+def test_json_invalido_fica_pendente(monkeypatch):
     monkeypatch.setattr(
         revisao_ia.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto("não é json"))
     )
     resultado = revisao_ia.decidir_revisao({"cargo": "Enfermeiro"}, api_key="chave-teste")
-    assert resultado["decisao"] == "rejeitada"
+    assert resultado["decisao"] == "pendente"
 
 
-def test_decisao_fora_do_formato_rejeita_por_padrao(monkeypatch):
+def test_decisao_fora_do_formato_fica_pendente(monkeypatch):
     texto = '{"decisao": "talvez", "motivo": "não tenho certeza"}'
     monkeypatch.setattr(
         revisao_ia.requests, "post", lambda *a, **k: _RespostaFalsa(_payload_com_texto(texto))
     )
     resultado = revisao_ia.decidir_revisao({"cargo": "Enfermeiro"}, api_key="chave-teste")
-    assert resultado["decisao"] == "rejeitada"
+    assert resultado["decisao"] == "pendente"
     assert "fora do formato esperado" in resultado["motivo"]
 
 
-def test_resposta_sem_candidates_rejeita_por_padrao(monkeypatch):
+def test_resposta_sem_candidates_fica_pendente(monkeypatch):
     monkeypatch.setattr(
         revisao_ia.requests, "post", lambda *a, **k: _RespostaFalsa({"error": "algo"})
     )
     resultado = revisao_ia.decidir_revisao({"cargo": "Enfermeiro"}, api_key="chave-teste")
-    assert resultado["decisao"] == "rejeitada"
+    assert resultado["decisao"] == "pendente"
 
 
 def test_503_transitorio_tenta_de_novo_e_aprova(monkeypatch):
@@ -141,7 +141,7 @@ def test_503_transitorio_tenta_de_novo_e_aprova(monkeypatch):
     assert chamadas["n"] == 3
 
 
-def test_503_persistente_esgota_tentativas_e_rejeita(monkeypatch):
+def test_503_persistente_esgota_tentativas_e_fica_pendente(monkeypatch):
     chamadas = {"n": 0}
 
     def _post(*a, **k):
@@ -150,7 +150,7 @@ def test_503_persistente_esgota_tentativas_e_rejeita(monkeypatch):
 
     monkeypatch.setattr(revisao_ia.requests, "post", _post)
     resultado = revisao_ia.decidir_revisao({"cargo": "Enfermeiro"}, api_key="chave-teste")
-    assert resultado["decisao"] == "rejeitada"
+    assert resultado["decisao"] == "pendente"
     # cada tentativa faz 2 posts: o modelo em 503 + a troca para o outro modelo
     assert chamadas["n"] == revisao_ia.TENTATIVAS_MAX * 2
 
@@ -242,7 +242,7 @@ def test_erro_4xx_nao_tenta_de_novo(monkeypatch):
 
     monkeypatch.setattr(revisao_ia.requests, "post", _post)
     resultado = revisao_ia.decidir_revisao({"cargo": "Enfermeiro"}, api_key="chave-teste")
-    assert resultado["decisao"] == "rejeitada"
+    assert resultado["decisao"] == "pendente"
     assert chamadas["n"] == 1
 
 
@@ -258,3 +258,26 @@ def test_429_propaga_cota_esgotada_em_vez_de_rejeitar(monkeypatch):
     )
     with pytest.raises(revisao_ia.CotaGeminiEsgotadaError):
         revisao_ia.decidir_revisao({"cargo": "Médico Cardiologista"}, api_key="chave-teste")
+
+
+def test_teto_local_de_cota_propaga_em_vez_de_rejeitar(monkeypatch):
+    """Achado em produção, 2026-10-08: o teto local (`garantir_folga_diaria`) levanta
+    CotaGeminiEsgotadaError dentro da chamada, e o `except Exception` genérico o
+    transformava em "rejeitada" — 19 vagas abertas perdidas por falta de cota."""
+
+    def _levanta(*a, **k):
+        raise revisao_ia.CotaGeminiEsgotadaError("Teto de folga atingido: modelo com 400/500 chamadas hoje")
+
+    monkeypatch.setattr(revisao_ia.requests, "post", _levanta)
+    monkeypatch.setattr(revisao_ia.gemini_util, "chamar_api", _levanta)
+    with pytest.raises(revisao_ia.CotaGeminiEsgotadaError):
+        revisao_ia.decidir_revisao({"cargo": "Médico Cardiologista"}, api_key="chave-teste", modelo="m")
+
+
+def test_falha_tecnica_nunca_devolve_rejeitada(monkeypatch):
+    monkeypatch.setattr(
+        revisao_ia.requests, "post", lambda *a, **k: _RespostaFalsa({"error": "x"}, status_code=403)
+    )
+    resultado = revisao_ia.decidir_revisao({"cargo": "Médico Cardiologista"}, api_key="chave-teste")
+    assert resultado["decisao"] == "pendente"
+    assert resultado["motivo"].startswith("[revisão automática]")

@@ -303,10 +303,12 @@ def decidir_revisao(
     """dados: campos estruturados da vaga (ver
     scripts/revisar_vagas.py:montar_dados_para_revisao).
 
-    Retorna {"decisao": "aprovada"|"rejeitada", "motivo": str}. Nunca
-    levanta por resposta ambígua/erro de rede — nesses casos a decisão é
-    "rejeitada" com o motivo explicando a falha, para nunca aprovar uma
-    vaga sem uma decisão real do Gemini por trás.
+    Retorna {"decisao": "aprovada"|"rejeitada"|"incompleta"|"pendente", "motivo": str}.
+    "pendente" = falha técnica (rede, 5xx, resposta ambígua/inválida, chave
+    ausente): sem decisão real do Gemini a vaga nem é aprovada nem rejeitada,
+    segue pendente (decisão do usuário, 2026-10-14; antes virava "rejeitada",
+    o que perdeu vaga real quando a cota acabou). Cota esgotada (429 ou teto
+    local) levanta `CotaGeminiEsgotadaError` pra quem chama parar o lote.
 
     `modelo=None` (padrão) resolve dinamicamente via `quota_gemini`: ver
     docstring de `gemini_pdf.extrair_vagas_de_pdf`.
@@ -321,10 +323,7 @@ def decidir_revisao(
     """
     chave = api_key or os.environ.get("GEMINI_API_KEY")
     if not chave:
-        return {
-            "decisao": "rejeitada",
-            "motivo": "[revisão automática] GEMINI_API_KEY não configurada.",
-        }
+        return _sem_decisao("GEMINI_API_KEY não configurada.")
     modelo = modelo or quota_gemini.proximo_modelo()
     hoje = date.today()
 
@@ -350,36 +349,39 @@ def decidir_revisao(
         corpo = _chamar_gemini(body, chave=chave, modelo=modelo)
         texto = corpo["candidates"][0]["content"]["parts"][0]["text"]
         resultado = gemini_util.parsear_json_resposta(texto)
+    except CotaGeminiEsgotadaError:
+        # Teto local de folga (`quota_gemini.garantir_folga_diaria`) e 429 já
+        # convertido: a cota acabou, não a vaga. Tem que chegar em quem chama
+        # (que para o lote). Achado em produção, 2026-10-08: sem este `except`,
+        # o `except Exception` abaixo engolia o teto e rejeitava 19 vagas
+        # abertas (15 delas de São Joaquim da Barra) por falta de cota.
+        raise
     except requests.exceptions.HTTPError as exc:
         if exc.response is not None and exc.response.status_code == 429:
             # Cota esgotada não é "erro nesta vaga" — é "toda chamada
             # seguinte vai falhar igual". Propaga em vez de rejeitar, pra
             # quem chama parar o lote (ver CotaGeminiEsgotadaError).
             raise CotaGeminiEsgotadaError(str(exc)) from exc
-        return {
-            "decisao": "rejeitada",
-            "motivo": f"[revisão automática] Erro ao consultar o Gemini, rejeitada por padrão: {exc}",
-        }
+        return _sem_decisao(f"Erro ao consultar o Gemini: {exc}")
     except Exception as exc:
         # Captura ampla e intencional pro resto dos casos (rede, formato de
-        # resposta, JSON inválido): tem que virar rejeição automática,
-        # nunca uma exceção que aborta o lote inteiro de revisão — isolado
-        # o suficiente pra não repetir em toda vaga seguinte, diferente do
-        # 429 acima.
-        return {
-            "decisao": "rejeitada",
-            "motivo": f"[revisão automática] Erro ao consultar o Gemini, rejeitada por padrão: {exc}",
-        }
+        # resposta, JSON inválido): nunca uma exceção que aborta o lote
+        # inteiro de revisão. Mas também nunca uma rejeição: sem decisão real
+        # do Gemini a vaga fica pendente e é revisada na próxima execução.
+        return _sem_decisao(f"Erro ao consultar o Gemini: {exc}")
 
     decisao = resultado.get("decisao")
     motivo = resultado.get("motivo") or "Sem motivo informado pelo Gemini."
     if decisao not in ("aprovada", "rejeitada", "incompleta"):
-        return {
-            "decisao": "rejeitada",
-            "motivo": (
-                "[revisão automática] Resposta do Gemini fora do formato esperado, "
-                f"rejeitada por padrão: {resultado!r}"
-            ),
-        }
+        return _sem_decisao(f"Resposta do Gemini fora do formato esperado: {resultado!r}")
 
     return {"decisao": decisao, "motivo": motivo}
+
+
+def _sem_decisao(detalhe: str) -> dict:
+    """Falha técnica (rede, 5xx, 4xx, JSON/formato inválido, chave ausente): NÃO é
+    decisão sobre a vaga. Decisão do usuário (2026-10-14): vaga só é rejeitada por
+    decisão real do Gemini; sem ela fica `pendente` (quem chama não grava nada e
+    tenta de novo na próxima execução). O prefixo "[revisão automática]" é usado
+    por `verificar_consistencia_revisao.py` para reconhecer falha técnica."""
+    return {"decisao": "pendente", "motivo": f"[revisão automática] {detalhe}"}
