@@ -422,6 +422,59 @@ def achados_sc(publicacoes: list, acompanhamentos: list[Acompanhamento]) -> list
     return achados
 
 
+# ----------------------------------------------- Querido Diário (milhares de municípios)
+
+QD_API = "https://queridodiario.ok.org.br/api"  # api.queridodiario... falha no TLS de alguns clientes; este caminho é o mesmo serviço
+UFS_QD = {"MG", "SP", "PR", "SC", "RS"}
+MAX_PAGINAS_QD = 3
+
+
+def consulta_querido_diario(nome: str) -> str:
+    """Frase exata do nome (a API do Querido Diário respeita aspas, ao contrário do SIGPub)."""
+    return '"' + re.sub(r"\s+", " ", nome.replace('"', " ")).strip() + '"'
+
+
+def achados_querido_diario(sessao: requests.Session, ac: Acompanhamento, desde: date, *, baixar=None) -> list[Achado]:
+    """Busca o NOME do assinante (frase exata) em todos os diários que o Querido Diário indexa e confirma localmente.
+
+    Custo: 1 requisição por nome (+ o download dos diários que a busca devolveu), independente de quantos
+    municípios existam. Cobre o que o SIGPub/CIGA não cobrem (ex.: SP). `baixar(url) -> str` é injetável nos testes."""
+    if len(normalizar(ac.nome_edital).split()) < 2:
+        return []
+    baixar = baixar or (lambda u: sessao.get(u, headers={"User-Agent": USER_AGENT}, timeout=120).text[:12_000_000])
+    ufs = {ac.uf} if ac.uf else UFS_QD
+    achados: list[Achado] = []
+    vistas: set[str] = set()
+    for pagina in range(MAX_PAGINAS_QD):
+        r = sessao.get(
+            f"{QD_API}/gazettes",
+            params={"querystring": consulta_querido_diario(ac.nome_edital), "published_since": desde.isoformat(), "size": 50, "offset": pagina * 50, "sort_by": "descending_date"},
+            headers={"User-Agent": USER_AGENT}, timeout=90,
+        )
+        r.raise_for_status()
+        dados = r.json()
+        for g in dados.get("gazettes", []):
+            if g.get("state_code") not in ufs or g["txt_url"] in vistas:
+                continue
+            vistas.add(g["txt_url"])
+            texto = re.sub(r"\s+", " ", baixar(g["txt_url"]))
+            pos = nome_no_texto(ac.nome_edital, texto)
+            if pos < 0:
+                continue
+            # o diário inteiro é enorme: avalia só a janela em torno do nome (o contexto e o concurso são locais)
+            janela = texto[max(0, pos - 2500) : pos + 1500]
+            achado = avaliar_publicacao(
+                ac, fonte="querido-diario", uf=g["state_code"], chave=f"qd:{g['territory_id']}:{g['date']}:{g.get('edition') or ''}:{g['is_extra_edition']}",
+                titulo="Diário Oficial", entidade=g["territory_name"], data_publicacao=date.fromisoformat(g["date"]), url=g.get("url") or g["txt_url"], texto=janela,
+            )
+            if achado and achado.tipo == "nome":
+                achado.municipio = g["territory_name"]
+                achados.append(achado)
+        if len(dados.get("gazettes", [])) < 50:
+            break
+    return achados
+
+
 # ----------------------------------------------------------- Google News (SP)
 
 

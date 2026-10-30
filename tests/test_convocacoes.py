@@ -176,3 +176,52 @@ def test_pagina_nome_novo_na_pagina_avisa_como_nome():
 def test_cargo_de_cabecalho_de_tabela_e_ignorado():
     _, cargo = conv.detectar_concurso("ATO 1", "Convoca servidores. Cargo Efetivo Unidade de Lotação Data de posse: tabela.", -1)
     assert cargo is None
+
+
+# ---------------------------------------------------------------- Querido Diário
+
+
+class _Resp:
+    def __init__(self, dados):
+        self._d = dados
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return self._d
+
+
+class _SessaoQD:
+    def __init__(self, gazetas):
+        self.gazetas = gazetas
+
+    def get(self, url, **kw):
+        return _Resp({"gazettes": self.gazetas})
+
+
+def _gaz(uf="SP", mun="Campinas"):
+    return {"state_code": uf, "territory_id": "1", "territory_name": mun, "date": "2026-10-28", "edition": "10", "is_extra_edition": False, "txt_url": "http://x/t.txt", "url": "http://x/t.pdf"}
+
+
+def test_querido_diario_acha_nome_em_convocacao():
+    from notifica_vagas_scraper.fontes import convocacoes as c
+    ac = c.Acompanhamento("a1", "u1", "Maria Aparecida Souza", None, None)
+    texto = "x " * 3000 + "EDITAL DE CONVOCAÇÃO Nº 12/2026 Concurso Público 001/2025. Fica convocada a candidata Maria Aparecida Souza, classificada em 3º lugar, para cargo de Médico, no prazo de 5 dias úteis."
+    r = c.achados_querido_diario(_SessaoQD([_gaz()]), ac, c.date(2026, 10, 25), baixar=lambda u: texto)
+    assert len(r) == 1 and r[0].fonte == "querido-diario" and r[0].municipio == "Campinas" and r[0].uf == "SP"
+
+
+def test_querido_diario_ignora_nome_fora_de_contexto_e_uf_diferente():
+    from notifica_vagas_scraper.fontes import convocacoes as c
+    ac = c.Acompanhamento("a1", "u1", "Maria Aparecida Souza", None, None)
+    sem_contexto = "Pagamento de fornecedores: " * 200 + "Maria Aparecida Souza recebeu pagamento de diárias." 
+    assert c.achados_querido_diario(_SessaoQD([_gaz()]), ac, c.date(2026, 10, 25), baixar=lambda u: sem_contexto) == []
+    texto = "Fica convocada a candidata Maria Aparecida Souza para posse."
+    assert c.achados_querido_diario(_SessaoQD([_gaz(uf="BA")]), ac, c.date(2026, 10, 25), baixar=lambda u: texto) == []
+
+
+def test_querido_diario_nome_de_uma_palavra_nao_busca():
+    from notifica_vagas_scraper.fontes import convocacoes as c
+    ac = c.Acompanhamento("a1", "u1", "Maria", None, None)
+    assert c.achados_querido_diario(_SessaoQD([_gaz()]), ac, c.date(2026, 10, 25), baixar=lambda u: "x") == []
