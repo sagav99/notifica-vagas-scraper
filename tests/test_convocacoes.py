@@ -319,3 +319,23 @@ def test_nome_repetido_no_diario_avalia_todas_as_ocorrencias():
     texto = "Pagamento a MARCOS HENRIQUE DA SILVA referente a diárias de viagem. " + "fornecedores e licitações " * 300 + "EDITAL DE CONVOCAÇÃO Processo Seletivo 001/2026. Fica convocado MARCOS HENRIQUE DA SILVA para posse no cargo de Médico em 5 dias."
     a = c.avaliar_em_ocorrencias(ac, texto, fonte="x", uf="SP", chave="k", titulo="Diário Oficial", entidade="Prefeitura de Taciba", data_publicacao=None, url="u")
     assert a is not None and "convocado" in a.trecho.lower()
+
+
+def test_doe_sp_acha_nomeacao_com_entidades_html_e_ignora_ato_de_servidor_ativo():
+    from notifica_vagas_scraper.fontes import convocacoes as c
+    ac = c.Acompanhamento("a1", "u1", "Ligia Pereira Martins Quessada", None, None)
+
+    class S:
+        def get(self, url, **kw):
+            class R:
+                def raise_for_status(self):
+                    pass
+                def json(self):
+                    return {"items": [{"id": "x1", "title": "RESOLUÇÃO", "date": "2026-10-26T01:00:00", "slug": "executivo/a"}]}
+            return R()
+
+    nomeacao = {"title": "RESOLUÇÃO DE 23 DE OUTUBRO", "date": "2026-10-26", "slug": "executivo/a", "content": "<p>NOMEIA os abaixo indicados, habilitados em concurso p&uacute;blico, para o cargo de M&eacute;dico I: Ligia Pereira Martins Quessada, RG 42.382.339-5, vago em decorr&ecirc;ncia da exonera&ccedil;&atilde;o de Fulano.</p>"}
+    r = c.achados_doe_sp(S(), ac, c.date(2026, 10, 20), c.date(2026, 10, 30), baixar=lambda i: nomeacao)
+    assert len(r) == 1 and r[0].fonte == "doe-sp" and r[0].cargo == "Médico I"
+    ativo = {"title": "DESPACHO", "date": "2026-10-26", "slug": "executivo/b", "content": "<p>Concede licença-prêmio e quinquênio ao servidor Ligia Pereira Martins Quessada, médica da Secretaria, aposentadoria.</p>"}
+    assert c.achados_doe_sp(S(), ac, c.date(2026, 10, 20), c.date(2026, 10, 30), baixar=lambda i: ativo) == []

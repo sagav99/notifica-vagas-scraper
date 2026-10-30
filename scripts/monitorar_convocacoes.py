@@ -186,6 +186,34 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
         pausa()
     print(f"Querido Diário: {achados_qd} achado(s) para {len(acompanhamentos)} acompanhamento(s).")
 
+    # Diários oficiais ESTADUAIS (SES, hospitais e universidades estaduais, polícias): busca por nome, 1-2 chamadas por nome e UF.
+    achados_doe = 0
+    token_mg = None
+    for ac in acompanhamentos:
+        fim = hoje
+        ini = hoje - timedelta(days=dias)
+        tarefas = []
+        if "SP" in ufs:
+            tarefas.append(("doe-sp", lambda ac=ac: conv.achados_doe_sp(sessao, ac, ini, fim)))
+        if "PR" in ufs:
+            tarefas.append(("doe-pr", lambda ac=ac: conv.achados_doe_pr(sessao, ac, ini, fim)))
+        if "MG" in ufs and ac.uf in (None, "MG"):
+            try:
+                token_mg = token_mg or conv.token_doe_mg(sessao)
+                tarefas.append(("doe-mg", lambda ac=ac: conv.achados_doe_mg(sessao, ac, ini, fim, token=token_mg)))
+            except (requests.RequestException, ValueError) as erro:
+                print(f"  doe-mg: {erro}")
+        for nome_fonte, fn in tarefas:
+            try:
+                novos = fn()
+            except (requests.RequestException, ValueError, KeyError) as erro:
+                print(f"  {nome_fonte}: {erro}")
+                continue
+            achados_doe += len(novos)
+            achados += novos
+            pausa()
+    print(f"DOE estaduais (SP/MG/PR): {achados_doe} achado(s) para {len(acompanhamentos)} acompanhamento(s).")
+
     # Diário Oficial da União: concursos federais (EBSERH, universidades, ministérios). Mesma busca por nome.
     achados_dou = 0
     for ac in acompanhamentos:

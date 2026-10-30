@@ -23,8 +23,10 @@ Tudo aqui é função pura ou HTTP simples; o gravar no banco fica em `scripts/m
 from __future__ import annotations
 
 import hashlib
+import html
 import json
 import re
+import unicodedata
 import ipaddress
 from urllib.parse import urlparse
 import xml.etree.ElementTree as ET
@@ -45,7 +47,7 @@ SLUG_POR_UF = {"MG": "amm-mg", "SP": "apm", "PR": SLUG_SIGPUB["PR"], "RS": SLUG_
 TERMOS_VARREDURA = ("convocação", "nomeação", "chamada", "chamamento", "aprovados", "posse")
 MAX_PAGINAS_VARREDURA = 12
 
-_SINAL_CONVOCACAO = re.compile(r"(convoc|nomea|chamad|posse|admiss|apresent|aprovad|classificad)")
+_SINAL_CONVOCACAO = re.compile(r"(convoc|nomea|nomei|chamad|posse|admiss|apresent|aprovad|classificad|habilitad)")
 _TITULO_CONVOCACAO = re.compile(r"(convoc|nomea|chamad|posse)")
 _RUIDO_TITULO = re.compile(r"(exonera|aposenta|licenca|ferias|ata de registro|pregao|licitac|assinatura|aditivo|prorrogacao de contrato|distrato|contrato de admissao|chamada publica n)")
 
@@ -181,9 +183,20 @@ def ocorrencias_do_nome(nome: str, texto: str, limite: int = 20) -> list[int]:
     return achadas
 
 
-def avaliar_em_ocorrencias(ac: "Acompanhamento", texto: str, *, antes: int = 2500, depois: int = 1500, **kw) -> "Achado | None":
-    """Roda `avaliar_publicacao` numa janela em torno de CADA ocorrência do nome e devolve o primeiro achado do tipo 'nome'."""
+#: Diários ESTADUAIS têm milhares de atos sobre servidores já ativos (quinquênio, aposentadoria, cessão, "convoca o servidor"):
+#: só vale nomeação/posse de aprovado em concurso ou processo seletivo.
+_CONCURSO_ESTADUAL = re.compile(r"(concurso|processo seletivo|aprovad|classificad|candidat|nomear|nomeia|nomead|posse|chamamento)")
+_SERVIDOR_ATIVO = re.compile(r"(aposenta|quinquenio|licenca|ferias|cessao|abono|afastamento|gratificacao|progressao|designa)")
+
+
+def avaliar_em_ocorrencias(ac: "Acompanhamento", texto: str, *, antes: int = 2500, depois: int = 1500, estadual: bool = False, **kw) -> "Achado | None":
+    """Roda `avaliar_publicacao` numa janela em torno de CADA ocorrência do nome e devolve o primeiro achado do tipo 'nome'.
+    `estadual=True` (DOE) exige sinal de concurso/nomeação por perto e descarta atos de servidor já ativo."""
     for pos in ocorrencias_do_nome(ac.nome_edital, texto):
+        if estadual:
+            perto = normalizar(texto[max(0, pos - 400) : pos + 500])
+            if not _CONCURSO_ESTADUAL.search(perto) or _SERVIDOR_ATIVO.search(perto):
+                continue
         achado = avaliar_publicacao(ac, texto=texto[max(0, pos - antes) : pos + depois], **kw)
         if achado and achado.tipo == "nome":
             return achado
@@ -259,7 +272,7 @@ def url_materia(uf: str, codigo: str) -> str:
 _NUM_CONCURSO = re.compile(
     r"(concurso p[uú]blico|processo seletivo(?: simplificado)?|\bpss\b|edital)\s*(?:de [a-zç ]{0,20})?(?:n[ºo°.]*\s*)?(\d{1,4}\s*/\s*\d{2,4})", re.I
 )
-_CARGO = re.compile(r"cargo(?:s)?\s*(?:de|:)?\s*([A-ZÁÉÍÓÚÂÊÔÃÕÇ][^,;.\n(]{3,60})", re.I)
+_CARGO = re.compile(r"cargo(?:s)?\s*(?:de|:)?\s*([A-ZÁÉÍÓÚÂÊÔÃÕÇ][^,;:.\n(]{3,60})", re.I)
 _ENTIDADE_MUNICIPAL = re.compile(r"^(?:prefeitura|munic[ií]pio)(?: municipal)?(?: de| do| da)?\s+", re.I)
 
 
@@ -645,6 +658,128 @@ def varrer_dosp(
                 achados.append(achado)
         ao_ler(chave)
     return achados, lidos, len(publicados)
+
+
+# ----------------------------------------- Diários oficiais ESTADUAIS (SP, MG, PR): nomeações em SES, hospitais, polícias
+DOE_SP_API = "https://do-api-web-search.doe.sp.gov.br/v2"
+DOE_SP_EXECUTIVO = "ca96256b-6ca1-407f-866e-567ef9430123"
+DOE_MG_API = "https://www.jornalminasgerais.mg.gov.br/api/v1"
+DOE_PR_BUSCA = "https://dioe.pr.gov.br/busca/busca/buscar/query"
+_BUNDLE_MG: list[str] = []
+
+
+def _bundle_tls_mg() -> str:
+    """O Jornal Minas Gerais envia o intermediário errado (a Valid em vez da Sectigo R36): o navegador completa pela AIA, o Python não.
+    Mantém a verificação TLS ligada: certifi + o intermediário público da Sectigo (sectigo_dv_r36.pem, válido até 2036)."""
+    if not _BUNDLE_MG:
+        import tempfile
+        from pathlib import Path
+
+        import certifi
+
+        extra = Path(__file__).with_name("sectigo_dv_r36.pem").read_text()
+        with tempfile.NamedTemporaryFile("w", suffix=".pem", delete=False) as f:
+            f.write(Path(certifi.where()).read_text() + "\n" + extra)
+        _BUNDLE_MG.append(f.name)
+    return _BUNDLE_MG[0]
+
+
+def _variantes_de_acento(nome: str) -> list[str]:
+    """O DOE-SP é sensível a acento e às vezes publica sem ele: consulta o nome como está e sem acento."""
+    sem = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode()
+    return [nome] if sem == nome else [nome, sem]
+
+
+def achados_doe_sp(sessao: requests.Session, ac: Acompanhamento, desde: date, hoje: date, *, baixar=None) -> list[Achado]:
+    """DOE-SP (Executivo): API JSON aberta. Sem aspas (viram parte do termo); a ordem das palavras importa."""
+    if len(normalizar(ac.nome_edital).split()) < 2 or ac.uf not in (None, "SP"):
+        return []
+    ua = {"User-Agent": "Mozilla/5.0"}
+    baixar = baixar or (lambda i: sessao.get(f"{DOE_SP_API}/publications/{i}", headers=ua, timeout=60).json())
+    vistos: set[str] = set()
+    achados: list[Achado] = []
+    for variante in _variantes_de_acento(ac.nome_edital):
+        r = sessao.get(
+            f"{DOE_SP_API}/advanced-search/publications",
+            params={"Terms[0]": variante, "FromDate": desde.isoformat(), "ToDate": hoje.isoformat(), "PageNumber": 1, "PageSize": 50, "JournalId": DOE_SP_EXECUTIVO},
+            headers=ua, timeout=60,
+        )
+        r.raise_for_status()
+        for it in r.json().get("items", []):
+            if it["id"] in vistos:
+                continue
+            vistos.add(it["id"])
+            pub = baixar(it["id"])
+            texto = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", pub.get("content") or "")))
+            achado = avaliar_em_ocorrencias(
+                ac, texto, fonte="doe-sp", estadual=True, uf="SP", chave=f"doe-sp:{it['id']}", titulo=pub.get("title") or it.get("title") or "Diário Oficial do Estado",
+                entidade=None, data_publicacao=date.fromisoformat((pub.get("date") or it["date"])[:10]), url=f"https://www.doe.sp.gov.br/{pub.get('slug') or it.get('slug')}", raio_contexto=1200,
+            )
+            if achado:
+                achado.municipio = None
+                achados.append(achado)
+    return achados
+
+
+def achados_doe_pr(sessao: requests.Session, ac: Acompanhamento, desde: date, hoje: date) -> list[Achado]:
+    """DOE-PR: busca Elasticsearch aberta, frase entre aspas; cada hit traz o texto da página inteira."""
+    if len(normalizar(ac.nome_edital).split()) < 2 or ac.uf not in (None, "PR"):
+        return []
+    achados: list[Achado] = []
+    vistos: set[str] = set()
+    for variante in _variantes_de_acento(ac.nome_edital):
+        r = sessao.get(
+            f"{DOE_PR_BUSCA}/0/di:{desde.isoformat()}/df:{hoje.isoformat()}/", params={"1": "1", "q": f'"{variante}"'},
+            headers={"User-Agent": "Mozilla/5.0"}, timeout=60,
+        )
+        r.raise_for_status()
+        for h in r.json().get("hits", {}).get("hits", []):
+            if h["_id"] in vistos:
+                continue
+            vistos.add(h["_id"])
+            f = h["_source"]
+            texto = re.sub(r"\s+", " ", f.get("conteudo") or "")
+            achado = avaliar_em_ocorrencias(
+                ac, texto, fonte="doe-pr", estadual=True, uf="PR", chave=f"doe-pr:{h['_id']}", titulo="Diário Oficial do Paraná", entidade=None,
+                data_publicacao=date.fromisoformat(f["data"]), url=f"https://dioe.pr.gov.br/ (edição de {f['data']}, página {f.get('pagina')})", raio_contexto=1200,
+            )
+            if achado:
+                achado.municipio = None
+                achados.append(achado)
+    return achados
+
+
+def token_doe_mg(sessao: requests.Session) -> str:
+    r = sessao.post(f"{DOE_MG_API}/Autenticacao/Autenticar", json={}, headers={"User-Agent": "Mozilla/5.0"}, timeout=30, verify=_bundle_tls_mg())
+    r.raise_for_status()
+    token = r.json().get("dados")
+    if not token:
+        raise ValueError("DOE-MG: autenticação anônima não devolveu token (fluxo mudou?)")
+    return token
+
+
+def achados_doe_mg(sessao: requests.Session, ac: Acompanhamento, desde: date, hoje: date, *, token: str) -> list[Achado]:
+    """Jornal Minas Gerais (Diário do Executivo): frase exata, acento ignorado; o resultado já traz o trecho em torno do nome."""
+    if len(normalizar(ac.nome_edital).split()) < 2 or ac.uf not in (None, "MG"):
+        return []
+    r = sessao.get(
+        f"{DOE_MG_API}/Pesquisa/PesquisarJornaisPaginados",
+        params={"DataPublicacaoInicial": desde.isoformat(), "DataPublicacaoFinal": hoje.isoformat(), "TextoPesquisa": f'"{ac.nome_edital}"', "DiarioExecutivo": "true",
+                "DiarioMunicipios": "false", "DiarioTerceiros": "false", "EdicaoExtra": "false", "PaginaAtual": 1, "TamanhoPagina": 50},
+        headers={"User-Agent": "Mozilla/5.0", "Authorization": f"Bearer {token}"}, timeout=60, verify=_bundle_tls_mg(),
+    )
+    r.raise_for_status()
+    achados: list[Achado] = []
+    for it in r.json().get("dados", []):
+        achado = avaliar_em_ocorrencias(
+            ac, re.sub(r"\s+", " ", it.get("textoResultado") or ""), fonte="doe-mg", estadual=True, uf="MG", chave=f"doe-mg:{it['idJornal']}:{it.get('pagina')}",
+            titulo="Diário Oficial de Minas Gerais", entidade=None, data_publicacao=date.fromisoformat(it["dataPublicacao"][:10]),
+            url="https://www.jornalminasgerais.mg.gov.br/", raio_contexto=1200,
+        )
+        if achado:
+            achado.municipio = None
+            achados.append(achado)
+    return achados
 
 
 # ----------------------------------------------------------- Google News (SP)
