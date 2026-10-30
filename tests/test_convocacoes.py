@@ -225,3 +225,20 @@ def test_querido_diario_nome_de_uma_palavra_nao_busca():
     from notifica_vagas_scraper.fontes import convocacoes as c
     ac = c.Acompanhamento("a1", "u1", "Maria", None, None)
     assert c.achados_querido_diario(_SessaoQD([_gaz()]), ac, c.date(2026, 10, 25), baixar=lambda u: "x") == []
+
+
+def test_noticia_de_outro_cargo_nao_vira_aviso():
+    from notifica_vagas_scraper.fontes import convocacoes as c
+    xml = b"<rss><channel><item><title>Prefeitura de Uberlandia convoca 12 aprovados em concurso para oficial administrativo</title><link>http://n/1</link></item><item><title>Prefeitura de Uberlandia convoca medicos aprovados em concurso</title><link>http://n/2</link></item></channel></rss>"
+
+    class S:
+        def get(self, *a, **k):
+            class R:
+                content = xml
+                def raise_for_status(self):
+                    pass
+            return R()
+
+    ac = c.Acompanhamento("a", "u", "Fulano de Tal Silva", "MG", "Uberlandia")
+    r = c.noticias_convocacao(S(), ac, c.date(2026, 10, 1))
+    assert [x.url for x in r] == ["http://n/2"]

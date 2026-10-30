@@ -29,6 +29,7 @@ from notifica_vagas_scraper import db
 from notifica_vagas_scraper.fontes import convocacoes as conv
 from notifica_vagas_scraper.fontes import diarios_sul
 
+ORCAMENTO_S = 60 * 55  # leitura do SIGPub para antes do timeout do workflow (90 min); QD, SC e gravação ainda cabem
 PAUSA_S = 0.5
 #: Teto de consultas Serper por execução (só município cadastrado sem diário agregador, em dia par).
 LIMITE_SERPER_POR_EXECUCAO = 6
@@ -112,7 +113,7 @@ def gravar(conn, achados: list[conv.Achado]) -> int:
     return novos
 
 
-def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=lambda chave: None, conn=None, estado: dict | None = None) -> list[conv.Achado]:
+def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=lambda chave: None, conn=None, estado: dict | None = None, esgotado=lambda: False) -> list[conv.Achado]:
     estado = estado if estado is not None else {}
     estado.setdefault("cobertura", {})
     hoje = diarios_sul.datetime_hoje_brasilia().date()
@@ -127,12 +128,14 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
             estado["cobertura"][uf] = {diarios_sul.normalizar(n): n for n in conv.municipios_cobertos_sigpub(sessao, uf)}
         except requests.RequestException as erro:
             print(f"  cobertura {uf}: {erro}")
-        novos, lidas, cartoes = conv.processar_sigpub(sessao, uf, lista_dias, acompanhamentos, vistos, pausa=pausa, ao_ler=ao_ler)
+        novos, lidas, cartoes = conv.processar_sigpub(sessao, uf, lista_dias, acompanhamentos, vistos, pausa=pausa, ao_ler=ao_ler, esgotado=esgotado)
         print(f"{uf}: {cartoes} publicação(ões) na varredura, {lidas} nova(s) lida(s), {len(novos)} achado(s).")
         # Dia útil sem NENHUMA publicação de convocação num diário desse porte = diário quebrou/mudou: falhar alto.
         if cartoes == 0 and any(d.weekday() < 5 for d in lista_dias[-2:]) and uf in ("MG", "PR", "RS"):
             raise RuntimeError(f"{uf}: varredura do diário devolveu 0 publicações em dia útil (HTML do SIGPub mudou ou diário fora do ar?)")
         achados += novos
+        if esgotado():
+            print(f"  AVISO: orçamento de tempo esgotado em {uf}; o restante será lido na próxima rodada.")
 
     if "SC" in ufs:  # sempre: a cobertura de SC vem dos ZIPs do CIGA
         zips = diarios_sul.listar_zips_sc(dias, hoje=hoje, sessao=sessao)
@@ -241,7 +244,8 @@ def main() -> None:
             vistos = carregar_vistos(conn)
             lidos: list[str] = []
             estado: dict = {}
-            achados = coletar(acompanhamentos, args.dias, ufs, vistos, ao_ler=lidos.append, conn=conn, estado=estado)
+            inicio = time.monotonic()
+            achados = coletar(acompanhamentos, args.dias, ufs, vistos, ao_ler=lidos.append, conn=conn, estado=estado, esgotado=lambda: time.monotonic() - inicio > ORCAMENTO_S)
             novos = 0
             if not args.dry_run:
                 novos = gravar(conn, achados)

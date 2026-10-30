@@ -358,7 +358,7 @@ def varrer_dia_sigpub(sessao: requests.Session, uf: str, dia: date, *, pausa=lam
 
 def processar_sigpub(
     sessao: requests.Session, uf: str, dias: list[date], acompanhamentos: list[Acompanhamento],
-    ja_vistos: set[str], *, pausa=lambda: None, ao_ler=lambda chave: None,
+    ja_vistos: set[str], *, pausa=lambda: None, ao_ler=lambda chave: None, esgotado=lambda: False,
 ) -> tuple[list[Achado], int, int]:
     """Lê as publicações novas dos `dias` e cruza com os acompanhamentos. Devolve (achados, lidas, cartões vistos);
     cartões = 0 em dia útil indica que o diário mudou de HTML ou saiu do ar (o chamador deve falhar alto)."""
@@ -369,12 +369,16 @@ def processar_sigpub(
     lidas = 0
     cartoes_total = 0
     for dia in dias:
+        if esgotado():  # orçamento de tempo acabou: o que não foi lido fica sem 'visto' e entra na próxima rodada
+            break
         cartoes_dia = varrer_dia_sigpub(sessao, uf, dia, pausa=pausa)
         cartoes_total += len(cartoes_dia)
         for c in cartoes_dia:
             chave = f"sigpub-{uf.lower()}:{c.codigo}"
             if chave in ja_vistos:
                 continue
+            if esgotado():
+                break
             texto = texto_da_materia(sessao, uf, c.codigo)
             pausa()
             lidas += 1
@@ -500,6 +504,9 @@ def noticias_convocacao(sessao: requests.Session, ac: Acompanhamento, desde: dat
             continue
         base = normalizar(titulo)
         if normalizar(ac.municipio) not in base or not _TITULO_CONVOCACAO.search(base):
+            continue
+        # a notícia tem que falar do cargo do assinante (sem cargo informado, de médico): senão 'convoca 12 oficiais' vira aviso
+        if not cargo_no_texto(ac.cargo or "médico", titulo) and not (ac.concurso and numero_edital_no_texto(ac.concurso, titulo)):
             continue
         publicado = None
         if item.findtext("pubDate"):
