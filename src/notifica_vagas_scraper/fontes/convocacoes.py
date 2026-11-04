@@ -416,7 +416,12 @@ def processar_sigpub(
                 continue
             if esgotado():
                 break
-            texto = texto_da_materia(sessao, uf, c.codigo)
+            try:
+                texto = texto_da_materia(sessao, uf, c.codigo)
+            except requests.RequestException as erro:  # timeout de UMA matéria não derruba a rodada: sem 'visto', reentra depois
+                print(f"  {uf} {c.codigo}: {erro.__class__.__name__}")
+                pausa()
+                continue
             pausa()
             lidas += 1
             if ao_texto:
