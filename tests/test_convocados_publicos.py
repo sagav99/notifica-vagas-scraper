@@ -104,3 +104,24 @@ def test_edicao_inteira_acha_convocados_pela_janela_do_edital():
     pub = {"uf": "MG", "entidade": "Prefeitura de Itajubá", "titulo": "Diário Oficial", "texto": "ato qualquer " * 200 + LISTA + " outro ato " * 200, "edicao_inteira": True}
     r = cp.processar_publicacao([VAGA], pub)
     assert r is not None and {c.nome for c in r[2]} >= {"Maria da Silva Santos", "José Augusto Pereira"}
+
+
+TABELA = ("ANEXO ÚNICO Nº CARGO CLASSIF. CANDIDATO MODALIDADE 01 Psicólogo 3º Luciana Aparecida de Morais Brígido Ampla "
+          "Nº CARGO CLASSIF. CANDIDATO MODALIDADE 01 Médico Clínico Geral 2º Rafael Antunes de Souza Ampla 02 Médico Clínico Geral 3º Paula Reis Mendes Ampla "
+          "Nº CARGO CLASSIF. CANDIDATO MODALIDADE 01 Técnico de Enfermagem 2º Carla Ribeiro de Araújo Ampla")
+
+
+def test_tabela_cargo_antes_do_nome_so_pega_medico():
+    nomes = [c.nome for c in cp.extrair_convocados(TABELA)]
+    assert nomes == ["Rafael Antunes de Souza", "Paula Reis Mendes"]
+
+
+def test_tabela_cargo_depois_do_nome_e_desclassificados():
+    texto = ("39 CAMILA GONZAGA CARVALHO Farmacêutico 20/10/2026 DESCLASSIFICADO 3 ALEXANDRA DE OLIVEIRA LOPES Médico Neurologista 20/10/2026 DESCLASSIFICADO "
+             "5 BRUNO TAVARES ROCHA Médico Psiquiatra 28/10/2026 CONVOCADO 7 JULIA NUNES PAIVA Fisioterapeuta 28/10/2026 CONVOCADO")
+    nomes = [c.nome for c in cp.extrair_convocados(texto)]
+    assert nomes == ["Bruno Tavares Rocha"]
+
+
+def test_titulo_de_desclassificados_nao_casa_vaga():
+    assert cp.casar_vaga([VAGA], uf="MG", entidade="Prefeitura de Itajubá", titulo="24ª CONVOCAÇÃO - DESCLASSIFICADOS E DESISTENTES", texto=LISTA) is None

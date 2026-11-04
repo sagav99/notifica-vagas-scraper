@@ -110,6 +110,30 @@ def _classificacao_antes(texto: str, inicio: int) -> int | None:
     return int(achado[1]) if achado and int(achado[1]) <= 3000 else None
 
 
+_PROFISSAO = re.compile(
+    r"(m[eé]dic|enfermeir|farmac|fisioterap|odont|psic[oó]log|nutri|assistente|t[eé]cnic|auxiliar|motorista|professor|agente|engenheir|advogad|contador|fonoaudi|"
+    r"terapeut|veterin|bioqu|biom[eé]d|almoxarif|vigia|operador|pedreiro|servente|merendeir|cozinheir|secret[aá]ri|escritur|analista|fiscal|guarda|monitor|zelador|"
+    r"recepcion|digitador|bibliotec|arquitet|assessor|entrevistador|educador|instrutor|coveiro|eletricista|mec[aâ]nic|pintor|topograf|jardineir|lavador)", re.I,
+)
+_SITUACAO_NEGATIVA = re.compile(r"(desclassific|desist|elimin|inapt|reprovad|exonera|dispensad|indeferid|n[aã]o compareceu|faltou)", re.I)
+
+
+def _cargo_da_linha(plano: str, inicio: int, fim: int) -> str | None:
+    """Cargo na MESMA linha da tabela: logo depois do nome ('NOME Médico Neurologista ...') ou logo antes do número/ordinal
+    ('Médico 2º Nome Ampla'). Só vale se parece profissão; sem isso o contexto mais amplo decide."""
+    depois = plano[fim : fim + 55].strip(" -–:|")
+    achado = _PROFISSAO.search(depois[:45])
+    if achado and achado.start() <= 6:
+        return depois[:45]
+    antes = plano[max(0, inicio - 60) : inicio]
+    ate_ordinal = re.sub(r"\s*\d{1,4}\s*[ºo°ª]?\s*[\-–.)]?\s*$", "", antes)
+    trecho = ate_ordinal[-45:]
+    achado = None
+    for achado in _PROFISSAO.finditer(trecho):
+        pass
+    return trecho[achado.start():] if achado else None
+
+
 def _cargo_do_trecho(texto: str, pos: int) -> str | None:
     """Último 'cargo de X' citado nos 1500 caracteres anteriores ao nome."""
     ultimo = None
@@ -170,8 +194,15 @@ def extrair_convocados(texto: str, *, exigir_medico: bool = True) -> list[Convoc
             continue
         if _ASSINATURA.match(normalizar(plano[fim : fim + 40])):
             continue
-        cargo = _cargo_do_trecho(plano, inicio)
-        if exigir_medico and ((cargo and "medic" not in normalizar(cargo)) or (not cargo and not _contexto_medico(plano, inicio))):
+        if _SITUACAO_NEGATIVA.search(plano[fim : fim + 70]):
+            continue  # lista de desclassificados/desistentes/eliminados não é convocação
+        cargo = _cargo_da_linha(plano, inicio, fim) or _cargo_do_trecho(plano, inicio)
+        linha = _cargo_da_linha(plano, inicio, fim)
+        if exigir_medico and (
+            (cargo and "medic" not in normalizar(cargo))
+            or (not cargo and not _contexto_medico(plano, inicio))
+            or (not linha and cargo is None)
+        ):
             continue
         vistos.add(norm)
         saida.append(Convocado(_capitalizar(nome), norm, _cpf_depois(plano, fim), _classificacao_antes(plano, inicio), cargo))
@@ -193,7 +224,7 @@ def _maiuscula_lista(plano: str, inicio: int) -> bool:
 def casar_vaga(vagas: list[VagaAlvo], *, uf: str, entidade: str | None, titulo: str, texto: str) -> VagaAlvo | None:
     """Vaga cadastrada a que a publicação se refere: mesmo município e UF, título/ato de convocação, e o
     número do concurso (ou, sem número na vaga, o cargo de médico) aparece no texto."""
-    if not entidade or _RUIDO_TITULO.search(normalizar(titulo)):
+    if not entidade or _RUIDO_TITULO.search(normalizar(titulo)) or _SITUACAO_NEGATIVA.search(titulo):
         return None
     if not _TITULO_CONVOCACAO.search(normalizar(titulo)) and not re.search(r"convoc|chamamento|nomea", normalizar(texto[:600])):
         return None
