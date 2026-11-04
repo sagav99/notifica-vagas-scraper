@@ -70,3 +70,37 @@ def test_convoca_candidata_em_texto_corrido():
 def test_lixo_de_portaria_e_tabela_nao_vira_nome():
     texto = "cargo de Médico: 1º Fica Nomeado 2º Apto Apto 3º Hbs Ag 4º Samuel Pissinati Nicacio"
     assert [c.nome for c in cp.extrair_convocados(texto)] == ["Samuel Pissinati Nicacio"]
+
+
+class _Resp:
+    def __init__(self, dados, status=200):
+        self.dados, self.status_code = dados, status
+
+    def json(self):
+        return self.dados
+
+
+def test_querido_diario_entrega_edicao_inteira_e_pula_erro_e_visto():
+    from datetime import date
+
+    vagas = [cp.VagaAlvo("v1", "MG", "Itajubá", "Médico PSF", "01/2025", None, 3132404), cp.VagaAlvo("v2", "MG", "Lavras", "Médico", "02/2025", None, 3138203)]
+    gazetas = {3132404: [{"territory_id": "3132404", "date": "2026-11-03", "edition": "10", "is_extra_edition": False, "txt_url": "http://x/1.txt", "territory_name": "Itajubá", "state_code": "MG"}]}
+
+    def get(cod):
+        return _Resp({}, 503) if cod == 3138203 else _Resp({"gazettes": gazetas[cod]})
+
+    recebidos, lidos = [], []
+    r = cp.varrer_querido_diario(None, vagas, date(2026, 11, 1), set(), ao_texto=recebidos.append, ao_ler=lidos.append, get=get, baixar=lambda u: LISTA)
+    assert r == (1, 1, 1)  # 1 consultado, 1 diário lido, 1 município com erro
+    assert recebidos[0]["edicao_inteira"] and recebidos[0]["entidade"] == "Prefeitura de Itajubá"
+    assert lidos == ["qd:3132404:2026-11-03:10:False"]
+    # já visto: não baixa de novo
+    recebidos.clear()
+    cp.varrer_querido_diario(None, vagas, date(2026, 11, 1), set(lidos), ao_texto=recebidos.append, get=get, baixar=lambda u: LISTA)
+    assert recebidos == []
+
+
+def test_edicao_inteira_acha_convocados_pela_janela_do_edital():
+    pub = {"uf": "MG", "entidade": "Prefeitura de Itajubá", "titulo": "Diário Oficial", "texto": "ato qualquer " * 200 + LISTA + " outro ato " * 200, "edicao_inteira": True}
+    r = cp.processar_publicacao([VAGA], pub)
+    assert r is not None and {c.nome for c in r[2]} >= {"Maria da Silva Santos", "José Augusto Pereira"}

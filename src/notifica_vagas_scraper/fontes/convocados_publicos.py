@@ -81,6 +81,7 @@ class VagaAlvo:
     cargo: str
     numero_edital: str | None
     banca: str | None = None
+    codigo_ibge: int | None = None
 
 
 def nome_valido(candidato: str) -> bool:
@@ -244,3 +245,53 @@ def processar_publicacao(vagas: list[VagaAlvo], pub: dict) -> tuple[VagaAlvo, st
                 if r:
                     return r
     return None
+
+
+QD_API = "https://queridodiario.ok.org.br/api"
+QD_BUSCA_CONVOCACAO = "convocação (médico OR médica OR medicina)"
+
+
+def varrer_querido_diario(
+    sessao, vagas: list[VagaAlvo], desde: date, ja_vistos: set[str], *, ao_texto, ao_ler=lambda chave: None,
+    get=None, baixar=None, pausa=lambda: None, esgotado=lambda: False, user_agent: str = "Mozilla/5.0",
+) -> tuple[int, int, int]:
+    """Busca direcionada: para cada município que tem concurso médico nosso, pede ao Querido Diário (filtrando pelo
+    código IBGE) os diários com 'convocação' + médico desde `desde` e entrega cada um novo a `ao_texto` como edição
+    inteira. Cobre prefeituras fora dos agregadores (SIGPub/CIGA/DOSP). Erro/5xx do serviço = pula o município.
+    Devolve (municípios consultados, diários lidos, municípios com erro). `get`/`baixar` são injetáveis nos testes."""
+    import requests
+
+    get = get or (lambda cod: sessao.get(f"{QD_API}/gazettes", params={"territory_ids": cod, "querystring": QD_BUSCA_CONVOCACAO, "published_since": desde.isoformat(), "size": 20, "sort_by": "descending_date"}, headers={"User-Agent": user_agent}, timeout=60))
+    baixar = baixar or (lambda u: sessao.get(u, headers={"User-Agent": user_agent}, timeout=120).text[:12_000_000])
+    municipios: dict[int, list[VagaAlvo]] = {}
+    for v in vagas:
+        if v.codigo_ibge:
+            municipios.setdefault(v.codigo_ibge, []).append(v)
+    consultados = lidos = erros = 0
+    for cod, vs in municipios.items():
+        if esgotado():
+            break
+        try:
+            r = get(cod)
+            if r.status_code >= 400:
+                raise requests.RequestException(f"http {r.status_code}")
+            gazetas = r.json().get("gazettes", [])
+        except (requests.RequestException, ValueError):
+            erros += 1
+            pausa()
+            continue
+        consultados += 1
+        for g in gazetas:
+            chave = f"qd:{g['territory_id']}:{g['date']}:{g.get('edition') or ''}:{g.get('is_extra_edition')}"
+            if chave in ja_vistos:
+                continue
+            try:
+                texto = re.sub(r"\s+", " ", baixar(g["txt_url"]))
+            except requests.RequestException:
+                continue
+            lidos += 1
+            ao_texto(dict(fonte="querido-diario", uf=g.get("state_code") or vs[0].uf, chave=chave, titulo="Diário Oficial", entidade=f"Prefeitura de {g.get('territory_name') or vs[0].municipio}",
+                          data_publicacao=date.fromisoformat(g["date"]), url=g.get("url") or g["txt_url"], texto=texto, edicao_inteira=True))
+            ao_ler(chave)
+        pausa()
+    return consultados, lidos, erros

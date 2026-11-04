@@ -88,14 +88,14 @@ def carregar_vagas_alvo(conn) -> list[pub.VagaAlvo]:
     """Vagas médicas aprovadas (qualquer status: concurso encerrado continua convocando). Uma por concurso+município."""
     with conn.cursor() as cur:
         cur.execute(
-            "select v.id::text, m.uf, m.nome, v.cargo, v.numero_edital, v.banca_organizadora from public.vagas v "
+            "select v.id::text, m.uf, m.nome, v.cargo, v.numero_edital, v.banca_organizadora, m.codigo_ibge from public.vagas v "
             "join public.municipios m on m.codigo_ibge = v.municipio_id "
             "where v.revisao_status = 'aprovada' and v.categoria_saude = 'medico' and m.uf in ('MG','SP','PR','SC','RS')"
         )
         linhas = cur.fetchall()
     unicas: dict[tuple, pub.VagaAlvo] = {}
-    for id_, uf, municipio, cargo, edital, banca in linhas:
-        unicas.setdefault((uf, municipio, edital or cargo), pub.VagaAlvo(id_, uf, municipio, cargo, edital, banca))
+    for id_, uf, municipio, cargo, edital, banca, ibge in linhas:
+        unicas.setdefault((uf, municipio, edital or cargo), pub.VagaAlvo(id_, uf, municipio, cargo, edital, banca, ibge))
     return list(unicas.values())
 
 
@@ -151,7 +151,7 @@ def gravar(conn, achados: list[conv.Achado]) -> int:
     return novos
 
 
-def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=lambda chave: None, conn=None, estado: dict | None = None, esgotado=lambda: False, ao_texto=None, ao_ponto=lambda achados: None) -> list[conv.Achado]:
+def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=lambda chave: None, conn=None, estado: dict | None = None, esgotado=lambda: False, ao_texto=None, ao_ponto=lambda achados: None, vagas_alvo=()) -> list[conv.Achado]:
     estado = estado if estado is not None else {}
     estado.setdefault("cobertura", {})
     hoje = diarios_sul.datetime_hoje_brasilia().date()
@@ -226,6 +226,14 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
         achados += novos
         pausa()
     print(f"Querido Diário: {achados_qd} achado(s) para {len(acompanhamentos)} acompanhamento(s).")
+
+    # Convocados públicos: Querido Diário filtrado pelos municípios dos concursos médicos que temos (fora dos agregadores).
+    if ao_texto is not None and vagas_alvo:
+        cons, lidos_qd, erros_qd = pub.varrer_querido_diario(
+            sessao, list(vagas_alvo), hoje - timedelta(days=dias), vistos, ao_texto=ao_texto, ao_ler=ao_ler, pausa=pausa, esgotado=esgotado, user_agent=diarios_sul.USER_AGENT,
+        )
+        print(f"Querido Diário (concursos médicos): {cons} município(s) consultado(s), {lidos_qd} diário(s) lido(s), {erros_qd} erro(s).")
+        ao_ponto(achados)
 
     # Diários oficiais ESTADUAIS (SES, hospitais e universidades estaduais, polícias): busca por nome, 1-2 chamadas por nome e UF.
     achados_doe = 0
@@ -398,7 +406,7 @@ def main() -> None:
                 gravar_vistos(conn, lidos)
                 lidos.clear()
 
-            achados = coletar(acompanhamentos, args.dias, ufs, vistos, ao_ler=lidos.append, conn=conn, estado=estado, esgotado=lambda: time.monotonic() - inicio > ORCAMENTO_S, ao_texto=ao_texto, ao_ponto=ponto)
+            achados = coletar(acompanhamentos, args.dias, ufs, vistos, ao_ler=lidos.append, conn=conn, estado=estado, esgotado=lambda: time.monotonic() - inicio > ORCAMENTO_S, ao_texto=ao_texto, ao_ponto=ponto, vagas_alvo=vagas_alvo)
             if args.dry_run:
                 for p, vaga, concurso, cs in publicos:
                     print(f"[convocados] {p['uf']} {vaga.municipio} | {concurso} | {p['titulo'][:60]} | {len(cs)} nome(s): {', '.join(c.nome for c in cs[:4])} | {p['url']}")
