@@ -42,13 +42,22 @@ _NAO_NOME = {
     "regulacao", "vigilancia", "epidemiologica", "sanitaria", "assistencia", "social", "educacao", "obras", "fazenda",
     "administracao", "finanzas", "financas", "planejamento", "gestao", "contrato", "convenio", "empresa", "ltda",
     "associacao", "fundacao", "instituto", "consorcio", "camara", "vereadores", "tribunal", "justica", "janeiro",
+    "fica", "ficam", "nomeado", "nomeada", "nomeados", "exonerado", "exonerada", "apta", "apto", "inapta", "inapto", "classificado",
+    "classificada", "aprovado", "aprovada", "aprovados", "reprovado", "reprovada", "eliminado", "eliminada", "habilitado", "habilitada",
+    "para", "na", "no", "nas", "nos", "com", "por", "em", "que", "ao", "aos", "as", "os", "um", "uma", "sua", "seu", "seus",
+    "pessoa", "pessoas", "condicao", "afro", "afrodescendente", "autodeclaracao", "aferição", "afericao", "veracidade", "inscrita",
+    "inscrito", "descendente", "negro", "negra", "preto", "parda", "pardo", "indigena", "quilombola", "etnia", "raca", "cor",
+    "apresentar", "apresentacao", "comparecer", "comparecimento", "local", "horario", "horarios", "endereco", "telefone",
+    "email", "site", "sera", "serao", "deve", "devera", "deverao", "conforme", "item", "itens", "subitem", "artigo", "art",
     "fevereiro", "marco", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 }
 _PALAVRA_CAPS = r"[A-ZÁÉÍÓÚÂÊÔÃÕÇÜ]{2,}"
 _NOME_CAPS = re.compile(rf"\b{_PALAVRA_CAPS}(?:\s+(?:(?:DA|DE|DO|DAS|DOS|E)\s+)?{_PALAVRA_CAPS}){{1,6}}\b")
 _PALAVRA_TITULO = r"[A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõçü]{1,}"
 _NOME_TITULO = re.compile(rf"\b{_PALAVRA_TITULO}(?:\s+(?:(?:da|de|do|das|dos|e)\s+)?{_PALAVRA_TITULO}){{1,6}}\b")
-_ROTULO = re.compile(r"(?:nome|candidato|candidata|convocado|convocada|sr\.?|sra\.?)\s*[:\-–]\s*$", re.I)
+_ROTULO = re.compile(
+    r"(?:(?:nome|candidato|candidata|convocado|convocada|sr\.?|sra\.?)\s*[:\-–]\s*|convoca(?:r|-se)?\s+(?:o|a|os|as)?\s*(?:senhor[a]?|sr[a]?\.?|candidat[oa]s?|aprovad[oa]s?)\s+)$", re.I
+)
 _CPF = re.compile(r"(?<![\d*])(?:\d{3}|\*{3})[.\s]?(?:\d{3}|\*{3})[.\s]?(?:\d{3}|\*{3})[-\s]?(?:\d{2}|\*{2})(?![\d*])")
 _ORDINAL_ANTES = re.compile(r"(\d{1,4})\s*[ºo°ª]\s*[\-–.:)]?\s*$")
 _NUMERO_ANTES = re.compile(r"(?:^|\s)(\d{1,4})\s*[\-–.)]?\s*$")
@@ -81,7 +90,7 @@ def nome_valido(candidato: str) -> bool:
         return False
     if any(p in _NAO_NOME for p in partes):
         return False
-    if any(len(p) < 2 for p in miolo) or partes[0] in _CONECTORES or partes[-1] in _CONECTORES:
+    if any(len(p) < 3 for p in miolo) or len(set(miolo)) < len(miolo) or partes[0] in _CONECTORES or partes[-1] in _CONECTORES:
         return False
     return True
 
@@ -106,6 +115,16 @@ def _cargo_do_trecho(texto: str, pos: int) -> str | None:
     for achado in _SECAO_CARGO.finditer(texto[max(0, pos - 1500) : pos]):
         ultimo = achado[1].strip(" -–:.,")
     return ultimo[:70] if ultimo else None
+
+
+_MEDICO_NAO_CARGO = re.compile(r"(exame|junta|per[ií]cia|avalia[cç][aã]o|atestado|laudo|assist[eê]ncia|tratamento|acompanhamento|plano)\s+m[eé]dic", re.I)
+
+
+def _contexto_medico(plano: str, pos: int) -> bool:
+    """Há menção a cargo de médico (não 'exame médico', 'junta médica'...) nos 1500 caracteres antes do nome?"""
+    janela = plano[max(0, pos - 1500) : pos]
+    sem_ruido = _MEDICO_NAO_CARGO.sub(" ", janela)
+    return bool(re.search(r"\bm[eé]dic[oa]s?\b", sem_ruido, re.I))
 
 
 def extrair_convocados(texto: str, *, exigir_medico: bool = True) -> list[Convocado]:
@@ -151,7 +170,7 @@ def extrair_convocados(texto: str, *, exigir_medico: bool = True) -> list[Convoc
         if _ASSINATURA.match(normalizar(plano[fim : fim + 40])):
             continue
         cargo = _cargo_do_trecho(plano, inicio)
-        if exigir_medico and cargo and "medic" not in normalizar(cargo):
+        if exigir_medico and ((cargo and "medic" not in normalizar(cargo)) or (not cargo and not _contexto_medico(plano, inicio))):
             continue
         vistos.add(norm)
         saida.append(Convocado(_capitalizar(nome), norm, _cpf_depois(plano, fim), _classificacao_antes(plano, inicio), cargo))

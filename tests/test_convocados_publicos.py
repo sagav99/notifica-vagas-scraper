@@ -50,3 +50,23 @@ def test_outro_municipio_nao_casa():
 def test_edital_diferente_nao_casa():
     texto = LISTA.replace("01/2025", "07/2024")
     assert cp.casar_vaga([VAGA], uf="MG", entidade="Prefeitura de Itajubá", titulo="Convocação", texto=texto) is None
+
+
+def test_frase_de_aviso_nao_vira_nome():
+    texto = "cargo de Médico: 1º Para Aferição da Veracidade da Autodeclaração de Pessoa Inscrita Na Condição de Afro"
+    assert cp.extrair_convocados(texto) == []
+
+
+def test_sem_cargo_citado_exige_contexto_de_medico():
+    tabela = "Edital 06.001.2026 exame médico admissional\n1 Sthefany Camilly da Cruz de Lima Assistente de Alunos"
+    assert cp.extrair_convocados(tabela) == []
+
+
+def test_convoca_candidata_em_texto_corrido():
+    texto = "Concurso para Médico Clínico Geral. CONVOCA a candidata Maria Aparecida Souza Lima para comparecer"
+    assert [c.nome for c in cp.extrair_convocados(texto)] == ["Maria Aparecida Souza Lima"]
+
+
+def test_lixo_de_portaria_e_tabela_nao_vira_nome():
+    texto = "cargo de Médico: 1º Fica Nomeado 2º Apto Apto 3º Hbs Ag 4º Samuel Pissinati Nicacio"
+    assert [c.nome for c in cp.extrair_convocados(texto)] == ["Samuel Pissinati Nicacio"]
