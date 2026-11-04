@@ -5,8 +5,9 @@ name: Postar vaga do dia no Instagram
 # Ver docs/roadmap_instagram_diario.md no repo notifica-vagas.
 
 on:
-  schedule:
-    - cron: "30 22 * * 1-5" # 19h30 Brasília (22h30 UTC)
+  # Post diário automático DESATIVADO (usuário, 2026-11-04). Para religar: descomentar o schedule.
+  # schedule:
+  #   - cron: "30 22 * * 1-5" # 19h30 Brasília (22h30 UTC)
   workflow_dispatch:
     inputs:
       dry_run:
