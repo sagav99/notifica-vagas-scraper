@@ -151,7 +151,7 @@ def gravar(conn, achados: list[conv.Achado]) -> int:
     return novos
 
 
-def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=lambda chave: None, conn=None, estado: dict | None = None, esgotado=lambda: False, ao_texto=None) -> list[conv.Achado]:
+def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=lambda chave: None, conn=None, estado: dict | None = None, esgotado=lambda: False, ao_texto=None, ao_ponto=lambda achados: None) -> list[conv.Achado]:
     estado = estado if estado is not None else {}
     estado.setdefault("cobertura", {})
     hoje = diarios_sul.datetime_hoje_brasilia().date()
@@ -172,6 +172,7 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
         if cartoes == 0 and any(d.weekday() < 5 for d in lista_dias[-2:]) and uf in ("MG", "PR", "RS"):
             raise RuntimeError(f"{uf}: varredura do diário devolveu 0 publicações em dia útil (HTML do SIGPub mudou ou diário fora do ar?)")
         achados += novos
+        ao_ponto(achados)  # grava o que já foi lido: um cancelamento do workflow não perde a rodada
         if esgotado():
             print(f"  AVISO: orçamento de tempo esgotado em {uf}; o restante será lido na próxima rodada.")
 
@@ -189,6 +190,7 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
             achados_sc += len(novos)
             achados += novos
         print(f"SC: {len(zips)} ZIP(s) do CIGA, {achados_sc} achado(s).")
+        ao_ponto(achados)
         if not zips and any(d.weekday() < 5 for d in lista_dias[-2:]):
             raise RuntimeError("SC: nenhum ZIP do CIGA na janela em dia útil (CKAN mudou ou fora do ar?)")
 
@@ -202,6 +204,7 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
             ja = {(a.acompanhamento_id, diarios_sul.normalizar(a.municipio or ""), a.data_publicacao) for a in achados}
             novos = [a for a in novos if (a.acompanhamento_id, diarios_sul.normalizar(a.municipio or ""), a.data_publicacao) not in ja]
             achados += novos
+            ao_ponto(achados)
             print(f"DOSP: {publicados} edição(ões) na varredura de IDs, {lidos} nova(s) lida(s), {len(novos)} achado(s).")
             if publicados == 0 and lista_dias[-1].weekday() < 5:
                 raise RuntimeError("DOSP: nenhuma edição nos IDs varridos em dia útil (exibe_do.php mudou, ID inicial velho demais ou fora do ar?)")
@@ -383,20 +386,30 @@ def main() -> None:
                     publicos.append((p, *r))
 
             inicio = time.monotonic()
-            achados = coletar(acompanhamentos, args.dias, ufs, vistos, ao_ler=lidos.append, conn=conn, estado=estado, esgotado=lambda: time.monotonic() - inicio > ORCAMENTO_S, ao_texto=ao_texto)
-            novos = 0
-            convocados_novos = 0
+            gravados = {"convocados": 0, "avisos": 0}
+
+            def ponto(achados_parciais: list) -> None:
+                """Grava (idempotente) o que já foi lido; só depois marca os vistos. Em dry-run não grava."""
+                if args.dry_run:
+                    return
+                gravados["convocados"] += gravar_convocados(conn, publicos)
+                publicos.clear()
+                gravados["avisos"] += gravar(conn, achados_parciais)
+                gravar_vistos(conn, lidos)
+                lidos.clear()
+
+            achados = coletar(acompanhamentos, args.dias, ufs, vistos, ao_ler=lidos.append, conn=conn, estado=estado, esgotado=lambda: time.monotonic() - inicio > ORCAMENTO_S, ao_texto=ao_texto, ao_ponto=ponto)
             if args.dry_run:
                 for p, vaga, concurso, cs in publicos:
                     print(f"[convocados] {p['uf']} {vaga.municipio} | {concurso} | {p['titulo'][:60]} | {len(cs)} nome(s): {', '.join(c.nome for c in cs[:4])} | {p['url']}")
+            ponto(achados)
+            novos = gravados["avisos"]
+            convocados_novos = gravados["convocados"]
             if not args.dry_run:
-                convocados_novos = gravar_convocados(conn, publicos)
-                novos = gravar(conn, achados)
-                gravar_vistos(conn, lidos)  # só depois de gravar os avisos: falha no meio = relê no dia seguinte
                 gravar_paginas(conn, estado.get("paginas", {}))
                 gravar_cobertura(conn, estado.get("cobertura", {}))
             execucao.detalhe = (
-                f"acompanhamentos={len(acompanhamentos)} lidas={len(lidos)} achados={len(achados)} avisos_novos={novos} "
+                f"acompanhamentos={len(acompanhamentos)} achados={len(achados)} avisos_novos={novos} "
                 f"descobertos={estado.get('descobertos', 0)} serper={estado.get('serper', 0)} convocados_publicos={convocados_novos}"
             )
             print(execucao.detalhe)
