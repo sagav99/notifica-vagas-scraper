@@ -180,9 +180,13 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
         zips = diarios_sul.listar_zips_sc(dias, hoje=hoje, sessao=sessao)
         achados_sc = 0
         for z in zips:
-            resposta = sessao.get(z["url"], headers={"User-Agent": diarios_sul.USER_AGENT}, timeout=180)
-            resposta.raise_for_status()
-            pubs_sc = diarios_sul.ler_zip_sc(resposta.content)
+            try:
+                resposta = sessao.get(z["url"], headers={"User-Agent": diarios_sul.USER_AGENT}, timeout=180)
+                resposta.raise_for_status()
+                pubs_sc = diarios_sul.ler_zip_sc(resposta.content)
+            except (requests.RequestException, OSError, ValueError) as erro:  # um ZIP lento do CIGA não derruba a rodada: tenta o próximo
+                print(f"  ciga-sc {z.get('url', '')[-40:]}: {erro.__class__.__name__}")
+                continue
             for pub in pubs_sc:
                 if pub.municipio:
                     estado["cobertura"].setdefault("SC", {})[diarios_sul.normalizar(pub.municipio)] = pub.municipio
