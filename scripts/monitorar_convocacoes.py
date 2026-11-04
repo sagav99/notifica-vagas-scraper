@@ -14,6 +14,7 @@ Requer DATABASE_URL (exceto com --exemplo-json, que usa acompanhamentos de arqui
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -27,12 +28,14 @@ import requests
 
 from notifica_vagas_scraper import db
 from notifica_vagas_scraper.fontes import convocacoes as conv
+from notifica_vagas_scraper.fontes import convocados_publicos as pub
 from notifica_vagas_scraper.fontes import diarios_sul
 
 ORCAMENTO_S = 60 * 55  # leitura do SIGPub para antes do timeout do workflow (90 min); QD, SC e gravação ainda cabem
 PAUSA_S = 0.5
 #: Teto de consultas Serper por execução (só município cadastrado sem diário agregador, em dia par).
 LIMITE_SERPER_POR_EXECUCAO = 6
+LIMITE_SERPER_NOME_POR_EXECUCAO = 10  # nomes de assinantes Max; cada nome só 1x a cada 7 dias
 
 
 def pausa() -> None:
@@ -81,6 +84,41 @@ def gravar_cobertura(conn, cobertura: dict[str, dict[str, str]]) -> None:
     conn.commit()
 
 
+def carregar_vagas_alvo(conn) -> list[pub.VagaAlvo]:
+    """Vagas médicas aprovadas (qualquer status: concurso encerrado continua convocando). Uma por concurso+município."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "select v.id::text, m.uf, m.nome, v.cargo, v.numero_edital, v.banca_organizadora from public.vagas v "
+            "join public.municipios m on m.codigo_ibge = v.municipio_id "
+            "where v.revisao_status = 'aprovada' and v.categoria_saude = 'medico' and m.uf in ('MG','SP','PR','SC','RS')"
+        )
+        linhas = cur.fetchall()
+    unicas: dict[tuple, pub.VagaAlvo] = {}
+    for id_, uf, municipio, cargo, edital, banca in linhas:
+        unicas.setdefault((uf, municipio, edital or cargo), pub.VagaAlvo(id_, uf, municipio, cargo, edital, banca))
+    return list(unicas.values())
+
+
+def gravar_convocados(conn, resultados: list[tuple[dict, pub.VagaAlvo, str | None, list[pub.Convocado]]]) -> int:
+    novos = 0
+    with conn.cursor() as cur:
+        for p, vaga, concurso, convocados in resultados:
+            cur.execute(
+                "insert into public.convocacao_publicacoes (chave, fonte, uf, municipio, titulo, data_publicacao, url) "
+                "values (%s, %s, %s, %s, %s, %s, %s) on conflict (chave) do nothing",
+                (p["chave"], p["fonte"], p["uf"], vaga.municipio, p["titulo"][:300], p.get("data_publicacao"), p.get("url")),
+            )
+            for c in convocados:
+                cur.execute(
+                    "insert into public.convocacao_convocados (publicacao_chave, vaga_id, uf, municipio, concurso, cargo, nome, nome_norm, cpf_publicado, classificacao, data_publicacao, url) "
+                    "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) on conflict (publicacao_chave, nome_norm) do nothing",
+                    (p["chave"], vaga.id, p["uf"], vaga.municipio, concurso, c.cargo or vaga.cargo, c.nome, c.nome_norm, c.cpf_publicado, c.classificacao, p.get("data_publicacao"), p.get("url")),
+                )
+                novos += cur.rowcount
+    conn.commit()
+    return novos
+
+
 def carregar_vistos(conn, dias: int = 30) -> set[str]:
     with conn.cursor() as cur:
         cur.execute("select chave from public.convocacao_vistos where visto_em > now() - make_interval(days => %s)", (dias,))
@@ -113,7 +151,7 @@ def gravar(conn, achados: list[conv.Achado]) -> int:
     return novos
 
 
-def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=lambda chave: None, conn=None, estado: dict | None = None, esgotado=lambda: False) -> list[conv.Achado]:
+def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=lambda chave: None, conn=None, estado: dict | None = None, esgotado=lambda: False, ao_texto=None) -> list[conv.Achado]:
     estado = estado if estado is not None else {}
     estado.setdefault("cobertura", {})
     hoje = diarios_sul.datetime_hoje_brasilia().date()
@@ -128,7 +166,7 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
             estado["cobertura"][uf] = {diarios_sul.normalizar(n): n for n in conv.municipios_cobertos_sigpub(sessao, uf)}
         except requests.RequestException as erro:
             print(f"  cobertura {uf}: {erro}")
-        novos, lidas, cartoes = conv.processar_sigpub(sessao, uf, lista_dias, acompanhamentos, vistos, pausa=pausa, ao_ler=ao_ler, esgotado=esgotado)
+        novos, lidas, cartoes = conv.processar_sigpub(sessao, uf, lista_dias, acompanhamentos, vistos, pausa=pausa, ao_ler=ao_ler, esgotado=esgotado, ao_texto=ao_texto)
         print(f"{uf}: {cartoes} publicação(ões) na varredura, {lidas} nova(s) lida(s), {len(novos)} achado(s).")
         # Dia útil sem NENHUMA publicação de convocação num diário desse porte = diário quebrou/mudou: falhar alto.
         if cartoes == 0 and any(d.weekday() < 5 for d in lista_dias[-2:]) and uf in ("MG", "PR", "RS"):
@@ -147,7 +185,7 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
             for pub in pubs_sc:
                 if pub.municipio:
                     estado["cobertura"].setdefault("SC", {})[diarios_sul.normalizar(pub.municipio)] = pub.municipio
-            novos = conv.achados_sc(pubs_sc, acompanhamentos)
+            novos = conv.achados_sc(pubs_sc, acompanhamentos, ao_texto=ao_texto)
             achados_sc += len(novos)
             achados += novos
         print(f"SC: {len(zips)} ZIP(s) do CIGA, {achados_sc} achado(s).")
@@ -157,7 +195,7 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
     # DOSP/DiOE (~187 municípios de SP + alguns de MG/PR/SC/RS): varredura por ID, texto lido localmente.
     if ufs & {"SP", "MG", "PR", "SC", "RS"}:
         try:
-            novos, lidos, publicados = conv.varrer_dosp(sessao, acompanhamentos, vistos, pausa=pausa, ao_ler=ao_ler, esgotado=esgotado)
+            novos, lidos, publicados = conv.varrer_dosp(sessao, acompanhamentos, vistos, pausa=pausa, ao_ler=ao_ler, esgotado=esgotado, ao_texto=ao_texto)
         except (requests.RequestException, ValueError) as erro:
             print(f"  dosp: {erro}")
         else:
@@ -265,6 +303,31 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
                 db.registrar_consulta_serper(conn, origem="convocacao", consulta=consulta, resultados=len(novos))
     estado["serper"] = gastos
 
+    # Google pelo NOME do assinante: 1 consulta por nome a cada 7 dias (teto por execução; hash no log, nunca o nome).
+    if chave_serper and conn is not None:
+        gastos_nome = 0
+        for ac in acompanhamentos:
+            if gastos_nome >= LIMITE_SERPER_NOME_POR_EXECUCAO or esgotado():
+                break
+            rotulo = "nome:" + hashlib.sha1(diarios_sul.normalizar(ac.nome_edital).encode()).hexdigest()[:10]
+            with conn.cursor() as cur:
+                cur.execute("select 1 from public.serper_consultas_log where origem = 'convocacao' and consulta = %s and executado_em > now() - interval '7 days' limit 1", (rotulo,))
+                if cur.fetchone():
+                    continue
+            resposta = sessao.post(
+                "https://google.serper.dev/search",
+                headers={"X-API-KEY": chave_serper, "Content-Type": "application/json"},
+                json={"q": conv.consulta_google_nome(ac), "num": 10, "hl": "pt", "gl": "br", "tbs": "qdr:w"},
+                timeout=30,
+            )
+            gastos_nome += 1
+            novos = conv.achados_google_nome(ac, resposta.json()) if resposta.ok else []
+            achados += novos
+            db.registrar_consulta_serper(conn, origem="convocacao", consulta=rotulo, resultados=len(novos), erro=None if resposta.ok else f"http {resposta.status_code}")
+            pausa()
+        estado["serper"] = estado.get("serper", 0) + gastos_nome
+        print(f"Google por nome: {gastos_nome} consulta(s).")
+
     # Página de convocações informada pelo assinante (qualquer município, inclusive os não cobertos).
     com_pagina = [a for a in acompanhamentos if a.url_convocacoes and conv.url_de_pagina_valida(a.url_convocacoes)]
     memoria = carregar_paginas(conn, sorted({a.url_convocacoes for a in com_pagina})) if conn is not None else {}
@@ -310,17 +373,31 @@ def main() -> None:
             vistos = carregar_vistos(conn)
             lidos: list[str] = []
             estado: dict = {}
+            vagas_alvo = carregar_vagas_alvo(conn)
+            print(f"{len(vagas_alvo)} concurso(s) médico(s) cadastrado(s) para o PDF de convocados.")
+            publicos: list = []
+
+            def ao_texto(p: dict) -> None:
+                r = pub.processar_publicacao(vagas_alvo, p)
+                if r:
+                    publicos.append((p, *r))
+
             inicio = time.monotonic()
-            achados = coletar(acompanhamentos, args.dias, ufs, vistos, ao_ler=lidos.append, conn=conn, estado=estado, esgotado=lambda: time.monotonic() - inicio > ORCAMENTO_S)
+            achados = coletar(acompanhamentos, args.dias, ufs, vistos, ao_ler=lidos.append, conn=conn, estado=estado, esgotado=lambda: time.monotonic() - inicio > ORCAMENTO_S, ao_texto=ao_texto)
             novos = 0
+            convocados_novos = 0
+            if args.dry_run:
+                for p, vaga, concurso, cs in publicos:
+                    print(f"[convocados] {p['uf']} {vaga.municipio} | {concurso} | {p['titulo'][:60]} | {len(cs)} nome(s): {', '.join(c.nome for c in cs[:4])} | {p['url']}")
             if not args.dry_run:
+                convocados_novos = gravar_convocados(conn, publicos)
                 novos = gravar(conn, achados)
                 gravar_vistos(conn, lidos)  # só depois de gravar os avisos: falha no meio = relê no dia seguinte
                 gravar_paginas(conn, estado.get("paginas", {}))
                 gravar_cobertura(conn, estado.get("cobertura", {}))
             execucao.detalhe = (
                 f"acompanhamentos={len(acompanhamentos)} lidas={len(lidos)} achados={len(achados)} avisos_novos={novos} "
-                f"descobertos={estado.get('descobertos', 0)} serper={estado.get('serper', 0)}"
+                f"descobertos={estado.get('descobertos', 0)} serper={estado.get('serper', 0)} convocados_publicos={convocados_novos}"
             )
             print(execucao.detalhe)
         finally:

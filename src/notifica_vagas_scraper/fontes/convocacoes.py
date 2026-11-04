@@ -395,12 +395,12 @@ def varrer_dia_sigpub(sessao: requests.Session, uf: str, dia: date, *, pausa=lam
 
 def processar_sigpub(
     sessao: requests.Session, uf: str, dias: list[date], acompanhamentos: list[Acompanhamento],
-    ja_vistos: set[str], *, pausa=lambda: None, ao_ler=lambda chave: None, esgotado=lambda: False,
+    ja_vistos: set[str], *, pausa=lambda: None, ao_ler=lambda chave: None, esgotado=lambda: False, ao_texto=None,
 ) -> tuple[list[Achado], int, int]:
-    """Lê as publicações novas dos `dias` e cruza com os acompanhamentos. Devolve (achados, lidas, cartões vistos);
+    """`ao_texto(dict)` recebe cada publicação lida (convocados públicos). Lê as publicações novas dos `dias` e cruza com os acompanhamentos. Devolve (achados, lidas, cartões vistos);
     cartões = 0 em dia útil indica que o diário mudou de HTML ou saiu do ar (o chamador deve falhar alto)."""
     alvo = [a for a in acompanhamentos if a.uf in (None, uf)]
-    if not alvo:
+    if not alvo and ao_texto is None:
         return [], 0, -1
     achados: list[Achado] = []
     lidas = 0
@@ -419,6 +419,8 @@ def processar_sigpub(
             texto = texto_da_materia(sessao, uf, c.codigo)
             pausa()
             lidas += 1
+            if ao_texto:
+                ao_texto(dict(fonte=f"sigpub-{uf.lower()}", uf=uf, chave=chave, titulo=c.titulo, entidade=c.entidade, data_publicacao=c.data_circulacao, url=url_materia(uf, c.codigo), texto=texto))
             for ac in alvo:
                 achado = avaliar_publicacao(
                     ac, fonte=f"sigpub-{uf.lower()}", uf=uf, chave=chave, titulo=c.titulo, entidade=c.entidade,
@@ -441,17 +443,19 @@ def _data_iso(texto: str) -> date | None:
     return date(int(achado[3]), int(achado[2]), int(achado[1])) if achado else None
 
 
-def achados_sc(publicacoes: list, acompanhamentos: list[Acompanhamento]) -> list[Achado]:
+def achados_sc(publicacoes: list, acompanhamentos: list[Acompanhamento], ao_texto=None) -> list[Achado]:
     """Cruza as publicações do CIGA (já lidas de um ZIP) com os acompanhamentos de SC (ou sem UF)."""
     alvo = [a for a in acompanhamentos if a.uf in (None, "SC")]
     achados: list[Achado] = []
-    if not alvo:
+    if not alvo and ao_texto is None:
         return achados
     for pub in publicacoes:
         base = normalizar(f"{pub.titulo} {pub.categoria}")
         if not re.search(r"(convoc|nomea|chamad|posse|admiss|concurs|processo seletivo|resultado|homolog|edital)", base):
             continue
         texto = texto_limpo(pub.texto)
+        if ao_texto:
+            ao_texto(dict(fonte="ciga-sc", uf="SC", chave=f"ciga-sc:{pub.codigo}", titulo=pub.titulo, entidade=pub.municipio, data_publicacao=_data_iso(pub.data), url=pub.link or pub.url, texto=texto))
         for ac in alvo:
             achado = avaliar_publicacao(
                 ac, fonte="ciga-sc", uf="SC", chave=f"ciga-sc:{pub.codigo}", titulo=pub.titulo, entidade=pub.municipio,
@@ -591,7 +595,7 @@ def inicio_varredura_dosp(vistos: set[str]) -> int:
 
 def varrer_dosp(
     sessao: requests.Session, acompanhamentos: list[Acompanhamento], ja_vistos: set[str], *,
-    cabeca=None, baixar_pdf=None, pausa=lambda: None, ao_ler=lambda chave: None, esgotado=lambda: False,
+    cabeca=None, baixar_pdf=None, pausa=lambda: None, ao_ler=lambda chave: None, esgotado=lambda: False, ao_texto=None,
 ) -> tuple[list[Achado], int, int]:
     """Enumera os IDs sequenciais do DOSP (HEAD -> 301 com UF/município/data no Location), baixa só os PDFs das 5 UFs
     ainda não lidos e cruza o NOME. A busca do site tem ~8 dias de atraso, por isso não é usada.
@@ -616,7 +620,7 @@ def varrer_dosp(
 
     baixar_pdf = baixar_pdf or _pdf
     alvo = [a for a in acompanhamentos if len(normalizar(a.nome_edital).split()) >= 2]
-    if not alvo:
+    if not alvo and ao_texto is None:
         return [], 0, -1
     inicio = inicio_varredura_dosp(ja_vistos)
     ids = list(range(inicio, inicio + DOSP_PASSO_MAX))
@@ -647,6 +651,8 @@ def varrer_dosp(
         pausa()
         lidos += 1
         municipio = m[2].replace("-", " ").title()
+        if ao_texto:
+            ao_texto(dict(fonte="dosp", uf=uf, chave=chave, titulo="Diário Oficial", entidade=f"Prefeitura de {municipio}", data_publicacao=date.fromisoformat(m[3]), url=loc, texto=texto, edicao_inteira=True))
         for ac in alvo:
             if ac.uf not in (None, uf):
                 continue
@@ -987,4 +993,24 @@ def achados_google(ac: Acompanhamento, resposta: dict) -> list[Achado]:
             continue
         chave = "google:" + hashlib.sha1(link.encode()).hexdigest()[:16]
         achados.append(Achado(ac.id, "concurso", chave, "google", ac.uf or "", ac.municipio, titulo, None, link, (item.get("snippet") or titulo)[:420]))
+    return achados
+
+
+def consulta_google_nome(ac: Acompanhamento) -> str:
+    """Busca do NOME completo (decisão do usuário, 2026-11-04: tentar mesmo o teste de 2026-10-29 tendo dado 0/9)."""
+    return f'"{ac.nome_edital}" (convocação OR nomeação OR convocado OR aprovados) concurso'
+
+
+def achados_google_nome(ac: Acompanhamento, resposta: dict) -> list[Achado]:
+    """Resultado orgânico cujo título/resumo traz o nome completo E sinal de convocação (domínios de rede social/vaga fora)."""
+    achados: list[Achado] = []
+    for item in resposta.get("organic", []) or []:
+        link, titulo = item.get("link") or "", item.get("title") or ""
+        if not link or any(d in link for d in _DOMINIOS_RUIDO):
+            continue
+        base = f"{titulo} {item.get('snippet') or ''}"
+        if nome_no_texto(ac.nome_edital, base) < 0 or not _SINAL_CONVOCACAO.search(normalizar(base)):
+            continue
+        chave = "google-nome:" + hashlib.sha1(link.encode()).hexdigest()[:16]
+        achados.append(Achado(ac.id, "nome", chave, "google", ac.uf or "", ac.municipio, titulo, None, link, (item.get("snippet") or titulo)[:420]))
     return achados

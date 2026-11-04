@@ -362,3 +362,15 @@ def test_doe_rs_baixa_pdf_do_dia_uma_vez_e_acha_nome():
     assert n == 1 and len(r) == 1 and r[0].uf == "RS" and lidas == ["doe-rs:2026-10-29:77"]
     r2, n2 = c.achados_doe_rs(S(), [ac], [c.date(2026, 10, 29)], set(lidas), baixar_pdf=lambda i: texto)
     assert n2 == 0 and r2 == []
+
+
+def test_google_por_nome_exige_nome_completo_e_sinal_de_convocacao():
+    ac = conv.Acompanhamento(id="a", usuario_id="u", nome_edital="Maria da Silva Santos", uf=None, municipio=None)
+    resposta = {"organic": [
+        {"link": "https://diario.exemplo.gov.br/x", "title": "Convocação 05/2026", "snippet": "convoca a candidata Maria da Silva Santos, classificada em 3º"},
+        {"link": "https://outro.gov.br/y", "title": "Convocação", "snippet": "convoca Maria Santos"},
+        {"link": "https://instagram.com/p/1", "title": "Maria da Silva Santos convocada", "snippet": "convocada"},
+    ]}
+    achados = conv.achados_google_nome(ac, resposta)
+    assert [a.url for a in achados] == ["https://diario.exemplo.gov.br/x"]
+    assert achados[0].tipo == "nome"
