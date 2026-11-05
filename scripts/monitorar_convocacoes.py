@@ -242,7 +242,7 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
     # Convocados públicos: Querido Diário filtrado pelos municípios dos concursos médicos que temos (fora dos agregadores).
     if ao_texto is not None and vagas_alvo:
         cons, lidos_qd, erros_qd = pub.varrer_querido_diario(
-            sessao, list(vagas_alvo), hoje - timedelta(days=dias), vistos, ao_texto=ao_texto, ao_ler=ao_ler, pausa=pausa, esgotado=esgotado, user_agent=diarios_sul.USER_AGENT,
+            sessao, list(vagas_alvo), hoje - timedelta(days=dias), vistos, ao_texto=ao_texto, ao_ler=ao_ler, pausa=pausa, esgotado=esgotado, user_agent=diarios_sul.USER_AGENT, ao_ponto=lambda: ao_ponto(achados),
         )
         print(f"Querido Diário (concursos médicos): {cons} município(s) consultado(s), {lidos_qd} diário(s) lido(s), {erros_qd} erro(s).")
         ao_ponto(achados)
@@ -401,7 +401,10 @@ def main() -> None:
             publicos: list = []
 
             def ao_texto(p: dict) -> None:
+                t0 = time.monotonic()
                 r = pub.processar_publicacao(vagas_alvo, p)
+                if time.monotonic() - t0 > 3:
+                    print(f"  lenta ({time.monotonic() - t0:.0f}s, {len(p['texto'])} caracteres): {p['uf']} {p['titulo'][:80]}", flush=True)
                 if r:
                     publicos.append((p, *r))
                 # Checkpoint só dos convocados (idempotente, `on conflict do nothing`): se o runner for derrubado no meio da varredura, o que já foi extraído não se perde.

@@ -278,13 +278,38 @@ def processar_publicacao(vagas: list[VagaAlvo], pub: dict) -> tuple[VagaAlvo, st
     return None
 
 
+def com_limite(fn, segundos: float):
+    """Roda `fn()` com limite de tempo TOTAL: o timeout do `requests` vale entre pedaços de resposta, e uma API que vai pingando
+    (Querido Diário) segura a rodada para sempre. A thread abandonada é daemon e morre com o processo."""
+    import threading
+
+    import requests
+
+    saida: dict = {}
+
+    def alvo() -> None:
+        try:
+            saida["valor"] = fn()
+        except BaseException as erro:  # repassa o erro original ao chamador
+            saida["erro"] = erro
+
+    t = threading.Thread(target=alvo, daemon=True)
+    t.start()
+    t.join(segundos)
+    if t.is_alive():
+        raise requests.Timeout(f"sem resposta completa em {segundos:.0f}s")
+    if "erro" in saida:
+        raise saida["erro"]
+    return saida["valor"]
+
+
 QD_API = "https://queridodiario.ok.org.br/api"
 QD_BUSCA_CONVOCACAO = "convocação (médico OR médica OR medicina)"
 
 
 def varrer_querido_diario(
     sessao, vagas: list[VagaAlvo], desde: date, ja_vistos: set[str], *, ao_texto, ao_ler=lambda chave: None,
-    get=None, baixar=None, pausa=lambda: None, esgotado=lambda: False, user_agent: str = "Mozilla/5.0",
+    get=None, baixar=None, pausa=lambda: None, esgotado=lambda: False, user_agent: str = "Mozilla/5.0", ao_ponto=lambda: None,
 ) -> tuple[int, int, int]:
     """Busca direcionada: para cada município que tem concurso médico nosso, pede ao Querido Diário (filtrando pelo
     código IBGE) os diários com 'convocação' + médico desde `desde` e entrega cada um novo a `ao_texto` como edição
@@ -292,27 +317,61 @@ def varrer_querido_diario(
     Devolve (municípios consultados, diários lidos, municípios com erro). `get`/`baixar` são injetáveis nos testes."""
     import requests
 
-    get = get or (lambda cod: sessao.get(f"{QD_API}/gazettes", params={"territory_ids": cod, "querystring": QD_BUSCA_CONVOCACAO, "published_since": desde.isoformat(), "size": 20, "sort_by": "descending_date"}, headers={"User-Agent": user_agent}, timeout=60))
-    baixar = baixar or (lambda u: sessao.get(u, headers={"User-Agent": user_agent}, timeout=120).text[:12_000_000])
+    baixar = baixar or (lambda u: com_limite(lambda: sessao.get(u, headers={"User-Agent": user_agent}, timeout=120).text[:12_000_000], 120))
     municipios: dict[int, list[VagaAlvo]] = {}
     for v in vagas:
         if v.codigo_ibge:
             municipios.setdefault(v.codigo_ibge, []).append(v)
-    consultados = lidos = erros = 0
-    for cod, vs in municipios.items():
-        if esgotado():
-            break
-        try:
-            r = get(cod)
+
+    def buscar_lote(codigos: list[int]) -> list[dict]:
+        """Uma chamada (paginada) para vários municípios: a API leva ~15 s por chamada, então 1 por município (220) estourava o tempo da rodada."""
+        gazetas: list[dict] = []
+        for pagina in range(5):
+            r = com_limite(lambda: sessao.get(
+                f"{QD_API}/gazettes",
+                params=[("territory_ids", c) for c in codigos] + [("querystring", QD_BUSCA_CONVOCACAO), ("published_since", desde.isoformat()), ("size", 100), ("offset", pagina * 100), ("sort_by", "descending_date")],
+                headers={"User-Agent": user_agent}, timeout=45,
+            ), 60)
             if r.status_code >= 400:
                 raise requests.RequestException(f"http {r.status_code}")
-            gazetas = r.json().get("gazettes", [])
+            dados = r.json()
+            gazetas += dados.get("gazettes", [])
+            if len(gazetas) >= dados.get("total_gazettes", 0) or not dados.get("gazettes"):
+                break
+        return gazetas
+
+    if get is not None:  # testes: uma chamada por município, como antes
+        lotes = [([cod], None) for cod in municipios]
+    else:
+        todos = list(municipios)
+        lotes = [(todos[k : k + 10], None) for k in range(0, len(todos), 10)]
+    consultados = lidos = erros = 0
+    falhas_seguidas = 0
+    for codigos, _ in lotes:
+        if esgotado():
+            break
+        if falhas_seguidas >= 3:  # serviço fora do ar (520/503/timeout): não gasta a rodada inteira esperando; reentra na próxima
+            print("  querido-diario: 3 lotes seguidos com erro, fase interrompida", flush=True)
+            break
+        try:
+            if get is not None:
+                r = get(codigos[0])
+                if r.status_code >= 400:
+                    raise requests.RequestException(f"http {r.status_code}")
+                gazetas = r.json().get("gazettes", [])
+            else:
+                gazetas = buscar_lote(codigos)
         except (requests.RequestException, ValueError):
-            erros += 1
+            erros += len(codigos)
+            falhas_seguidas += 1
             pausa()
             continue
-        consultados += 1
+        falhas_seguidas = 0
+        consultados += len(codigos)
         for g in gazetas:
+            vs = municipios.get(int(g["territory_id"]))
+            if not vs:
+                continue
             chave = f"qd:{g['territory_id']}:{g['date']}:{g.get('edition') or ''}:{g.get('is_extra_edition')}"
             if chave in ja_vistos:
                 continue
@@ -325,4 +384,6 @@ def varrer_querido_diario(
                           data_publicacao=date.fromisoformat(g["date"]), url=g.get("url") or g["txt_url"], texto=texto, edicao_inteira=True))
             ao_ler(chave)
         pausa()
+        print(f"  querido-diario: {consultados + erros}/{len(municipios)} município(s), {lidos} diário(s) lido(s)", flush=True)
+        ao_ponto()
     return consultados, lidos, erros
