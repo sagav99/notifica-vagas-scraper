@@ -404,6 +404,11 @@ def main() -> None:
                 r = pub.processar_publicacao(vagas_alvo, p)
                 if r:
                     publicos.append((p, *r))
+                # Checkpoint só dos convocados (idempotente, `on conflict do nothing`): se o runner for derrubado no meio da varredura, o que já foi extraído não se perde.
+                if not args.dry_run and len(publicos) >= 20:
+                    gravados["convocados"] += gravar_convocados(conn, publicos)
+                    publicos.clear()
+                    print(f"  checkpoint: {gravados['convocados']} convocado(s) gravado(s) até {p['uf']} ({time.monotonic() - inicio:.0f}s)", flush=True)
 
             inicio = time.monotonic()
             gravados = {"convocados": 0, "avisos": 0}

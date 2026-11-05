@@ -42,6 +42,7 @@ jobs:
 
       - name: Monitorar convocações
         env:
+          PYTHONUNBUFFERED: "1"  # sem isso o log do Actions só aparece no fim (e some se o runner cair)
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
         run: python scripts/monitorar_convocacoes.py --dias "${{ inputs.dias || '3' }}"
