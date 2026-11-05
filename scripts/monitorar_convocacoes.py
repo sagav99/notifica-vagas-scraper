@@ -181,7 +181,11 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
             print(f"  AVISO: orçamento de tempo esgotado em {uf}; o restante será lido na próxima rodada.")
 
     if "SC" in ufs:  # sempre: a cobertura de SC vem dos ZIPs do CIGA
-        zips = diarios_sul.listar_zips_sc(dias, hoje=hoje, sessao=sessao)
+        try:
+            zips = diarios_sul.listar_zips_sc(dias, hoje=hoje, sessao=sessao)
+        except (requests.RequestException, OSError, ValueError) as erro:  # CIGA fora do ar (504): não derruba MG/PR/RS/SP nem perde o que já foi lido
+            print(f"  ciga-sc: listagem indisponível ({erro.__class__.__name__}); SC fica para a próxima rodada.")
+            zips = []
         achados_sc = 0
         for z in zips:
             try:
