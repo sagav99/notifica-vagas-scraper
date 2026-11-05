@@ -209,7 +209,7 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
     # DOSP/DiOE (~187 municípios de SP + alguns de MG/PR/SC/RS): varredura por ID, texto lido localmente.
     if ufs & {"SP", "MG", "PR", "SC", "RS"}:
         try:
-            novos, lidos, publicados = conv.varrer_dosp(sessao, acompanhamentos, vistos, pausa=pausa, ao_ler=ao_ler, esgotado=esgotado, ao_texto=ao_texto)
+            novos, lidos, publicados = conv.varrer_dosp(sessao, acompanhamentos, vistos, pausa=pausa, ao_ler=ao_ler, esgotado=esgotado, ao_texto=ao_texto, ao_ponto=lambda parcial: ao_ponto(achados + parcial))
         except (requests.RequestException, ValueError) as erro:
             print(f"  dosp: {erro}")
         else:

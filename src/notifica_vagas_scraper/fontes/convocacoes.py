@@ -26,6 +26,7 @@ import hashlib
 import html
 import json
 import re
+import time
 import unicodedata
 import ipaddress
 from urllib.parse import urlparse
@@ -601,6 +602,7 @@ def inicio_varredura_dosp(vistos: set[str]) -> int:
 def varrer_dosp(
     sessao: requests.Session, acompanhamentos: list[Acompanhamento], ja_vistos: set[str], *,
     cabeca=None, baixar_pdf=None, pausa=lambda: None, ao_ler=lambda chave: None, esgotado=lambda: False, ao_texto=None,
+    ao_ponto=lambda achados_parciais: None, limite_s: float = 1500,
 ) -> tuple[list[Achado], int, int]:
     """Enumera os IDs sequenciais do DOSP (HEAD -> 301 com UF/município/data no Location), baixa só os PDFs das 5 UFs
     ainda não lidos e cruza o NOME. A busca do site tem ~8 dias de atraso, por isso não é usada.
@@ -620,8 +622,17 @@ def varrer_dosp(
 
         r = sessao.get(url, headers=_UA_DOSP, timeout=90)
         r.raise_for_status()
-        with pdfplumber.open(io.BytesIO(r.content)) as pdf:
-            return "\n".join((p.extract_text() or "") for p in pdf.pages)
+        try:  # pdfium é ~20x mais rápido que o pdfplumber em edições inteiras (centenas de páginas)
+            import pypdfium2 as pdfium
+
+            doc = pdfium.PdfDocument(r.content)
+            try:
+                return "\n".join(doc[n].get_textpage().get_text_range() for n in range(len(doc)))
+            finally:
+                doc.close()
+        except Exception:  # PDF que o pdfium não abre: cai no pdfplumber
+            with pdfplumber.open(io.BytesIO(r.content)) as pdf:
+                return "\n".join((p.extract_text() or "") for p in pdf.pages)
 
     baixar_pdf = baixar_pdf or _pdf
     alvo = [a for a in acompanhamentos if len(normalizar(a.nome_edital).split()) >= 2]
@@ -638,13 +649,18 @@ def varrer_dosp(
             publicados.append((i, m, loc))
     achados: list[Achado] = []
     lidos = 0
+    fim_dosp = time.monotonic() + limite_s  # teto próprio: a fase não pode comer a rodada (a próxima continua dos IDs não lidos)
     for i, m, loc in publicados:
         chave = f"dosp:{i}"
         uf = DOSP_UFS.get(m[1])
         if chave in ja_vistos:
             continue
-        if esgotado():
+        if esgotado() or time.monotonic() > fim_dosp:
+            print(f"  dosp: tempo da fase esgotado no ID {i}; o resto fica para a próxima rodada", flush=True)
             break
+        if lidos and lidos % 10 == 0:
+            ao_ponto(achados)  # grava convocados/avisos/vistos já lidos: se o runner cair, a próxima rodada continua daqui
+            print(f"  dosp: {lidos} edição(ões) lida(s), ID {i}", flush=True)
         if uf is None:  # outra UF: marca como visto sem baixar
             ao_ler(chave)
             continue
