@@ -115,8 +115,15 @@ def main() -> None:
         headers={"User-Agent": USER_AGENT},
         timeout=20,
     )
-    resposta.raise_for_status()
-    dados = resposta.json()
+    if resposta.status_code == 404:
+        # API REST desligada no site (nov/2026): usa o feed RSS, que traz o mesmo conteúdo.
+        print("aviso: /wp-json respondeu 404; usando o feed RSS")
+        feed = requests.get(sorocaba_sp.URL_FEED, headers={"User-Agent": USER_AGENT}, timeout=20)
+        feed.raise_for_status()
+        dados = sorocaba_sp.posts_de_feed_rss(feed.text)
+    else:
+        resposta.raise_for_status()
+        dados = resposta.json()
     if not isinstance(dados, list):
         print("aviso: resposta inesperada de /wp-json/wp/v2/posts, abortando")
         return

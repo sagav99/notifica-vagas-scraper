@@ -172,3 +172,20 @@ def test_identificador_externo_usa_edital_e_slug_do_cargo():
 def test_identificador_externo_sem_numero_edital_usa_fallback():
     ident = sorocaba_sp.identificador_externo(None, "Médico I – Nefrologista")
     assert ident.startswith("sorocaba-sp-sem-numero-")
+
+
+def test_posts_de_feed_rss_converte_para_o_formato_da_api():
+    xml = """<?xml version="1.0"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel>
+    <item><title>Prefeitura abre processo seletivo para médicos</title><link>https://noticias.sorocaba.sp.gov.br/processo-seletivo-medicos/</link>
+    <pubDate>Wed, 04 Nov 2026 21:09:47 +0000</pubDate><guid isPermaLink="false">https://noticias.sorocaba.sp.gov.br/?p=198569</guid>
+    <content:encoded><![CDATA[<p>Edital 01/2026</p>]]></content:encoded></item>
+    <item><title>Sem guid</title><link>https://x/y/</link></item></channel></rss>"""
+    dados = sorocaba_sp.posts_de_feed_rss(xml)
+    assert len(dados) == 1  # item sem guid ?p= é ignorado
+    posts = sorocaba_sp.listar_posts_recentes(dados)
+    assert posts[0].id == 198569
+    assert posts[0].slug == "processo-seletivo-medicos"
+    assert posts[0].titulo.startswith("Prefeitura abre processo seletivo")
+    assert "Edital 01/2026" in posts[0].conteudo_html
+    assert posts[0].data.year == 2026
+    assert sorocaba_sp.posts_de_feed_rss("não é xml") == []

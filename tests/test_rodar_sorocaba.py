@@ -10,6 +10,8 @@ FIXTURES = Path(__file__).parent / "fixtures" / "sorocaba_sp"
 
 
 class _RespostaFalsa:
+    status_code = 200
+
     def __init__(self, *, content: bytes | None = None, json_dados=None):
         self.content = content
         self._json_dados = json_dados

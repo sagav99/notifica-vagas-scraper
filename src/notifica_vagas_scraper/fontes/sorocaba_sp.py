@@ -70,6 +70,7 @@ USER_AGENT = "Mozilla/5.0 (compatible; NotificaVagasBot/0.1; +https://github.com
 
 BASE_URL = "https://noticias.sorocaba.sp.gov.br"
 URL_POSTS = f"{BASE_URL}/wp-json/wp/v2/posts"
+URL_FEED = f"{BASE_URL}/feed/"
 URL_MEDIA = f"{BASE_URL}/wp-json/wp/v2/media"
 
 #: fonte dedicada a 1 único município — sem necessidade de casar título
@@ -97,6 +98,7 @@ __all__ = [
     "USER_AGENT",
     "BASE_URL",
     "URL_POSTS",
+    "URL_FEED",
     "URL_MEDIA",
     "MUNICIPIO",
     "UF",
@@ -135,6 +137,45 @@ def _parsear_data(texto: str | None) -> date | None:
         return datetime.fromisoformat(texto).date()
     except ValueError:
         return None
+
+
+def posts_de_feed_rss(xml_texto: str) -> list[dict]:
+    """Converte o feed RSS (`/feed/`) no mesmo formato de dicts do `/wp-json/wp/v2/posts`.
+
+    Usado quando a API REST do site de notícias responde 404 (desligada em nov/2026): o feed traz
+    título, link, data, `guid ?p=<id>` e o conteúdo completo em `content:encoded`."""
+    import re
+    from email.utils import parsedate_to_datetime
+    from xml.etree import ElementTree as ET
+
+    ns = {"content": "http://purl.org/rss/1.0/modules/content/"}
+    try:
+        raiz = ET.fromstring(xml_texto)
+    except ET.ParseError:
+        return []
+    saida: list[dict] = []
+    for item in raiz.iter("item"):
+        guid = (item.findtext("guid") or "").strip()
+        achado = re.search(r"[?&]p=(\d+)", guid)
+        if not achado:
+            continue
+        link = (item.findtext("link") or "").strip()
+        data = None
+        try:
+            data = parsedate_to_datetime((item.findtext("pubDate") or "").strip()).isoformat()
+        except (TypeError, ValueError):
+            pass
+        saida.append(
+            {
+                "id": int(achado[1]),
+                "slug": link.rstrip("/").rsplit("/", 1)[-1],
+                "title": {"rendered": (item.findtext("title") or "").strip()},
+                "content": {"rendered": item.findtext("content:encoded", namespaces=ns) or ""},
+                "link": link,
+                "date": data,
+            }
+        )
+    return saida
 
 
 def listar_posts_recentes(dados_json: list[dict]) -> list[Post]:
