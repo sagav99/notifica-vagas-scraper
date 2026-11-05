@@ -45,8 +45,12 @@ def pausa() -> None:
 def carregar_acompanhamentos(conn) -> list[conv.Acompanhamento]:
     with conn.cursor() as cur:
         cur.execute(
-            "select id::text, usuario_id::text, nome_edital, uf, municipio, concurso, cargo, classificacao, url_convocacoes "
-            "from public.convocacao_acompanhamentos where ativo order by criado_em"
+            "select a.id::text, coalesce(a.usuario_id::text, a.assinante_bot_id::text), a.nome_edital, a.uf, a.municipio, a.concurso, a.cargo, a.classificacao, a.url_convocacoes "
+            "from public.convocacao_acompanhamentos a "
+            "left join public.bot_assinantes b on b.id = a.assinante_bot_id "
+            # Assinante do bot (Max por código) só entra com o Max vigente.
+            "where a.ativo and (a.assinante_bot_id is null or (b.plano like 'max\\_%%' and b.status in ('pago', 'no_grupo') and b.valido_ate > now())) "
+            "order by a.criado_em"
         )
         return [conv.Acompanhamento(*linha) for linha in cur.fetchall()]
 
