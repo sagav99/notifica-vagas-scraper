@@ -195,9 +195,9 @@ def coletar(acompanhamentos, dias: int, ufs: set[str], vistos: set[str], ao_ler=
             except (requests.RequestException, OSError, ValueError) as erro:  # um ZIP lento do CIGA não derruba a rodada: tenta o próximo
                 print(f"  ciga-sc {z.get('url', '')[-40:]}: {erro.__class__.__name__}")
                 continue
-            for pub in pubs_sc:
-                if pub.municipio:
-                    estado["cobertura"].setdefault("SC", {})[diarios_sul.normalizar(pub.municipio)] = pub.municipio
+            for pub_sc in pubs_sc:  # não chamar de `pub`: sobrescreve o módulo convocados_publicos usado mais abaixo
+                if pub_sc.municipio:
+                    estado["cobertura"].setdefault("SC", {})[diarios_sul.normalizar(pub_sc.municipio)] = pub_sc.municipio
             novos = conv.achados_sc(pubs_sc, acompanhamentos, ao_texto=ao_texto)
             achados_sc += len(novos)
             achados += novos
