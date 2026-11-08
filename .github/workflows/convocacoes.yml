@@ -18,6 +18,9 @@ on:
       dias:
         description: "Janela em dias (padrão 3)"
         default: "3"
+      reprocessar:
+        description: "Reprocessar publicações já vistas (backfill do detector geral de convocação de médico): sim ou vazio"
+        default: ""
 
 concurrency:
   group: convocacoes
@@ -38,11 +41,14 @@ jobs:
         run: pip install -e ".[dev]"
 
       - name: Rodar testes
-        run: pytest tests/test_convocacoes.py
+        run: pytest tests/test_convocacoes.py tests/test_convocacoes_gerais.py
 
       - name: Monitorar convocações
         env:
           PYTHONUNBUFFERED: "1"  # sem isso o log do Actions só aparece no fim (e some se o runner cair)
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
-        run: python scripts/monitorar_convocacoes.py --dias "${{ inputs.dias || '3' }}"
+        run: |
+          EXTRA=""
+          if [ "${{ inputs.reprocessar }}" = "sim" ]; then EXTRA="--ignorar-vistos"; fi
+          python scripts/monitorar_convocacoes.py --dias "${{ inputs.dias || '3' }}" $EXTRA

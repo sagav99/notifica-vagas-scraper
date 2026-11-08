@@ -29,6 +29,7 @@ import requests
 from notifica_vagas_scraper import db
 from notifica_vagas_scraper.fontes import convocacoes as conv
 from notifica_vagas_scraper.fontes import convocados_publicos as pub
+from notifica_vagas_scraper.fontes import convocacoes_gerais as geral
 from notifica_vagas_scraper.fontes import diarios_sul
 
 ORCAMENTO_S = 60 * 55  # leitura do SIGPub para antes do timeout do workflow (90 min); QD, SC e gravação ainda cabem
@@ -119,6 +120,22 @@ def gravar_convocados(conn, resultados: list[tuple[dict, pub.VagaAlvo, str | Non
                     (p["chave"], vaga.id, p["uf"], vaga.municipio, concurso, c.cargo or vaga.cargo, c.nome, c.nome_norm, c.cpf_publicado, c.classificacao, p.get("data_publicacao"), p.get("url")),
                 )
                 novos += cur.rowcount
+    conn.commit()
+    return novos
+
+
+def gravar_gerais(conn, achados: list[tuple[dict, dict]]) -> int:
+    """Convocação de médico no nível da publicação (qualquer concurso; sem nomes). Idempotente por chave da publicação."""
+    novos = 0
+    with conn.cursor() as cur:
+        for p, g in achados:
+            cur.execute(
+                "insert into public.convocacao_medica_publicacoes (chave, fonte, uf, municipio, entidade, titulo, data_publicacao, url, trecho, concurso_detectado, tipo) "
+                "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) on conflict (chave) do nothing",
+                (p["chave"], p["fonte"], p["uf"], geral.municipio_da_entidade(p.get("entidade")), (p.get("entidade") or "")[:200], (p.get("titulo") or "")[:300],
+                 p.get("data_publicacao"), p.get("url"), g["trecho"], g["concurso"], g["tipo"]),
+            )
+            novos += cur.rowcount
     conn.commit()
     return novos
 
@@ -376,6 +393,7 @@ def main() -> None:
     ap.add_argument("--dias", type=int, default=2)
     ap.add_argument("--uf", nargs="*", default=["MG", "SP", "PR", "SC", "RS"])
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--ignorar-vistos", action="store_true", help="reprocessa publicações já vistas (recall/backfill do detector geral); só use com --dias maior")
     ap.add_argument("--exemplo-json", help="acompanhamentos de teste (lista de objetos) em vez do banco")
     args = ap.parse_args()
     ufs = set(args.uf)
@@ -393,15 +411,23 @@ def main() -> None:
         try:
             acompanhamentos = carregar_acompanhamentos(conn)
             print(f"{len(acompanhamentos)} acompanhamento(s) ativo(s).")
-            vistos = carregar_vistos(conn)
+            vistos = set() if args.ignorar_vistos else carregar_vistos(conn)
             lidos: list[str] = []
             estado: dict = {}
             vagas_alvo = carregar_vagas_alvo(conn)
             print(f"{len(vagas_alvo)} concurso(s) médico(s) cadastrado(s) para o PDF de convocados.")
             publicos: list = []
+            gerais: list = []
 
             def ao_texto(p: dict) -> None:
                 t0 = time.monotonic()
+                try:  # o detector geral nunca derruba a coleta
+                    g = geral.detectar(p.get("titulo") or "", p.get("texto") or "")
+                except Exception as erro:  # noqa: BLE001
+                    print(f"  detector geral falhou em {p.get('chave')}: {erro}")
+                    g = None
+                if g:
+                    gerais.append((p, g))
                 r = pub.processar_publicacao(vagas_alvo, p)
                 if time.monotonic() - t0 > 3:
                     print(f"  lenta ({time.monotonic() - t0:.0f}s, {len(p['texto'])} caracteres): {p['uf']} {p['titulo'][:80]}", flush=True)
@@ -414,12 +440,14 @@ def main() -> None:
                     print(f"  checkpoint: {gravados['convocados']} convocado(s) gravado(s) até {p['uf']} ({time.monotonic() - inicio:.0f}s)", flush=True)
 
             inicio = time.monotonic()
-            gravados = {"convocados": 0, "avisos": 0}
+            gravados = {"convocados": 0, "avisos": 0, "gerais": 0}
 
             def ponto(achados_parciais: list) -> None:
                 """Grava (idempotente) o que já foi lido; só depois marca os vistos. Em dry-run não grava."""
                 if args.dry_run:
                     return
+                gravados["gerais"] += gravar_gerais(conn, gerais)
+                gerais.clear()
                 gravados["convocados"] += gravar_convocados(conn, publicos)
                 publicos.clear()
                 gravados["avisos"] += gravar(conn, achados_parciais)
@@ -428,6 +456,9 @@ def main() -> None:
 
             achados = coletar(acompanhamentos, args.dias, ufs, vistos, ao_ler=lidos.append, conn=conn, estado=estado, esgotado=lambda: time.monotonic() - inicio > ORCAMENTO_S, ao_texto=ao_texto, ao_ponto=ponto, vagas_alvo=vagas_alvo)
             if args.dry_run:
+                for p, g in gerais:
+                    print(f"[gerais] {p['uf']} {geral.municipio_da_entidade(p.get('entidade'))} | {p['titulo'][:50]} | {g['concurso']} | {g['trecho'][:110]} | {p.get('url')}")
+                print(f"[gerais] total: {len(gerais)} publicação(ões) com convocação de médico")
                 for p, vaga, concurso, cs in publicos:
                     print(f"[convocados] {p['uf']} {vaga.municipio} | {concurso} | {p['titulo'][:60]} | {len(cs)} nome(s): {', '.join(c.nome for c in cs[:4])} | {p['url']}")
             ponto(achados)
@@ -438,7 +469,7 @@ def main() -> None:
                 gravar_cobertura(conn, estado.get("cobertura", {}))
             execucao.detalhe = (
                 f"acompanhamentos={len(acompanhamentos)} achados={len(achados)} avisos_novos={novos} "
-                f"descobertos={estado.get('descobertos', 0)} serper={estado.get('serper', 0)} convocados_publicos={convocados_novos}"
+                f"descobertos={estado.get('descobertos', 0)} serper={estado.get('serper', 0)} convocados_publicos={convocados_novos} publicacoes_medico={gravados["gerais"]}"
             )
             print(execucao.detalhe)
         finally:
