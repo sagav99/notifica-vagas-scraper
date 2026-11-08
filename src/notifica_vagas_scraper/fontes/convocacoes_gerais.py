@@ -12,12 +12,16 @@ import unicodedata
 
 JANELA_ANTES = 500
 JANELA_DEPOIS = 900
+MEDICO_ANTES = 200  # o termo "médico" tem de estar perto do gatilho: janela larga pegava médico de outro assunto (2026-11-08)
+MEDICO_DEPOIS = 700
 MAX_TRECHO = 320
 
 _GATILHO = re.compile(r"convoc\w*|chamamento|nomea\w*|nomei\w*")
 _MEDICO = re.compile(r"\bmedic[oa]s?\b|\bmedicina\b|\bpsiquiatr\w*|\bpediatr\w*|\bginecolog\w*|\bortoped\w*|\bcardiolog\w*|\banestesi\w*")
 _VETERINARIO = re.compile(r"medic[oa]s?\s+veterinari|veterinari[oa]")
-_CONTEXTO = re.compile(r"aprovad\w*|classificad\w*|candidat\w*|concurso publico|processo seletivo|cadastro de reserva|edital")
+_CONTEXTO = re.compile(r"aprovad\w*|classificad\w*|candidat\w*|concurso publico|processo seletivo|cadastro de reserva")
+# Contratação de serviço médico (pessoa jurídica) e licitação não são convocação de candidato de concurso.
+_SERVICO = re.compile(r"credenciamento|chamamento publico|pessoa juridica|pessoas juridicas|licitac\w*|pregao|dispensa de|inexigibilidade|contratacao de empresa|prestacao de servicos")
 # "nomeação" sozinha é muito comum em cargo em comissão: só vale com sinal de concurso.
 _CONTEXTO_NOMEACAO = re.compile(r"aprovad\w*|classificad\w*|concurso publico|cadastro de reserva")
 _NAO_CONVOCACAO = re.compile(r"convoc\w*\s+(?:para\s+)?(?:a\s+)?(?:reuniao|audiencia publica|conferencia|sessao|assembleia|eleicao)")
@@ -46,15 +50,18 @@ def detectar(titulo: str, texto: str) -> dict | None:
     for g in _GATILHO.finditer(norm):
         ini, fim = max(0, g.start() - JANELA_ANTES), min(len(norm), g.end() + JANELA_DEPOIS)
         janela = norm[ini:fim]
-        if not _MEDICO.search(janela) or not _CONTEXTO.search(janela):
+        perto = norm[max(0, g.start() - MEDICO_ANTES) : g.end() + MEDICO_DEPOIS]
+        if not _MEDICO.search(perto) or not _CONTEXTO.search(janela):
+            continue
+        if _SERVICO.search(norm[max(0, g.start() - 250) : g.end() + 250]):
             continue
         if g.group(0).startswith("nome") and not _CONTEXTO_NOMEACAO.search(janela):
             continue
         if _NAO_CONVOCACAO.search(norm[g.start() : g.end() + 60]):
             continue
-        m_med = _MEDICO.search(janela)
-        # só "médico veterinário" na janela não vale
-        so_vet = all(_VETERINARIO.search(janela[max(0, mm.start() - 5) : mm.end() + 30]) for mm in _MEDICO.finditer(janela) if mm.group(0).startswith("medic"))
+        m_med = _MEDICO.search(perto)
+        # só "médico veterinário" por perto não vale
+        so_vet = all(_VETERINARIO.search(perto[max(0, mm.start() - 5) : mm.end() + 30]) for mm in _MEDICO.finditer(perto) if mm.group(0).startswith("medic"))
         if so_vet and m_med and m_med.group(0).startswith("medic"):
             continue
         c = _CONCURSO.search(janela)

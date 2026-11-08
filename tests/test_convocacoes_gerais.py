@@ -32,3 +32,17 @@ def test_municipio_da_entidade():
     assert municipio_da_entidade("Prefeitura Municipal de Ponta Grossa") == "Ponta Grossa"
     assert municipio_da_entidade("Prefeitura de Luz") == "Luz"
     assert municipio_da_entidade("Câmara Municipal de X") == "Câmara Municipal de X"
+
+
+def test_chamamento_publico_de_credenciamento_nao_conta():
+    assert detectar("x", "Extrato de Chamamento Público nº 05/2026. Objeto: credenciamento de pessoa jurídica para prestação de serviços médicos aos candidatos.") is None
+
+
+def test_medico_longe_do_gatilho_nao_conta():
+    longe = "Convoca os candidatos aprovados no concurso para o cargo de professor. " + ("texto administrativo " * 60) + " Secretaria de Saúde, médico responsável."
+    assert detectar("x", longe) is None
+
+
+def test_lista_de_convocados_com_funcao_medico():
+    t = "23ª CONVOCAÇÃO - PROCESSO SELETIVO SIMPLIFICADO 003/2025 CLASS NOME FUNÇÃO DATA 1 Fulana de Tal Médico Psiquiatra 04/11/2026. Candidatos aprovados devem comparecer."
+    assert detectar("x", t)
