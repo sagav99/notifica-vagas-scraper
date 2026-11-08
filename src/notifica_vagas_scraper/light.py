@@ -33,13 +33,18 @@ EXCLUIR_RE = re.compile(r"professor|docente|estagi|monitor|menor aprendiz")
 #: (a partir de ~R$ 6.000, só prioridade: o filtro é do hub, aqui só se grava).
 AREAS: dict[str, dict] = {
     "enfermagem": {
-        "queries": ["concurso enfermeiro edital inscrições abertas"],
+        "queries": [
+            "concurso enfermeiro edital inscrições abertas",
+            "concurso técnico de enfermagem edital inscrições abertas",
+            "processo seletivo técnico em enfermagem enfermeiro inscrições abertas salário",
+        ],
         "cargo_re": re.compile(r"enfermeir|enfermagem"),
         "descricao": "enfermeiro / técnico ou auxiliar de enfermagem",
     },
     "engenharia": {
         "queries": [
             "concurso engenheiro civil elétrico mecânico edital inscrições abertas salário",
+            "processo seletivo engenheiro edital inscrições abertas salário",
             "concurso engenheiro ambiental sanitarista agrônomo segurança do trabalho edital inscrições abertas",
         ],
         "cargo_re": re.compile(r"engenheir"),

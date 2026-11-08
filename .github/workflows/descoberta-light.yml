@@ -1,5 +1,8 @@
 name: Descoberta leve (enfermagem, engenharia e TI — Instagram)
 
+# 2026-11-08 (usuário): dia sim, dia não (*/2) e +3 consultas por execução
+# (enfermagem inclui técnico de enfermagem; +1 engenharia); ~8 créditos/execução.
+#
 # Banco leve para posts de Instagram (decisão do usuário, 2026-10-24): seg/qua/sex
 # (economia de Serper), 1 consulta Serper para enfermagem e 2 para engenharia e
 # para TI por execução (5 créditos), e no máx. 80 chamadas Gemini por área/dia
@@ -7,8 +10,8 @@ name: Descoberta leve (enfermagem, engenharia e TI — Instagram)
 
 on:
   schedule:
-    # 10h Brasília, seg/qua/sex; ≥1h de folga dos outros workflows Gemini (15:00 UTC é o mais próximo).
-    - cron: "0 13 * * 1,3,5"
+    # 10h Brasília, dia sim/dia não; ≥1h de folga dos outros workflows Gemini (15:00 UTC é o mais próximo).
+    - cron: "0 13 */2 * *"
   workflow_dispatch:
     inputs:
       janela:
