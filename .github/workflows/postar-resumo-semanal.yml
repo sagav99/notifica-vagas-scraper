@@ -1,0 +1,67 @@
+name: Postar resumo semanal no Instagram (sábado e domingo)
+
+# Sábado e domingo às 12h (Brasília): publica o carrossel do resumo do dia (sábado = vagas novas, domingo = vagas que fecham).
+# Os slides vêm do banco (gerados às 11h30 pelo workflow do repositório do site). TRAVA: só publica se o PDF do dia já foi
+# marcado como enviado ao grupo (sinal de que os dados foram conferidos); senão avisa o admin por e-mail e não posta.
+# Autorizado pelo usuário em 2026-11-08 (o post diário de vaga segue desativado). Não usa Gemini.
+
+on:
+  schedule:
+    - cron: "0 15 * * 6,0" # 12h Brasília
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Só conferir (trava, slides, legenda); não publica"
+        type: boolean
+        default: true
+      sem_trava:
+        description: "Publicar mesmo sem o PDF do dia marcado como enviado"
+        type: boolean
+        default: false
+      tipo:
+        description: "abertura (sábado) ou fechamento (domingo); vazio = pelo dia da semana"
+        type: string
+        default: ""
+      data:
+        description: "AAAA-MM-DD; vazio = hoje (Brasília)"
+        type: string
+        default: ""
+
+permissions:
+  contents: write # sobe os PNGs na branch instagram-cards
+
+concurrency:
+  group: postar-resumo-semanal
+  cancel-in-progress: false
+
+jobs:
+  postar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar dependências
+        run: pip install -e ".[instagram]"
+      - name: Publicar
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          BREVO_REMETENTE_EMAIL: ${{ secrets.BREVO_REMETENTE_EMAIL }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          SEM_TRAVA: ${{ github.event_name == 'workflow_dispatch' && inputs.sem_trava || 'false' }}
+          TIPO: ${{ github.event_name == 'workflow_dispatch' && inputs.tipo || '' }}
+          DATA: ${{ github.event_name == 'workflow_dispatch' && inputs.data || '' }}
+        run: |
+          ARGS=""
+          if [ "$DRY_RUN" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          if [ "$SEM_TRAVA" = "true" ]; then ARGS="$ARGS --sem-trava"; fi
+          if [ -n "$TIPO" ]; then ARGS="$ARGS --tipo $TIPO"; fi
+          if [ -n "$DATA" ]; then ARGS="$ARGS --data $DATA"; fi
+          python scripts/postar_resumo_semanal.py $ARGS
