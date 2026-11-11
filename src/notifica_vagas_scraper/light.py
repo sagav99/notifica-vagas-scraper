@@ -2,7 +2,7 @@
 
 Só alimenta posts de Instagram (tabela `vagas_light`, migration 112) — fora
 do catálogo/alertas do site, que seguem só médico. Orçamento mínimo por
-decisão do usuário: 1 consulta Serper por área/dia e no máx. 80 chamadas
+decisão do usuário: consultas curtas Serper por área/execução e no máx. 80 chamadas
 Gemini por área/dia (teto imposto por `quota_gemini` via
 `GEMINI_TETO_ORIGEM_DIA`, além do RPM/TPM de `gemini_util.chamar_api`).
 Esta parte é pura (config, prompt, filtro); o I/O fica em
@@ -29,31 +29,34 @@ PRAZO_MINIMO_DIAS = 5
 EXCLUIR_RE = re.compile(r"professor|docente|estagi|monitor|menor aprendiz")
 
 #: area -> queries Serper (1 crédito cada, todas rodam a cada execução), regex
-#: do cargo e descrição pro prompt. `ti` e `engenharia` pedem salário alto
-#: (a partir de ~R$ 6.000, só prioridade: o filtro é do hub, aqui só se grava).
+#: do cargo e descrição pro prompt. Consultas curtas, no estilo das de médico
+#: (escolhidas em 2026-11-11 por teste de 18 candidatas: nº de resultados novos
+#: com o cargo no título, janela qdr:d7); as longas e específicas de antes
+#: limitavam demais. `ti` e `engenharia` pedem salário alto (a partir de
+#: ~R$ 6.000, só prioridade: o filtro é do hub).
 AREAS: dict[str, dict] = {
     "enfermagem": {
         "queries": [
-            "concurso enfermeiro edital inscrições abertas",
-            "concurso técnico de enfermagem edital inscrições abertas",
-            "processo seletivo técnico em enfermagem enfermeiro inscrições abertas salário",
+            "concurso público técnico em enfermagem prefeitura",
+            "concurso enfermeiro SP",
+            "concurso técnico de enfermagem",
         ],
         "cargo_re": re.compile(r"enfermeir|enfermagem"),
         "descricao": "enfermeiro / técnico ou auxiliar de enfermagem",
     },
     "engenharia": {
         "queries": [
-            "concurso engenheiro civil elétrico mecânico edital inscrições abertas salário",
-            "processo seletivo engenheiro edital inscrições abertas salário",
-            "concurso engenheiro ambiental sanitarista agrônomo segurança do trabalho edital inscrições abertas",
+            "concurso engenheiro civil prefeitura",
+            "concurso público engenheiro",
+            "concurso engenheiro elétrico mecânico",
         ],
         "cargo_re": re.compile(r"engenheir"),
         "descricao": "engenheiro (civil, elétrico, mecânico, ambiental, químico, sanitarista, segurança do trabalho, agrônomo, controle e automação etc.)",
     },
     "ti": {
         "queries": [
-            "concurso analista de sistemas desenvolvedor analista de TI edital inscrições abertas salário",
-            "concurso tecnologia da informação analista de dados redes segurança da informação edital inscrições abertas",
+            "concurso tecnologia da informação",
+            "concurso TI MG",
         ],
         "cargo_re": re.compile(
             r"analista de (sistemas|ti\b|tecnologia|dados|redes|infraestrutura|seguranca|suporte|desenvolvimento)"

@@ -81,12 +81,13 @@ def processar_area(conn, area: str, serper_key: str, gemini_key: str, hoje, dry_
     os.environ["GEMINI_TETO_ORIGEM_DIA"] = str(light.TETO_GEMINI_POR_AREA_DIA)
     itens = []
     vistos = set()
-    for query in light.AREAS[area]["queries"]:
+    consultas = light.AREAS[area]["queries"]
+    for query in consultas:
         for item in buscar_links(query, serper_key, janela):
             if item.link not in vistos:
                 vistos.add(item.link)
                 itens.append(item)
-    print(f"[{area}] {len(itens)} resultado(s) da Serper ({len(light.AREAS[area]['queries'])} crédito(s)).")
+    print(f"[{area}] {len(itens)} resultado(s) da Serper ({len(consultas)} crédito(s): {consultas}).")
     gravadas = gemini = 0
     for item in itens:
         if url_ja_vista(conn, item.link):
