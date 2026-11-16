@@ -36,10 +36,17 @@ EXCLUIR_RE = re.compile(r"professor|docente|estagi|monitor|menor aprendiz")
 #: ~R$ 6.000, só prioridade: o filtro é do hub).
 AREAS: dict[str, dict] = {
     "enfermagem": {
+        # 2 fixas + `UFS_ROTATIVAS_POR_EXECUCAO` por estado em rodízio (ver
+        # `consultas_da_area`); pedido do usuário em 2026-11-16: 3 consultas
+        # nacionais traziam pouquíssimo enfermeiro (o post do @enfvagas ficava
+        # sem vaga). Teste: "concurso enfermeiro <UF>" rende 4-7 links novos.
         "queries": [
-            "concurso público técnico em enfermagem prefeitura",
-            "concurso enfermeiro SP",
-            "concurso técnico de enfermagem",
+            "processo seletivo enfermeiro prefeitura",
+            "edital enfermeiro inscrições abertas",
+        ],
+        "ufs_rotativas": [
+            "SP", "MG", "BA", "RJ", "PR", "RS", "PE", "CE", "SC", "GO", "PA", "MA", "ES",
+            "PB", "PI", "RN", "MT", "MS", "AL", "SE", "AM", "TO", "RO", "AC", "AP", "RR", "DF",
         ],
         "cargo_re": re.compile(r"enfermeir|enfermagem"),
         "descricao": "enfermeiro / técnico ou auxiliar de enfermagem",
@@ -67,6 +74,21 @@ AREAS: dict[str, dict] = {
         "descricao": "tecnologia da informação (analista de sistemas, desenvolvedor/programador, analista de TI, dados, redes, segurança da informação)",
     },
 }
+
+UFS_ROTATIVAS_POR_EXECUCAO = 3
+
+
+def consultas_da_area(area: str, hoje: date) -> list[str]:
+    """Consultas fixas da área + as de estado do dia (rodízio por data, sem estado a gravar)."""
+    cfg = AREAS[area]
+    consultas = list(cfg["queries"])
+    ufs = cfg.get("ufs_rotativas")
+    if ufs:
+        # a execução roda dia sim/dia não: dividir por 2 evita pular estados
+        inicio = (hoje.toordinal() // 2 * UFS_ROTATIVAS_POR_EXECUCAO) % len(ufs)
+        consultas += [f"concurso enfermeiro {ufs[(inicio + i) % len(ufs)]}" for i in range(UFS_ROTATIVAS_POR_EXECUCAO)]
+    return consultas
+
 
 URL_API = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
 

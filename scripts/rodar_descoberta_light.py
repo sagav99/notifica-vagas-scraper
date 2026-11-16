@@ -81,7 +81,7 @@ def processar_area(conn, area: str, serper_key: str, gemini_key: str, hoje, dry_
     os.environ["GEMINI_TETO_ORIGEM_DIA"] = str(light.TETO_GEMINI_POR_AREA_DIA)
     itens = []
     vistos = set()
-    consultas = light.AREAS[area]["queries"]
+    consultas = light.consultas_da_area(area, hoje)
     for query in consultas:
         for item in buscar_links(query, serper_key, janela):
             if item.link not in vistos:

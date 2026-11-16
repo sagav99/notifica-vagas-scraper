@@ -62,3 +62,19 @@ def test_ti_cargos_e_exclusoes():
         assert not light.cargo_da_area(c, "ti"), c
     assert not light.cargo_da_area("Monitor de Engenharia", "engenharia")
     assert light.cargo_da_area("Engenheiro de Segurança do Trabalho", "engenharia")
+
+
+def test_consultas_enfermagem_rodam_fixas_mais_estados_em_rodizio():
+    from datetime import date
+
+    c1 = light.consultas_da_area("enfermagem", date(2026, 11, 16))
+    c2 = light.consultas_da_area("enfermagem", date(2026, 11, 18))
+    assert len(c1) == 2 + light.UFS_ROTATIVAS_POR_EXECUCAO
+    assert c1[:2] == light.AREAS["enfermagem"]["queries"]
+    assert set(c1[2:]).isdisjoint(c2[2:])  # execução seguinte (2 dias depois) pega outros estados
+
+
+def test_consultas_de_engenharia_nao_mudam():
+    from datetime import date
+
+    assert light.consultas_da_area("engenharia", date(2026, 11, 16)) == light.AREAS["engenharia"]["queries"]
