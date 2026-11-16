@@ -26,7 +26,8 @@ from notifica_vagas_scraper import db, deteccao_bloqueio, gemini_pdf, light
 from notifica_vagas_scraper.fontes import google_search
 from notifica_vagas_scraper.quota_gemini import CotaGeminiEsgotadaError
 from rodar_descoberta_google_search import (
-    USER_AGENT, baixar_pdf, buscar_texto_pagina, normalizar_dominio,
+    USER_AGENT, baixar_pdf, buscar_pagina_html, encontrar_pdf_edital, extrair_texto_de_html,
+    normalizar_dominio,
 )
 
 JANELA_BUSCA = "qdr:d7"
@@ -88,7 +89,7 @@ def processar_area(conn, area: str, serper_key: str, gemini_key: str, hoje, dry_
                 vistos.add(item.link)
                 itens.append(item)
     print(f"[{area}] {len(itens)} resultado(s) da Serper ({len(consultas)} crédito(s): {consultas}).")
-    gravadas = gemini = 0
+    gravadas = gemini = editais = 0
     for item in itens:
         if url_ja_vista(conn, item.link):
             continue
@@ -103,11 +104,28 @@ def processar_area(conn, area: str, serper_key: str, gemini_key: str, hoje, dry_
                 gemini += 1
                 extraido = gemini_pdf.extrair_vagas_de_pdf(pdf, api_key=gemini_key)
             else:
-                texto = buscar_texto_pagina(item.link)
+                html = buscar_pagina_html(item.link)
+                texto = extrair_texto_de_html(html) if html else None
                 if not texto:
                     continue
                 gemini += 1
                 extraido = light.extrair_de_texto(item.titulo, texto, area, api_key=gemini_key)
+                if (
+                    editais < light.LIMITE_EDITAL_POR_AREA_EXECUCAO
+                    and light.faltam_dados(light.montar_linhas(extraido, area, hoje=hoje, url=item.link, titulo=item.titulo))
+                ):
+                    url_pdf = encontrar_pdf_edital(html, item.link)
+                    if url_pdf:
+                        editais += 1
+                        try:
+                            pdf = baixar_pdf(url_pdf)
+                            if pdf:
+                                gemini += 1
+                                extraido = light.mesclar_com_edital(extraido, gemini_pdf.extrair_vagas_de_pdf(pdf, api_key=gemini_key))
+                        except CotaGeminiEsgotadaError:
+                            raise
+                        except Exception as exc:  # edital é só bônus: segue com o que a página deu
+                            print(f"  edital {url_pdf[:70]} indisponível: {type(exc).__name__}")
         except CotaGeminiEsgotadaError as exc:
             print(f"  [{area}] parando: {exc}")
             break
@@ -123,7 +141,7 @@ def processar_area(conn, area: str, serper_key: str, gemini_key: str, hoje, dry_
         gravadas += gravar(conn, linhas)
         marcar_url(conn, item.link, area, "com_vaga" if linhas else "sem_vaga")
         conn.commit()
-    print(f"[{area}] {gravadas} vaga(s) nova(s); {gemini} chamada(s) Gemini nesta execução.")
+    print(f"[{area}] {gravadas} vaga(s) nova(s); {gemini} chamada(s) Gemini nesta execução ({editais} edital(is) em PDF seguido(s)).")
 
 
 def main() -> None:

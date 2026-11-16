@@ -101,6 +101,9 @@ Título: {titulo}
 Texto:
 {texto}
 
+Procure com atenção o salário/vencimento/remuneração mensal de cada cargo e as datas de
+início e fim das inscrições, mesmo que estejam em outro trecho da página.
+
 Responda só JSON, sem markdown:
 {{"orgao": string|null, "municipio": string|null, "uf": "XX"|null,
  "numero_edital": string|null, "banca": string|null,
@@ -176,6 +179,46 @@ def montar_linhas(extraido: dict, area: str, *, hoje: date, url: str, titulo: st
             },
         )
     return list(linhas.values())
+
+
+#: Páginas que são só notícia/agregador costumam não trazer salário nem prazo; o
+#: edital oficial linkado traz. No máx. isso de leituras extras de PDF por área/execução
+#: (cada uma é 1 chamada Gemini, dentro do teto diário por área).
+LIMITE_EDITAL_POR_AREA_EXECUCAO = 8
+
+
+def faltam_dados(linhas: list[dict]) -> bool:
+    return bool(linhas) and any(l["salario"] is None or l["inscricoes_fim"] is None for l in linhas)
+
+
+def mesclar_com_edital(extraido: dict, do_edital: dict) -> dict:
+    """Completa (nunca sobrescreve) a extração da página com a do edital em PDF:
+    campos gerais nulos e salário/qtd de cada cargo; cargos que só o edital tem entram.
+    Salário por plantão do edital é ignorado (não é remuneração mensal)."""
+    base = dict(normalizar_resposta(extraido))
+    edital = normalizar_resposta(do_edital)
+    for campo in ("orgao", "municipio", "uf", "numero_edital", "inscricoes_inicio", "inscricoes_fim"):
+        if not base.get(campo) and edital.get(campo):
+            base[campo] = edital[campo]
+    if not base.get("banca"):
+        base["banca"] = edital.get("banca") or edital.get("banca_organizadora")
+    do_pdf = {
+        _normalizar(v["cargo"]).strip(): v
+        for v in edital.get("vagas") or []
+        if isinstance(v, dict) and isinstance(v.get("cargo"), str)
+    }
+    vagas = []
+    for v in base.get("vagas") or []:
+        v = dict(v) if isinstance(v, dict) else v
+        par = do_pdf.pop(_normalizar(v["cargo"]).strip(), None) if isinstance(v, dict) and isinstance(v.get("cargo"), str) else None
+        if par:
+            if v.get("salario") is None and par.get("salario_tipo") != "plantao":
+                v["salario"] = par.get("salario")
+            if v.get("vagas_qtd") is None:
+                v["vagas_qtd"] = par.get("vagas_qtd")
+        vagas.append(v)
+    base["vagas"] = vagas
+    return base
 
 
 def extrair_de_texto(titulo: str, texto: str, area: str, *, api_key: str | None = None) -> dict:

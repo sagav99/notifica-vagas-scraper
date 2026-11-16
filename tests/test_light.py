@@ -78,3 +78,27 @@ def test_consultas_de_engenharia_nao_mudam():
     from datetime import date
 
     assert light.consultas_da_area("engenharia", date(2026, 11, 16)) == light.AREAS["engenharia"]["queries"]
+
+
+def test_mesclar_com_edital_completa_sem_sobrescrever_nem_usar_plantao():
+    pagina = {
+        "orgao": "Pref. X", "municipio": None, "uf": "MG", "inscricoes_fim": None,
+        "vagas": [{"cargo": "Enfermeiro", "vagas_qtd": None, "salario": None},
+                  {"cargo": "Enfermeiro ESF", "vagas_qtd": 2, "salario": 3000}],
+    }
+    edital = {
+        "orgao": "Outro", "municipio": "Xis", "uf": "SP", "inscricoes_fim": "2026-12-01",
+        "vagas": [{"cargo": "ENFERMEIRO", "vagas_qtd": 3, "salario": 4500, "salario_tipo": "mensal"},
+                  {"cargo": "Enfermeiro ESF", "vagas_qtd": 9, "salario": 99, "salario_tipo": "plantao"}],
+    }
+    r = light.mesclar_com_edital(pagina, edital)
+    assert (r["orgao"], r["municipio"], r["uf"], r["inscricoes_fim"]) == ("Pref. X", "Xis", "MG", "2026-12-01")
+    assert r["vagas"][0]["salario"] == 4500 and r["vagas"][0]["vagas_qtd"] == 3
+    assert r["vagas"][1]["salario"] == 3000  # não sobrescreve
+
+
+def test_faltam_dados():
+    ok = {"salario": 1.0, "inscricoes_fim": date(2026, 12, 1)}
+    assert light.faltam_dados([ok, {"salario": None, "inscricoes_fim": date(2026, 12, 1)}])
+    assert not light.faltam_dados([ok])
+    assert not light.faltam_dados([])
