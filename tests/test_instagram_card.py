@@ -60,25 +60,27 @@ def test_valor_hora_calculo_e_ausencia():
     assert valor_hora({"salario": 1000, "salario_tipo": "plantao", "carga_horaria": "20h"}) is None
 
 
-def test_montar_htmls_gera_4_slides_com_conteudo_esperado():
+def test_montar_htmls_gera_5_slides_2_variaveis_e_3_fixos():
     htmls = montar_htmls(VAGA, "fim_prazo", HOJE, [VAGA_EXTRA_1, VAGA_EXTRA_2])
-    assert len(htmls) == 4
+    assert len(htmls) == 5
 
-    slide1, slide2, slide3, slide4 = htmls
-    assert "1/4" in slide1 and "VAGA COM PRAZO ACABANDO" in slide1
+    slide1, slide2, slide3, slide4, slide5 = htmls
+    assert "1/5" in slide1 and "VAGA COM PRAZO ACABANDO" in slide1
     assert "ÚLTIMOS DIAS — ATÉ 30/09" in slide1
     assert "SAÚDE NA HORA" in slide1  # especialidade sem o prefixo "MÉDICO"
     assert "&lt;b&gt;" in slide1 and "<b>com registro" not in slide1  # requisitos escapados
     assert "Não informado" in slide1
 
-    assert "2/4" in slide2 and "DETALHES" in slide2 and "R$ 71,45" in slide2
+    assert "2/5" in slide2 and "DETALHES" in slide2 and "R$ 71,45" in slide2
 
-    assert "3/4" in slide3 and "EDITAL OFICIAL" in slide3
-    assert "registro no CRM" in slide3  # checklist fixo, não muda por vaga
+    assert "3/5" in slide3 and "TEM DEZENAS" in slide3 and "Jarinu" in slide3 and "blur" not in slide3
+    assert "4/5" in slide4 and "TUDO PRONTO" in slide4 and "Waze" in slide4
+    assert "5/5" in slide5 and "29,99" in slide5 and "DA BIO" in slide5
 
-    assert "4/4" in slide4 and "ESSA É SÓ" in slide4
-    assert "Jarinu" in slide4 and "São Carlos" in slide4
-    assert "R$29,99" not in slide4 and "grupo de WhatsApp" in slide4 and "GRUPO DE WHATSAPP COM VAGAS" in slide4
+    # Os 3 fixos não dependem da vaga e nunca citam "PDF".
+    for fixo in (slide3, slide4, slide5):
+        assert "Santa Isabel" not in fixo
+    assert "PDF" not in slide3 and "PDF" not in slide5
 
 
 def test_montar_htmls_tipo_nova_usa_eyebrow_diferente():
@@ -92,5 +94,5 @@ def test_legenda_menciona_prazos_e_hashtags():
     assert "Últimos dias" in legenda
     assert "Início das inscrições: Não informado" in legenda
     assert "Fim das inscrições: 30/09/2026" in legenda
-    assert "#concursosmg" in legenda and "link na bio" in legenda
+    assert "#concursosmg" in legenda and "link da bio" in legenda
     assert "Vaga aberta" in montar_legenda(VAGA, "nova", HOJE)

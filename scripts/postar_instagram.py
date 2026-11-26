@@ -59,7 +59,7 @@ def main() -> int:
                 print(f"Nenhum slide-*.png em {pasta}", file=sys.stderr)
                 return 1
         else:
-            extra = vagas_preview(conn, vaga["id"], limite=2)
+            extra = vagas_preview(conn, vaga["id"], limite=4)
             legenda = montar_legenda(vaga, tipo, hoje)
             htmls = montar_htmls(vaga, tipo, hoje, extra)
             pngs = renderizar_pngs(htmls, SAIDA / f"card-{hoje}.png")
