@@ -6,8 +6,7 @@ name: Postar resumo semanal no Instagram (sábado e domingo)
 # Autorizado pelo usuário em 2026-11-08 (o post diário de vaga segue desativado). Não usa Gemini.
 
 on:
-  schedule:
-    - cron: "0 15 * * 6,0" # 12h Brasília
+  # Cron do GitHub DESATIVADO (2026-11-28): atrasa ~6 h. O disparo às 12h em ponto vem do launchd do Mac (`gh workflow run`), ver scripts/launchd/ no repo do site.
   workflow_dispatch:
     inputs:
       dry_run:
