@@ -2,8 +2,7 @@
 
 Os slides e a legenda são gerados pelo repositório do site (workflow `instagram-resumo-gerar.yml`, 11h30) e ficam na tabela
 `posts_resumo_instagram_slides`. Aqui só se publica, e só se:
-  - o PDF do dia já foi marcado como enviado ao grupo (`pdf_grupo_vagas.enviado`): é o sinal de que o usuário conferiu os dados;
-    sem isso o post NÃO sai e o admin recebe um e-mail (use --sem-trava para publicar mesmo assim);
+  - o post do dia NÃO está barrado (linha 'barrado' em posts_resumo_instagram; a trava antiga "PDF enviado" saiu em 2026-11-28);
   - o post do dia ainda não foi publicado (`posts_resumo_instagram`, um registro por dia+tipo).
 
 Uso: python scripts/postar_resumo_semanal.py [--tipo abertura|fechamento] [--data AAAA-MM-DD] [--dry-run] [--sem-trava]
@@ -71,14 +70,9 @@ def main() -> int:
         if conn.execute("select 1 from public.posts_resumo_instagram where dia = %s and tipo = %s and status = 'publicado'", (dia, tipo)).fetchone():
             print(f"O post de {tipo} de {dia} já foi publicado; nada a fazer.")
             return 0
-        enviado = conn.execute("select coalesce(bool_or(enviado), false) from public.pdf_grupo_vagas where pdf_data = %s and tipo = %s", (dia, tipo)).fetchone()[0]
-        if not enviado and not a.sem_trava:
-            msg = (f"O post do resumo de {rotulo} ({dia:%d/%m}) NÃO foi publicado: o PDF do dia ainda não está marcado como enviado ao grupo "
-                   f"(sinal de que os dados foram conferidos). Depois de enviar, peça para marcar como enviado e rode o workflow "
-                   f"'Postar resumo semanal no Instagram' na mão, ou use sem_trava.")
-            print(msg)
-            if not a.dry_run:
-                avisar_admin(f"Post do resumo de {tipo} não saiu (PDF não marcado como enviado)", msg)
+        barrado = conn.execute("select 1 from public.posts_resumo_instagram where dia = %s and tipo = %s and status = 'barrado'", (dia, tipo)).fetchone()
+        if barrado:  # `python3 scripts/barrar_post.py <dia> <tipo>` no repo do site cria a linha; --desfazer libera
+            print(f"O post de {tipo} de {dia} está BARRADO; nada a fazer.")
             return 0
         arquivos = {nome: bytes(dados) for nome, dados in conn.execute(
             "select nome, conteudo from public.posts_resumo_instagram_slides where dia = %s and tipo = %s", (dia, tipo)).fetchall()}
@@ -90,7 +84,7 @@ def main() -> int:
                 avisar_admin(f"Post do resumo de {tipo} não saiu (slides ausentes)", msg)
             return 1
         legenda = arquivos["legenda.txt"].decode("utf-8").strip()
-        print(f"[{tipo}] {dia}: {len(slides)} slides, PDF enviado={enviado}")
+        print(f"[{tipo}] {dia}: {len(slides)} slides")
         if a.dry_run:
             print(legenda)
             return 0
