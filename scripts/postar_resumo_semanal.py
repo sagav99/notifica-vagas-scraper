@@ -24,8 +24,8 @@ from zoneinfo import ZoneInfo
 from notifica_vagas_scraper.db import conectar
 from notifica_vagas_scraper.instagram.publicar import hospedar_imagem, publicar_carrossel_no_instagram
 
-SLIDES_ESPERADOS = 7  # abertura/fechamento; o post diário da vaga (tipo "vaga") tem 5
-SLIDES_POR_TIPO = {"abertura": 7, "fechamento": 7, "vaga": 5}
+SLIDES_ESPERADOS = 7  # abertura/fechamento; o post diário da vaga (tipo "vaga") tem 4
+SLIDES_POR_TIPO = {"abertura": 7, "fechamento": 7, "vaga": 4}
 
 
 def tipo_do_dia(dia: date) -> str | None:
