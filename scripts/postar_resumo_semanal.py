@@ -24,11 +24,12 @@ from zoneinfo import ZoneInfo
 from notifica_vagas_scraper.db import conectar
 from notifica_vagas_scraper.instagram.publicar import hospedar_imagem, publicar_carrossel_no_instagram
 
-SLIDES_ESPERADOS = 7
+SLIDES_ESPERADOS = 7  # abertura/fechamento; o post diário da vaga (tipo "vaga") tem 5
+SLIDES_POR_TIPO = {"abertura": 7, "fechamento": 7, "vaga": 5}
 
 
 def tipo_do_dia(dia: date) -> str | None:
-    return {5: "abertura", 6: "fechamento"}.get(dia.weekday())
+    return {0: "vaga", 1: "vaga", 2: "vaga", 3: "vaga", 4: "vaga", 5: "abertura", 6: "fechamento"}.get(dia.weekday())
 
 
 def avisar_admin(assunto: str, corpo: str) -> bool:
@@ -54,7 +55,7 @@ def avisar_admin(assunto: str, corpo: str) -> bool:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--tipo", choices=("abertura", "fechamento"))
+    ap.add_argument("--tipo", choices=("abertura", "fechamento", "vaga"))
     ap.add_argument("--data", help="AAAA-MM-DD (padrão: hoje, Brasília)")
     ap.add_argument("--dry-run", action="store_true", help="só confere (trava, slides, legenda); não publica")
     ap.add_argument("--sem-trava", action="store_true", help="publica mesmo sem o PDF do dia marcado como enviado")
@@ -62,9 +63,9 @@ def main() -> int:
     dia = date.fromisoformat(a.data) if a.data else datetime.now(ZoneInfo("America/Sao_Paulo")).date()
     tipo = a.tipo or tipo_do_dia(dia)
     if not tipo:
-        print(f"{dia} não é sábado nem domingo; informe --tipo.")
+        print(f"{dia} não tem tipo de post; informe --tipo.")
         return 2
-    rotulo = "sábado (vagas novas)" if tipo == "abertura" else "domingo (vagas que fecham)"
+    rotulo = {"abertura": "sábado (vagas novas)", "fechamento": "domingo (vagas que fecham)", "vaga": "vaga do dia"}[tipo]
 
     with conectar() as conn:
         if conn.execute("select 1 from public.posts_resumo_instagram where dia = %s and tipo = %s and status = 'publicado'", (dia, tipo)).fetchone():
@@ -77,8 +78,8 @@ def main() -> int:
         arquivos = {nome: bytes(dados) for nome, dados in conn.execute(
             "select nome, conteudo from public.posts_resumo_instagram_slides where dia = %s and tipo = %s", (dia, tipo)).fetchall()}
         slides = sorted(n for n in arquivos if n.startswith("slide-") and n.endswith(".png"))
-        if len(slides) != SLIDES_ESPERADOS or "legenda.txt" not in arquivos:
-            msg = f"Faltam os slides do post de {tipo} de {dia}: achei {len(slides)} de {SLIDES_ESPERADOS} e legenda={'legenda.txt' in arquivos}. O workflow 'gerar slides' do site rodou?"
+        if len(slides) != SLIDES_POR_TIPO[tipo] or "legenda.txt" not in arquivos:
+            msg = f"Faltam os slides do post de {tipo} de {dia}: achei {len(slides)} de {SLIDES_POR_TIPO[tipo]} e legenda={'legenda.txt' in arquivos}. O workflow 'gerar slides' do site rodou?"
             print(msg, file=sys.stderr)
             if not a.dry_run:
                 avisar_admin(f"Post do resumo de {tipo} não saiu (slides ausentes)", msg)
